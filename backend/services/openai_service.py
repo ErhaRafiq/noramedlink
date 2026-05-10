@@ -11,6 +11,8 @@ except ImportError:  # pragma: no cover - exercised only when dependency is miss
 
 
 DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"
+DEFAULT_GROQ_BASE_URL = "https://api.groq.com/openai/v1"
+DEFAULT_GROQ_MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
 
 
 @dataclass
@@ -28,12 +30,44 @@ def configured_model() -> str:
     return os.getenv("OPENAI_SCAN_MODEL", DEFAULT_OPENAI_MODEL).strip() or DEFAULT_OPENAI_MODEL
 
 
+def _parse_model_list(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def configured_openai_models() -> list[str]:
+    primary = configured_model()
+    fallbacks = _parse_model_list(os.getenv("OPENAI_FALLBACK_MODELS"))
+    ordered = [primary, *fallbacks]
+    deduped: list[str] = []
+    for model in ordered:
+        if model not in deduped:
+            deduped.append(model)
+    return deduped or [DEFAULT_OPENAI_MODEL]
+
+
+def configured_groq_models() -> list[str]:
+    configured = _parse_model_list(os.getenv("GROQ_CHAT_MODELS"))
+    if configured:
+        return configured
+    return DEFAULT_GROQ_MODELS
+
+
+def _has_openai_provider() -> bool:
+    return bool(os.getenv("OPENAI_API_KEY", "").strip())
+
+
+def _has_groq_provider() -> bool:
+    return bool(os.getenv("GROQ_API_KEY", "").strip())
+
+
 def openai_unavailable_message() -> str | None:
-    if not os.getenv("OPENAI_API_KEY", "").strip():
-        return "OpenAI API key is missing from the backend environment."
     if OpenAI is None:
         return "OpenAI Python SDK is not installed. Run backend dependency installation."
-    return None
+    if _has_openai_provider() or _has_groq_provider():
+        return None
+    return "No LLM API key configured. Add OPENAI_API_KEY or GROQ_API_KEY to the backend environment."
 
 
 def safe_openai_error(error: Exception) -> str:
@@ -48,8 +82,34 @@ def safe_openai_error(error: Exception) -> str:
     if "timeout" in error_name or "connection" in error_name:
         return "OpenAI request failed due to a network or timeout issue."
     if isinstance(status_code, int) and status_code >= 500:
-        return "OpenAI service is temporarily unavailable."
-    return "OpenAI request failed. Try again later."
+        return "LLM service is temporarily unavailable."
+    return "LLM request failed. Try again later."
+
+
+def is_retryable_error(error: Exception) -> bool:
+    status_code = getattr(error, "status_code", None)
+    message = str(error).lower()
+    error_name = error.__class__.__name__.lower()
+    return bool(
+        status_code in {408, 409, 425, 429, 500, 502, 503, 504}
+        or "ratelimit" in error_name
+        or "quota" in message
+        or "timeout" in error_name
+        or "temporarily unavailable" in message
+        or "connection" in error_name
+    )
+
+
+def _provider_attempts() -> list[tuple[str, str, str]]:
+    attempts: list[tuple[str, str, str]] = []
+    if _has_openai_provider():
+        for model in configured_openai_models():
+            attempts.append(("openai", model, "https://api.openai.com/v1"))
+    if _has_groq_provider():
+        groq_base = os.getenv("GROQ_BASE_URL", DEFAULT_GROQ_BASE_URL).strip() or DEFAULT_GROQ_BASE_URL
+        for model in configured_groq_models():
+            attempts.append(("groq", model, groq_base))
+    return attempts
 
 
 def extract_response_text(response: Any) -> str:
@@ -79,6 +139,23 @@ def extract_response_text(response: Any) -> str:
     return "\n".join(parts).strip()
 
 
+def extract_chat_completion_text(response: Any) -> str:
+    choices = getattr(response, "choices", None)
+    if not choices and isinstance(response, dict):
+        choices = response.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return ""
+
+    first = choices[0]
+    message = getattr(first, "message", None)
+    if message is None and isinstance(first, dict):
+        message = first.get("message")
+    content = getattr(message, "content", None) if message is not None else None
+    if content is None and isinstance(message, dict):
+        content = message.get("content")
+    return str(content or "").strip()
+
+
 def parse_json_from_text(text: str) -> Any:
     candidates = [text.strip()]
     object_start = text.find("{")
@@ -105,25 +182,39 @@ async def generate_openai_text(instructions: str, prompt: str) -> OpenAIResult:
     if unavailable:
         return OpenAIResult(error=unavailable)
 
-    def create_response():
-        client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))  # type: ignore[misc]
-        return client.responses.create(
-            model=configured_model(),
-            instructions=instructions,
-            input=prompt,
-            temperature=0.2,
-        )
+    attempts = _provider_attempts()
+    if not attempts:
+        return OpenAIResult(error="No LLM provider configured. Add OPENAI_API_KEY or GROQ_API_KEY.")
 
-    try:
-        response = await asyncio.to_thread(create_response)
-        text = extract_response_text(response)
-    except Exception as error:
-        return OpenAIResult(error=safe_openai_error(error))
+    errors: list[str] = []
+    for provider, model, base_url in attempts:
+        api_key = os.getenv("OPENAI_API_KEY") if provider == "openai" else os.getenv("GROQ_API_KEY")
 
-    if not text:
-        return OpenAIResult(error="OpenAI returned an empty response.")
+        def create_response():
+            client = OpenAI(api_key=api_key, base_url=base_url)  # type: ignore[misc]
+            return client.chat.completions.create(
+                model=model,
+                temperature=0.2,
+                messages=[
+                    {"role": "system", "content": instructions},
+                    {"role": "user", "content": prompt},
+                ],
+            )
 
-    return OpenAIResult(text=text)
+        try:
+            response = await asyncio.to_thread(create_response)
+            text = extract_chat_completion_text(response)
+            if text:
+                return OpenAIResult(text=text)
+            errors.append(f"{provider}:{model} returned empty output")
+        except Exception as error:
+            errors.append(f"{provider}:{model} {safe_openai_error(error)}")
+            if not is_retryable_error(error):
+                continue
+
+    if errors:
+        return OpenAIResult(error="; ".join(errors[:3]))
+    return OpenAIResult(error="All configured LLM models failed to generate a response.")
 
 
 async def generate_openai_json(instructions: str, prompt: str) -> OpenAIResult:
@@ -145,4 +236,4 @@ async def generate_openai_json(instructions: str, prompt: str) -> OpenAIResult:
 def fallback_notice(error: str | None) -> str:
     if not error:
         return ""
-    return f"OpenAI clinical AI was unavailable: {error} Generated using the local rule-based fallback."
+    return f"Clinical AI was unavailable: {error} Generated using the local rule-based fallback."

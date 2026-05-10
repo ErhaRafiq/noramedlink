@@ -203,7 +203,7 @@ export const api = {
     return apiRequest<MedicalDocument[]>("/patient/reports", { token });
   },
   patientDocument(token: string, documentId: number) {
-    return apiRequest<MedicalDocument>(`/reports/${documentId}`, { token, baseUrl: API_BASE_URL });
+    return apiRequest<MedicalDocument>(`/patient/reports/${documentId}`, { token, baseUrl: API_BASE_URL });
   },
   patientDepartmentReports(token: string, department: string) {
     return apiRequest<MedicalDocument[]>(`/patient/reports/department/${encodeURIComponent(department)}`, { token });
@@ -253,13 +253,13 @@ export const api = {
     return apiRequest<Appointment[]>("/api/appointments", { token });
   },
   reports(token: string) {
-    return apiRequest<MedicalDocument[]>("/reports", { token, baseUrl: API_BASE_URL });
+    return apiRequest<MedicalDocument[]>("/patient/reports", { token, baseUrl: API_BASE_URL });
   },
   reportsByCategory(token: string, category: string) {
-    return apiRequest<MedicalDocument[]>(`/reports/department/${encodeURIComponent(category)}`, { token, baseUrl: API_BASE_URL });
+    return apiRequest<MedicalDocument[]>(`/patient/reports/department/${encodeURIComponent(category)}`, { token, baseUrl: API_BASE_URL });
   },
   uploadReport(token: string, formData: FormData) {
-    return apiRequest<MedicalDocument>("/reports/upload", {
+    return apiRequest<MedicalDocument>("/patient/reports/upload", {
       method: "POST",
       token,
       body: formData,
@@ -349,7 +349,7 @@ export const api = {
     });
   },
   updateOcrText(token: string, documentId: number, cleanedText: string) {
-    return apiRequest<MedicalDocument>(`/reports/${documentId}`, {
+    return apiRequest<MedicalDocument>(`/patient/reports/${documentId}`, {
       method: "PATCH",
       token,
       body: JSON.stringify({ extracted_text: cleanedText }),
@@ -357,7 +357,7 @@ export const api = {
     });
   },
   updateDocument(token: string, documentId: number, payload: { title?: string; department?: string; extracted_text?: string; formatted_text?: string }) {
-    return apiRequest<MedicalDocument>(`/reports/${documentId}`, {
+    return apiRequest<MedicalDocument>(`/patient/reports/${documentId}`, {
       method: "PATCH",
       token,
       body: JSON.stringify(payload),
@@ -372,7 +372,7 @@ export const api = {
     });
   },
   deleteDocument(token: string, documentId: number) {
-    return apiRequest<{ message: string }>(`/reports/${documentId}`, {
+    return apiRequest<{ message: string }>(`/patient/reports/${documentId}`, {
       method: "DELETE",
       token,
       baseUrl: API_BASE_URL,

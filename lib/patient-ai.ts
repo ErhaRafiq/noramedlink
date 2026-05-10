@@ -3,6 +3,7 @@ import type { ReportCategoryId } from "@/lib/patient-dashboard";
 import { buildMedicalDisclaimer } from "@/lib/patient-dashboard";
 
 const OPENAI_BASE_URL = "https://api.openai.com/v1/chat/completions";
+const GROQ_BASE_URL = "https://api.groq.com/openai/v1/chat/completions";
 
 type OpenAIJsonRequest = {
   system: string;
@@ -15,8 +16,63 @@ function getOpenAIApiKey() {
   return process.env.OPENAI_API_KEY?.trim() || "";
 }
 
-function getModel(defaultModel: string) {
-  return process.env.OPENAI_SCAN_MODEL?.trim() || process.env.OPENAI_CHAT_MODEL?.trim() || defaultModel;
+function getGroqApiKey() {
+  return process.env.GROQ_API_KEY?.trim() || "";
+}
+
+function parseModelList(value: string | undefined) {
+  return (value || "")
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function getOpenAIModels(defaultModel: string) {
+  const primary = process.env.OPENAI_SCAN_MODEL?.trim() || process.env.OPENAI_CHAT_MODEL?.trim() || defaultModel;
+  const fallbacks = parseModelList(process.env.OPENAI_FALLBACK_MODELS);
+  return Array.from(new Set([primary, ...fallbacks]));
+}
+
+function getGroqModels() {
+  const configured = parseModelList(process.env.GROQ_CHAT_MODELS);
+  return configured.length > 0 ? configured : ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"];
+}
+
+type LlmProviderAttempt = {
+  provider: "openai" | "groq";
+  model: string;
+  baseUrl: string;
+  apiKey: string;
+};
+
+function getProviderAttempts(defaultModel: string): LlmProviderAttempt[] {
+  const attempts: LlmProviderAttempt[] = [];
+
+  const openaiKey = getOpenAIApiKey();
+  if (openaiKey) {
+    for (const model of getOpenAIModels(defaultModel)) {
+      attempts.push({
+        provider: "openai",
+        model,
+        baseUrl: process.env.OPENAI_BASE_URL?.trim() || OPENAI_BASE_URL,
+        apiKey: openaiKey,
+      });
+    }
+  }
+
+  const groqKey = getGroqApiKey();
+  if (groqKey) {
+    for (const model of getGroqModels()) {
+      attempts.push({
+        provider: "groq",
+        model,
+        baseUrl: process.env.GROQ_BASE_URL?.trim() || GROQ_BASE_URL,
+        apiKey: groqKey,
+      });
+    }
+  }
+
+  return attempts;
 }
 
 async function parseJsonFromAssistant(content: string) {
@@ -26,43 +82,55 @@ async function parseJsonFromAssistant(content: string) {
 }
 
 async function callOpenAIJson({ system, user, model, temperature = 0.2 }: OpenAIJsonRequest) {
-  const apiKey = getOpenAIApiKey();
-  if (!apiKey) {
-    throw new Error("OPENAI_API_KEY is not configured.");
+  const attempts = getProviderAttempts(model ?? "gpt-4.1-mini");
+  if (attempts.length === 0) {
+    throw new Error("No LLM API key configured. Add OPENAI_API_KEY or GROQ_API_KEY.");
   }
 
-  const response = await fetch(OPENAI_BASE_URL, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: model ?? getModel("gpt-4.1-mini"),
-      temperature,
-      response_format: { type: "json_object" },
-      messages: [
-        { role: "system", content: system },
-        { role: "user", content: user },
-      ],
-    }),
-  });
+  const failures: string[] = [];
+  for (const attempt of attempts) {
+    const response = await fetch(attempt.baseUrl, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${attempt.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: attempt.model,
+        temperature,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: user },
+        ],
+      }),
+    });
 
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(detail || "OpenAI request failed.");
+    if (!response.ok) {
+      const detail = await response.text();
+      const summary = detail.slice(0, 160);
+      failures.push(`${attempt.provider}:${attempt.model}:${response.status}:${summary}`);
+      continue;
+    }
+
+    const data = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string | null } }>;
+    };
+
+    const content = data.choices?.[0]?.message?.content ?? "";
+    if (!content.trim()) {
+      failures.push(`${attempt.provider}:${attempt.model}:empty_response`);
+      continue;
+    }
+
+    try {
+      return await parseJsonFromAssistant(content);
+    } catch {
+      failures.push(`${attempt.provider}:${attempt.model}:invalid_json`);
+    }
   }
 
-  const data = (await response.json()) as {
-    choices?: Array<{ message?: { content?: string | null } }>;
-  };
-
-  const content = data.choices?.[0]?.message?.content ?? "";
-  if (!content.trim()) {
-    throw new Error("OpenAI returned an empty response.");
-  }
-
-  return parseJsonFromAssistant(content);
+  throw new Error(`All configured LLM models failed. ${failures.slice(0, 3).join(" | ")}`);
 }
 
 export async function analyzeReportWithOpenAI(args: {

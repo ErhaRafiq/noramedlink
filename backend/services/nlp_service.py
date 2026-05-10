@@ -35,13 +35,21 @@ async def summarize_with_optional_llm(text: str, category: str | None = None) ->
     result = await generate_openai_text(
         instructions=(
             "You generate concise clinical summaries for Nora MedLink. "
-            "Summarize medical report text for a patient and doctor without diagnosing, prescribing, "
-            "or giving unsafe instructions. Preserve abnormal values, key test names, symptoms, and negations. "
-            "Mention that a qualified doctor must verify the summary."
+            "Summarize report evidence for care support without diagnosing, prescribing, or inventing facts. "
+            "Preserve abnormal values, units, key tests, symptoms, and explicit negations."
         ),
         prompt=(
             f"Report category: {category or 'not selected'}\n\n"
-            "Return a short doctor-friendly summary in plain text.\n\n"
+            "Write a doctor-friendly summary with this exact structure:\n"
+            "1) Clinical context (1 sentence)\n"
+            "2) Key findings (2-5 bullets; include exact values/units when present)\n"
+            "3) Risk signals or red flags (1-3 bullets)\n"
+            "4) Data quality notes (missing/unclear OCR info)\n"
+            "5) Final safety line: This is not a medical diagnosis. Please consult a doctor.\n\n"
+            "Constraints:\n"
+            "- If a result is negated, state that it was explicitly absent.\n"
+            "- If no clear abnormalities exist, say so plainly.\n"
+            "- Keep total output under 220 words.\n\n"
             f"Medical text:\n{text[:12000]}"
         ),
     )
