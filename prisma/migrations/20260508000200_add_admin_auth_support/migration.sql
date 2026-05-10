@@ -1,0 +1,5 @@
+ALTER TABLE "users"
+ADD COLUMN IF NOT EXISTS "is_active" BOOLEAN NOT NULL DEFAULT true;
+
+ALTER TABLE "signup_otps"
+ADD COLUMN IF NOT EXISTS "payload_json" JSONB NOT NULL DEFAULT '{}'::jsonb;

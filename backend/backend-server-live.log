@@ -1,0 +1,1032 @@
+INFO:     127.0.0.1:61590 - "GET /auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61591 - "GET /patient/dashboard HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61592 - "GET /patient/reports HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61593 - "GET /patient/reports/tiles HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61594 - "GET /patient/medicines HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61595 - "GET /patient/risk-predictions HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61590 - "GET /patient/health-tips HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61591 - "GET /patient/doctor-summaries HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:61590 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61590 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61591 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54594 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54593 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54592 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61591 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54595 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61590 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53327 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53327 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50610 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53327 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50612 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50611 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50613 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53327 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50610 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60850 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60852 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60851 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60853 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60854 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60855 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60850 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60851 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58207 - "POST /patient/doctor-summaries/generate HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58207 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54123 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54124 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54125 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54126 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54127 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58207 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54123 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62390 - "POST /patient/reports/upload HTTP/1.1" 201 Created
+INFO:     127.0.0.1:62390 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53787 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58939 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58938 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58937 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58940 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62390 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53787 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52058 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52059 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52060 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52063 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52062 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52061 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52058 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52059 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57462 - "POST /patient/reports/upload HTTP/1.1" 201 Created
+INFO:     127.0.0.1:57462 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57189 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57188 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57462 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57186 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57190 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57462 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57510 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57511 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57512 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57513 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57514 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57515 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57510 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57511 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61116 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61117 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61121 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61120 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61118 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61119 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61116 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61116 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51626 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51627 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51628 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51629 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51630 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51631 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51626 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51627 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59222 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59227 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59223 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59225 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59224 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59222 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59226 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59222 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52397 - "POST /patient/reports/upload HTTP/1.1" 201 Created
+INFO:     127.0.0.1:52397 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49984 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52397 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49985 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49986 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52397 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50775 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50771 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50776 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50774 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50772 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50773 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50775 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50771 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53011 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53012 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53009 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53010 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53007 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53008 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53009 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53007 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53008 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52830 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52829 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52834 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52833 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52831 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52832 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52829 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52830 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52829 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52829 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52830 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52829 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52829 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52830 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52831 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52829 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52830 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52831 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62912 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62911 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62913 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62910 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62910 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62910 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62911 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62912 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62913 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60261 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60262 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51309 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60260 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51308 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60260 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60262 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60261 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51308 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60260 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60261 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60260 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60262 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60260 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60261 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60262 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60260 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60261 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59631 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59633 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59630 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59632 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59629 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59629 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59630 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59631 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59629 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55530 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55533 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55534 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55532 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55531 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55530 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55531 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55532 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55533 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62699 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62700 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62703 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62698 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62702 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62701 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62698 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62699 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62700 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62698 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62699 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62698 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62699 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62698 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62700 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62699 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62698 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62699 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59496 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59494 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59495 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59497 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59494 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59495 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59496 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59497 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59494 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50061 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50066 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50065 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50067 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50062 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50064 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50061 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50062 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50064 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50065 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50061 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50061 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50064 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50062 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50065 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50061 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50062 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50064 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62858 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62860 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62862 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62861 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62857 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62859 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62857 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62858 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62859 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64514 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64516 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64518 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64519 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64517 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64515 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64514 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64515 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64516 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64517 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64515 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64514 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64516 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64517 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64514 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64515 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64516 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64517 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54105 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54108 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54106 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54107 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54106 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54105 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54107 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54106 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54105 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54108 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54105 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54106 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54107 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54105 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54108 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54109 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54105 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54106 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63036 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63041 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63040 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63037 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63039 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63038 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63036 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63037 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63038 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63039 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63036 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63037 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63038 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63039 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63036 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63037 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63038 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63039 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57527 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57528 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57530 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57529 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57531 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57532 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57527 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57528 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57527 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63455 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63460 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63459 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63457 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63456 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63458 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63455 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63456 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63455 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61871 - "POST /patient/reports/upload HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61871 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59001 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55550 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59000 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58999 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55549 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61871 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61871 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55549 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60630 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60635 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60634 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60631 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60632 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60633 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60630 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60631 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60632 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62127 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62129 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62128 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62130 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62131 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62132 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62127 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62128 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62129 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59033 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59037 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59034 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59038 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59035 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59036 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59033 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59034 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59035 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60337 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60337 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60027 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60023 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60026 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60025 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60024 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60337 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60337 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60023 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61718 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61722 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61721 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61719 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61720 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61723 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61718 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61719 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61720 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60393 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60398 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60394 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60397 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60395 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60396 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60393 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60393 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60394 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61745 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61749 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61750 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61746 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61748 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61747 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61745 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61745 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61746 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58166 - "POST /patient/reports/upload HTTP/1.1" 201 Created
+INFO:     127.0.0.1:58166 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59201 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59197 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59198 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59199 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59200 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58166 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58166 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59197 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57316 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57320 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57321 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57318 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57319 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57317 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57316 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57317 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57316 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62699 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62701 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62702 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62700 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62699 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62700 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62701 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62702 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62703 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58667 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58670 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58668 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58672 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58669 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58671 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58668 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58667 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58669 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49986 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49985 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49984 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49986 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49984 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49985 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49986 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49987 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49984 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49985 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49986 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49987 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49984 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49985 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49986 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49987 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63298 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49984 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49985 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49984 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49985 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49986 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49984 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49984 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55543 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55546 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55544 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55545 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55547 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55548 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55543 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55544 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55545 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55546 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62131 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62134 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62133 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62136 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62135 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62132 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62131 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62133 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62131 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62132 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54843 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54844 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54846 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54845 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54843 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54844 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54843 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54844 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54843 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54845 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54843 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54844 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54845 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54843 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58576 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58575 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54843 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54844 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54845 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58575 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54843 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54844 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54845 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58575 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55022 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54843 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54844 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54845 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58575 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55022 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55023 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55027 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55028 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55024 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55026 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55025 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55023 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55024 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55025 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55026 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63428 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63428 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63431 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63429 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63430 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63432 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63428 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63429 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63430 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63428 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56685 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56689 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56687 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56686 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56690 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56688 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56685 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56686 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56685 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56687 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51933 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51929 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51930 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51934 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51932 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51931 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51929 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51929 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51930 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51931 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62765 - "GET /appointments/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62766 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62765 - "GET /appointments/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54484 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54484 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54484 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62420 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62419 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62421 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62422 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54484 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62419 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54484 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62420 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54220 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54216 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54217 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54221 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54218 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54219 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54220 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54216 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54217 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54218 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54216 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54217 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54220 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54218 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54219 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54216 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54216 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54217 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54218 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54219 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55575 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55571 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55573 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55576 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55572 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55574 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55571 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55571 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55572 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55573 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61204 - "POST /patient/reports/upload HTTP/1.1" 201 Created
+INFO:     127.0.0.1:61204 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65177 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65174 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65178 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65175 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65176 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61204 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65174 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61204 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65174 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51232 - "GET /appointments/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51232 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51232 - "GET /appointments/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55952 - "GET /appointments/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55952 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55952 - "GET /appointments/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49304 - "POST /appointments HTTP/1.1" 201 Created
+INFO:     127.0.0.1:49304 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65073 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65073 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65073 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54141 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54142 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54143 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54144 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65073 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54141 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54142 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65073 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64306 - "GET /patient/reports/tiles HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64305 - "GET /patient/health-tips HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64308 - "GET /patient/dashboard HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64307 - "GET /patient/reports HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64309 - "GET /auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64304 - "GET /patient/risk-predictions HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64304 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64305 - "GET /patient/medicines HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64306 - "GET /appointments HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:64307 - "GET /patient/doctor-summaries HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:63593 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63593 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50108 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50107 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50106 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50104 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63593 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50105 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50107 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63593 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50104 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59338 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59333 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59337 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59338 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59334 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59335 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59336 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59333 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59333 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59334 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53949 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63306 - "POST /auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55615 - "POST /auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55573 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55573 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55573 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57856 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57857 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57859 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57858 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55573 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57856 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55573 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57856 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63193 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63193 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51482 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51483 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51479 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51480 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51481 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63193 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51482 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63193 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51479 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59561 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59556 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59560 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59561 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59559 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59557 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59558 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59556 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59557 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59556 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61345 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61341 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61346 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61343 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61345 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61344 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61342 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61341 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61341 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61342 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65293 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65293 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55868 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55869 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55866 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55865 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55867 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65293 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55868 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65293 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55865 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57968 - "GET /appointments/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57969 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57968 - "GET /appointments/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57968 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57969 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49985 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49983 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49984 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57968 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57968 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57969 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57968 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57969 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57968 - "GET /appointments/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57969 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57968 - "GET /appointments/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63163 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63159 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63164 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63160 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63161 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63162 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63159 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63159 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63160 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63161 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55518 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55515 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55519 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55514 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55516 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55517 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55515 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55514 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55515 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55516 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54222 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54218 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54220 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54223 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54222 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54219 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54221 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54218 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54218 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54219 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50061 - "POST /auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50061 - "POST /auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54774 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54774 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51968 - "POST /auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65249 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65249 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58143 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58142 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65249 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58144 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58145 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65249 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58142 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58143 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58144 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51328 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51324 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51327 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51326 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51325 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51329 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51324 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51325 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51326 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51327 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64660 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64656 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64661 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64659 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64658 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64657 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64656 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64656 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64657 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64658 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60206 - "OPTIONS /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59574 - "OPTIONS /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57843 - "OPTIONS /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55371 - "OPTIONS /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64730 - "OPTIONS /patient/vitals/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49184 - "OPTIONS /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60206 - "OPTIONS /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59574 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57843 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55371 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60206 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64730 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55371 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49184 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59574 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57843 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60206 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49184 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64730 - "GET /auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55371 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54573 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53156 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58097 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54573 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58072 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58072 - "GET /api/auth/me HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53156 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54573 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52453 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51044 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58097 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51830 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51830 - "POST /api/auth/login HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64683 - "POST /api/auth/login HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60656 - "POST /api/auth/login HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53242 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53242 - "POST /api/auth/login HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49640 - "OPTIONS /api/auth/request-otp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49640 - "POST /api/auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49640 - "POST /api/auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49640 - "POST /api/auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50525 - "POST /api/auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56984 - "POST /api/auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56984 - "POST /api/auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56984 - "POST /api/auth/login HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56430 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56430 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64567 - "POST /api/auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63821 - "POST /api/auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54762 - "OPTIONS /api/auth/request-otp HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54762 - "POST /api/auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63306 - "POST /auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63307 - "POST /api/auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57668 - "POST /api/auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65316 - "POST /auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65317 - "POST /api/auth/request-otp HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59341 - "OPTIONS /api/auth/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59341 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61610 - "POST /auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61611 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58024 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61887 - "POST /auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61888 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58024 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61887 - "POST /auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61888 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54333 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54333 - "POST /api/auth/login HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52015 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54333 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52014 - "OPTIONS /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54333 - "OPTIONS /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52014 - "OPTIONS /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54333 - "OPTIONS /patient/vitals/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52014 - "OPTIONS /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54333 - "OPTIONS /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52014 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54333 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52014 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54333 - "GET /api/auth/me HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54333 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54333 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52014 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52672 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54333 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56195 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52014 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63907 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63907 - "POST /api/auth/login HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52015 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63907 - "GET /api/auth/me HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49983 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52672 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63907 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54333 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56195 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52014 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52672 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63907 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63907 - "POST /api/auth/login HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52015 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63907 - "GET /api/auth/me HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54333 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63907 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56195 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54333 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52672 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52014 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63907 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49983 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59729 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50957 - "POST /auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50958 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59729 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50957 - "POST /auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50958 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59771 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49674 - "POST /auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49677 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59771 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49674 - "POST /auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49677 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59771 - "POST /api/auth/login HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49674 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59771 - "GET /api/auth/me HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59771 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52585 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52585 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59771 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52585 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59771 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52585 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52585 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59771 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55537 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53818 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53818 - "POST /api/auth/login HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65064 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53818 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65063 - "OPTIONS /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60792 - "OPTIONS /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53818 - "OPTIONS /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65063 - "OPTIONS /patient/vitals/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60792 - "GET /api/auth/me HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53818 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60792 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53818 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65063 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60792 - "OPTIONS /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53818 - "OPTIONS /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60792 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65063 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53818 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65063 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53818 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60792 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53818 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65063 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53582 - "POST /api/auth/login HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65000 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53582 - "GET /api/auth/me HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57221 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57221 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53582 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57575 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53582 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57575 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57221 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57575 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53582 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63933 - "POST /api/auth/login HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61700 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63933 - "GET /api/auth/me HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61394 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63933 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63933 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61394 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61394 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63933 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61394 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63933 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61394 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61394 - "POST /api/auth/login HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61700 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61394 - "GET /api/auth/me HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61041 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61394 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51873 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61041 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63933 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63841 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61394 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54561 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51873 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62313 - "OPTIONS /api/auth/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62313 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61440 - "POST /auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61441 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62313 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61440 - "POST /auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61441 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65467 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56618 - "OPTIONS /api/auth/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56618 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62955 - "POST /auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62956 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62800 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62800 - "POST /api/auth/login HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64448 - "POST /auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62800 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49179 - "OPTIONS /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51319 - "OPTIONS /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62800 - "OPTIONS /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49179 - "OPTIONS /patient/vitals/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51319 - "OPTIONS /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62800 - "OPTIONS /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49179 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51319 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62800 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51319 - "GET /api/auth/me HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49179 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49179 - "GET /patient/vitals/latest HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51319 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62800 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49179 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51319 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62800 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49179 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51319 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59973 - "OPTIONS /api/auth/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62917 - "POST /api/auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49984 - "POST /auth/signup HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49985 - "POST /api/auth/signup HTTP/1.1" 404 Not Found

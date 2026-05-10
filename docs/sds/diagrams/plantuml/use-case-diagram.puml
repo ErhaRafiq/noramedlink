@@ -1,0 +1,63 @@
+@startuml
+!include ./nora-medlink-style.puml
+left to right direction
+title Figure 3.1 — Nora MedLink Use Case Diagram
+
+actor Patient
+actor Doctor
+actor Administrator
+actor "OCR.Space Service" as OCR
+actor "OpenAI Service" as OpenAI
+actor "Notification Channel" as Notify
+
+rectangle "Nora MedLink Healthcare System" {
+  usecase "Register Account" as UC_Register
+  usecase "Login and Manage Session" as UC_Login
+  usecase "Manage Patient Profile" as UC_Profile
+  usecase "Upload Medical Report" as UC_Upload
+  usecase "Review or Correct OCR Text" as UC_ReviewOcr
+  usecase "Generate Clinical Summary" as UC_Summary
+  usecase "View Department Reports" as UC_DepartmentReports
+  usecase "Manage Medicine History" as UC_MedicineHistory
+  usecase "Generate Health Tips and Risk Observations" as UC_Risks
+  usecase "Book Appointment" as UC_BookAppointment
+  usecase "Share Temporary Dashboard Access" as UC_Access
+  usecase "Create Medicine Reminder" as UC_Reminder
+  usecase "Make Appointment Payment" as UC_Payment
+  usecase "View Doctor Dashboard" as UC_DoctorDashboard
+  usecase "Review Authorized Patient Data" as UC_DoctorReview
+  usecase "Manage Emergency Booking" as UC_Emergency
+  usecase "Manage System Records" as UC_Admin
+}
+
+Patient --> UC_Register
+Patient --> UC_Login
+Patient --> UC_Profile
+Patient --> UC_Upload
+Patient --> UC_ReviewOcr
+Patient --> UC_DepartmentReports
+Patient --> UC_MedicineHistory
+Patient --> UC_Risks
+Patient --> UC_BookAppointment
+Patient --> UC_Access
+Patient --> UC_Reminder
+Patient --> UC_Payment
+Patient --> UC_Emergency
+
+Doctor --> UC_Register
+Doctor --> UC_Login
+Doctor --> UC_DoctorDashboard
+Doctor --> UC_DoctorReview
+Doctor --> UC_BookAppointment
+
+Administrator --> UC_Admin
+Administrator --> UC_Emergency
+
+UC_Upload .> UC_Summary : <<include>>
+UC_Upload --> OCR
+UC_ReviewOcr .> UC_Summary : <<include>>
+UC_Summary --> OpenAI
+UC_Reminder --> Notify
+UC_BookAppointment .> UC_Access : <<extend>>
+UC_Payment .> UC_BookAppointment : <<extend>>
+@enduml

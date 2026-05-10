@@ -1,0 +1,17 @@
+@startuml
+!include ./nora-medlink-style.puml
+title Figure 3.15 — Nora MedLink State Transition Diagram: Medicine Reminder
+
+[*] --> UPCOMING : Reminder created
+UPCOMING --> RESCHEDULED : Due time updated
+RESCHEDULED --> UPCOMING : New schedule saved
+UPCOMING --> DUE : Scheduled time reached
+DUE --> SENT : Notification dispatched
+SENT --> COMPLETED : Patient confirms medicine taken
+DUE --> SKIPPED : Patient misses or skips dose
+UPCOMING --> CANCELLED : Reminder deleted or cancelled
+RESCHEDULED --> CANCELLED : Reminder cancelled
+SKIPPED --> UPCOMING : Next dose scheduled
+COMPLETED --> [*]
+CANCELLED --> [*]
+@enduml

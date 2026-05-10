@@ -1,0 +1,34 @@
+@startuml
+!include ./nora-medlink-style.puml
+title Figure 3.8 — Nora MedLink Sequence Diagram: Medicine Reminder
+
+actor Patient
+participant "Next.js Reminder View" as Frontend
+participant "FastAPI Reminder API" as API
+participant "Auth Dependency" as Auth
+database "PostgreSQL Database" as DB
+participant "Notification Record" as Notification
+participant "Notification Channel" as Channel
+
+Patient -> Frontend : Enter reminder title and due time
+opt Browser push token available
+  Frontend -> API : POST /reminders/fcm-token
+  API -> Auth : get_current_user(token)
+  Auth --> API : Authenticated user
+  API -> DB : Upsert NotificationToken
+  DB --> API : Token saved
+end
+Frontend -> API : POST /reminders
+API -> Auth : get_current_user(token)
+Auth --> API : Authenticated user
+API -> DB : Insert Reminder(status=UPCOMING)
+DB --> API : Reminder id
+API -> Notification : Build scheduled notification
+Notification -> DB : Insert Notification(status=SCHEDULED)
+DB --> API : Reminder and notification saved
+API --> Frontend : Created reminder
+Frontend --> Patient : Display scheduled reminder
+... At scheduled due time ...
+Channel -> DB : Read due scheduled notification
+Channel --> Patient : Deliver reminder notification
+@enduml

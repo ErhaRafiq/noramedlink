@@ -1,0 +1,168 @@
+@startuml
+!include ./nora-medlink-style.puml
+hide circle
+title Figure 3.4 — Nora MedLink Class Diagram (iii): Appointment, Payment, Reminder and Notification Classes
+
+class User {
+  - id: Int
+  - fullName: String
+  - role: UserRole
+  - phone: String
+  + hasRole(role: UserRole): Boolean
+}
+
+class Appointment {
+  - id: Int
+  - userId: Int
+  - doctorId: Int
+  - doctorName: String
+  - date: DateTime
+  - status: String
+  - paymentStatus: String
+  - notes: Text
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  + book(): void
+  + reschedule(date: DateTime): void
+  + updateStatus(status: String): void
+  + updatePaymentStatus(status: String): void
+  + cancel(): void
+}
+
+class Payment {
+  - id: Int
+  - userId: Int
+  - appointmentId: Int
+  - amount: Int
+  - method: String
+  - purpose: String
+  - status: String
+  - phone: String
+  - reference: String
+  - transactionId: String
+  - invoiceNumber: String
+  - invoiceUrl: String
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  + createReference(): String
+  + createInvoiceNumber(): String
+  + markSuccessful(): void
+  + markFailed(): void
+  + refund(): void
+}
+
+class Reminder {
+  - id: Int
+  - userId: Int
+  - title: String
+  - dueAt: DateTime
+  - status: String
+  - fcmToken: String
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  + schedule(): void
+  + reschedule(dueAt: DateTime): void
+  + markCompleted(): void
+  + cancel(): void
+}
+
+class Notification {
+  - id: Int
+  - userId: Int
+  - reminderId: Int
+  - title: String
+  - body: Text
+  - status: String
+  - scheduledFor: DateTime
+  - sentAt: DateTime
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  + schedule(): void
+  + markSent(): void
+  + markRead(): void
+}
+
+class NotificationToken {
+  - id: Int
+  - userId: Int
+  - token: String
+  - platform: String
+  - lastSeenAt: DateTime
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  + upsertToken(): void
+  + updateLastSeen(): void
+}
+
+class MedicineHistory {
+  - id: Int
+  - patientId: Int
+  - medicineName: String
+  - dosage: String
+  - frequency: String
+  - startDate: Date
+  - endDate: Date
+  - reason: Text
+  - prescribedBy: String
+  - sideEffects: Text
+  + addMedicine(): void
+  + updateMedicine(): void
+  + removeMedicine(): void
+}
+
+class EmergencyBooking {
+  - id: Int
+  - userId: Int
+  - doctorId: Int
+  - patientName: String
+  - phone: String
+  - address: Text
+  - symptoms: Text
+  - doctorName: String
+  - status: String
+  - estimatedMinutes: Int
+  - latitude: Float
+  - longitude: Float
+  + requestEmergencyVisit(): void
+  + assignDoctor(): void
+  + updateStatus(status: String): void
+}
+
+class AppointmentService {
+  + listDoctors(query: String): DoctorList
+  + createAppointment(request: AppointmentCreate): Appointment
+  + updateAppointment(id: Int, request: AppointmentUpdate): Appointment
+  + deleteAppointment(id: Int): void
+}
+
+class PaymentService {
+  - allowedMethods: String[]
+  - walletMethods: String[]
+  + createPayment(request: PaymentCreate): Payment
+  + updatePayment(id: Int, request: PaymentUpdate): Payment
+  + validateMethod(method: String): Boolean
+}
+
+class ReminderService {
+  + createReminder(request: ReminderCreate): Reminder
+  + updateReminder(id: Int, request: ReminderUpdate): Reminder
+  + deleteReminder(id: Int): void
+  + upsertFcmToken(token: String): NotificationToken
+}
+
+User "1" *-- "0..*" Appointment : patient books
+User "0..1" -- "0..*" Appointment : doctor assigned
+Appointment "0..1" o-- "0..*" Payment : receives
+User "1" *-- "0..*" Payment : pays
+User "1" *-- "0..*" Reminder : schedules
+Reminder "1" *-- "0..*" Notification : generates
+User "1" *-- "0..*" NotificationToken : registers
+User "1" *-- "0..*" MedicineHistory : stores
+User "1" *-- "0..*" EmergencyBooking : requests
+AppointmentService --> Appointment : manages
+PaymentService --> Payment : manages
+PaymentService --> Appointment : updates payment status
+ReminderService --> Reminder : manages
+ReminderService --> Notification : creates
+ReminderService --> NotificationToken : stores
+@enduml

@@ -1,0 +1,36 @@
+@startuml
+!include ./nora-medlink-style.puml
+title Figure 3.7 — Nora MedLink Sequence Diagram: Appointment Booking
+
+actor Patient
+participant "Next.js Appointment Page" as Frontend
+participant "FastAPI Appointment API" as API
+participant "Auth Dependency" as Auth
+participant "Doctor Directory Query" as Directory
+participant "Dashboard Access Service" as Access
+database "PostgreSQL Database" as DB
+
+Patient -> Frontend : Search doctor and select slot
+Frontend -> API : GET /appointments/doctors
+API -> Directory : Query registered and demo doctors
+Directory -> DB : Read doctor users and profiles
+DB --> Directory : Doctor rows
+Directory --> API : Filtered doctors
+API --> Frontend : Doctor list
+Patient -> Frontend : Confirm appointment details
+Frontend -> API : POST /appointments
+API -> Auth : require_patient(token)
+Auth --> API : Authenticated patient
+API -> DB : Resolve selected doctor
+DB --> API : Doctor or demo doctor result
+API -> DB : Insert Appointment(status=BOOKED, payment=PENDING)
+opt Patient provides dashboard access OTP
+  API -> Access : grantTemporaryDashboardAccessByOtp()
+  Access -> DB : Validate OTP and upsert access row
+  DB --> Access : Access status
+  Access --> API : Access granted flag
+end
+DB --> API : Appointment saved
+API --> Frontend : Booking response
+Frontend --> Patient : Show appointment confirmation
+@enduml

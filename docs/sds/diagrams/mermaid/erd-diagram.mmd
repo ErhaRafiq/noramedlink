@@ -1,0 +1,234 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'background': '#ffffff', 'primaryColor': '#ffffff', 'primaryTextColor': '#111111', 'primaryBorderColor': '#111111', 'lineColor': '#111111', 'secondaryColor': '#f2f2f2', 'tertiaryColor': '#ffffff', 'fontFamily': 'Arial'}}}%%
+erDiagram
+    USERS {
+        int id PK
+        string full_name
+        string email UK
+        string hashed_password
+        string role
+        string phone
+        boolean is_email_verified
+        boolean is_identity_verified
+        string dashboard_access_key UK
+        datetime created_at
+        datetime updated_at
+    }
+
+    PATIENT_PROFILES {
+        int id PK
+        int user_id FK
+        string cnic
+        date date_of_birth
+        string gender
+        string verification_status
+    }
+
+    DOCTOR_PROFILES {
+        int id PK
+        int user_id FK
+        string pmdc_number
+        string specialization
+        string hospital_name
+        string verification_status
+    }
+
+    MEDICAL_DEPARTMENTS {
+        int id PK
+        string name UK
+        string icon
+        string description
+    }
+
+    PATIENT_REPORTS {
+        int id PK
+        int patient_id FK
+        int department_id FK
+        string title
+        string original_file_name
+        string file_url
+        string file_type
+        text extracted_text
+        text formatted_text
+        json structured_data_json
+        text summary
+        json extracted_entities
+        json rule_warnings
+        string validation_status
+        string ocr_status
+        float ocr_confidence
+        datetime upload_date
+    }
+
+    MEDICAL_DOCUMENTS {
+        int id PK
+        int user_id FK
+        string title
+        string category
+        string file_name
+        string file_url
+        text ocr_raw_text
+        text edited_ocr_text
+        text ai_summary
+        string scan_status
+    }
+
+    MEDICAL_AI_ANALYSES {
+        int id PK
+        int user_id FK
+        int medical_record_id FK
+        int patient_report_id FK
+        string source
+        json extracted_entities
+        float confidence_score
+        json rule_warnings
+        json validation_results
+        text doctor_summary
+    }
+
+    APPOINTMENTS {
+        int id PK
+        int user_id FK
+        int doctor_id FK
+        string doctor_name
+        datetime date
+        string status
+        string payment_status
+        text notes
+    }
+
+    PAYMENTS {
+        int id PK
+        int user_id FK
+        int appointment_id FK
+        int amount
+        string method
+        string purpose
+        string status
+        string reference UK
+        string invoice_number UK
+    }
+
+    REMINDERS {
+        int id PK
+        int user_id FK
+        string title
+        datetime due_at
+        string status
+        string fcm_token
+    }
+
+    NOTIFICATIONS {
+        int id PK
+        int user_id FK
+        int reminder_id FK
+        string title
+        text body
+        string status
+        datetime scheduled_for
+        datetime sent_at
+    }
+
+    NOTIFICATION_TOKENS {
+        int id PK
+        int user_id FK
+        string token UK
+        string platform
+        datetime last_seen_at
+    }
+
+    MEDICINE_HISTORY {
+        int id PK
+        int patient_id FK
+        string medicine_name
+        string dosage
+        string frequency
+        date start_date
+        date end_date
+        text reason
+    }
+
+    HEALTH_RISK_PREDICTIONS {
+        int id PK
+        int patient_id FK
+        string risk_title
+        string risk_level
+        text reason
+        text recommendation
+    }
+
+    HEALTH_TIPS {
+        int id PK
+        int patient_id FK
+        string category
+        text tip_text
+        text based_on_data
+    }
+
+    DOCTOR_SUMMARIES {
+        int id PK
+        int patient_id FK
+        text summary_text
+        datetime generated_at
+    }
+
+    PATIENT_DASHBOARD_ACCESS {
+        int id PK
+        int doctor_id FK
+        int patient_id FK
+        string status
+        datetime expires_at
+        datetime ended_at
+    }
+
+    PATIENT_DASHBOARD_OTPS {
+        int id PK
+        int patient_id FK
+        string code UK
+        datetime expires_at
+        datetime used_at
+    }
+
+    EMERGENCY_BOOKINGS {
+        int id PK
+        int user_id FK
+        int doctor_id FK
+        string patient_name
+        string phone
+        text address
+        text symptoms
+        string status
+    }
+
+    VITALS {
+        int id PK
+        int user_id FK
+        string blood_pressure
+        string sugar_level
+        datetime created_at
+    }
+
+    USERS ||--o| PATIENT_PROFILES : has
+    USERS ||--o| DOCTOR_PROFILES : has
+    USERS ||--o{ PATIENT_REPORTS : uploads
+    MEDICAL_DEPARTMENTS ||--o{ PATIENT_REPORTS : classifies
+    USERS ||--o{ MEDICAL_DOCUMENTS : owns
+    USERS ||--o{ MEDICAL_AI_ANALYSES : receives
+    PATIENT_REPORTS ||--o{ MEDICAL_AI_ANALYSES : produces
+    MEDICAL_DOCUMENTS ||--o{ MEDICAL_AI_ANALYSES : produces
+    USERS ||--o{ APPOINTMENTS : books
+    USERS ||--o{ APPOINTMENTS : assigned_doctor
+    APPOINTMENTS ||--o{ PAYMENTS : receives
+    USERS ||--o{ PAYMENTS : makes
+    USERS ||--o{ REMINDERS : schedules
+    REMINDERS ||--o{ NOTIFICATIONS : creates
+    USERS ||--o{ NOTIFICATIONS : receives
+    USERS ||--o{ NOTIFICATION_TOKENS : registers
+    USERS ||--o{ MEDICINE_HISTORY : stores
+    USERS ||--o{ HEALTH_RISK_PREDICTIONS : receives
+    USERS ||--o{ HEALTH_TIPS : receives
+    USERS ||--o{ DOCTOR_SUMMARIES : receives
+    USERS ||--o{ PATIENT_DASHBOARD_OTPS : creates
+    USERS ||--o{ PATIENT_DASHBOARD_ACCESS : patient
+    USERS ||--o{ PATIENT_DASHBOARD_ACCESS : doctor
+    USERS ||--o{ EMERGENCY_BOOKINGS : requests
+    USERS ||--o{ VITALS : records

@@ -1,0 +1,116 @@
+@startuml
+!include ./nora-medlink-style.puml
+hide circle
+title Figure 3.2 — Nora MedLink Class Diagram (i): User and Authentication Classes
+
+class User {
+  - id: Int
+  - fullName: String
+  - email: String
+  - hashedPassword: String
+  - role: UserRole
+  - phone: String
+  - isEmailVerified: Boolean
+  - isIdentityVerified: Boolean
+  - dashboardAccessKey: String
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  + register(): User
+  + authenticate(password: String): Boolean
+  + updateProfile(): void
+  + hasRole(role: UserRole): Boolean
+}
+
+class PatientProfile {
+  - id: Int
+  - userId: Int
+  - cnic: String
+  - dateOfBirth: Date
+  - gender: String
+  - verificationStatus: String
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  + verifyIdentity(): void
+  + updateDemographics(): void
+}
+
+class DoctorProfile {
+  - id: Int
+  - userId: Int
+  - pmdcNumber: String
+  - specialization: String
+  - hospitalName: String
+  - verificationStatus: String
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  + verifyLicense(): void
+  + updatePracticeDetails(): void
+}
+
+class AuthService {
+  - secretKey: String
+  - tokenExpiryMinutes: Int
+  + signupPatient(request: PatientSignupRequest): TokenResponse
+  + signupDoctor(request: DoctorSignupRequest): TokenResponse
+  + login(request: LoginRequest): TokenResponse
+  + getCurrentUser(token: String): User
+}
+
+class PasswordService {
+  - hashingAlgorithm: String
+  + hashPassword(password: String): String
+  + verifyPassword(password: String, hash: String): Boolean
+}
+
+class TokenService {
+  - signingKey: String
+  - tokenType: String
+  + createAccessToken(userId: Int, role: UserRole): String
+  + decodeToken(token: String): TokenPayload
+  + validateToken(token: String): Boolean
+}
+
+class PatientDashboardOtp {
+  - id: Int
+  - patientId: Int
+  - code: String
+  - expiresAt: DateTime
+  - usedAt: DateTime
+  - createdAt: DateTime
+  + isValid(currentTime: DateTime): Boolean
+  + markUsed(): void
+}
+
+class PatientDashboardAccess {
+  - id: Int
+  - doctorId: Int
+  - patientId: Int
+  - status: String
+  - expiresAt: DateTime
+  - endedAt: DateTime
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  + activate(durationHours: Int): void
+  + expire(): void
+  + endAccess(): void
+}
+
+enum UserRole {
+  PATIENT
+  DOCTOR
+  ADMIN
+}
+
+User "1" *-- "0..1" PatientProfile : owns
+User "1" *-- "0..1" DoctorProfile : owns
+User "1" *-- "0..*" PatientDashboardOtp : creates
+User "1" -- "0..*" PatientDashboardAccess : patient grants
+User "1" -- "0..*" PatientDashboardAccess : doctor receives
+User --> UserRole : uses
+AuthService --> User : creates and authenticates
+AuthService --> PasswordService : hashes credentials
+AuthService --> TokenService : issues tokens
+AuthService --> PatientProfile : creates
+AuthService --> DoctorProfile : creates
+PatientDashboardAccess --> PatientDashboardOtp : consumes
+@enduml

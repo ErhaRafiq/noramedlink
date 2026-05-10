@@ -1,0 +1,38 @@
+@startuml
+!include ./nora-medlink-style.puml
+title Figure 3.5 — Nora MedLink Sequence Diagram: OCR Report Upload
+
+actor Patient
+participant "Next.js Patient Dashboard" as Frontend
+participant "FastAPI Report API" as API
+participant "Auth Dependency" as Auth
+participant "File Storage Service" as Storage
+participant "OCR.Space Service" as OCR
+participant "OCR Result Builder" as OcrBuilder
+participant "Report AI Pipeline" as Pipeline
+database "PostgreSQL Database" as DB
+
+Patient -> Frontend : Select report file and department
+Frontend -> API : POST /patient/reports/upload\nmultipart form-data
+API -> Auth : require_patient(token)
+Auth --> API : Authenticated patient
+API -> Storage : saveUploadFile(file, department, patientId)
+Storage --> API : storedPath, fileType
+API -> OCR : extractReportWithOcrSpace(storedPath)
+alt OCR succeeds
+  OCR --> API : rawText, confidence
+  API -> OcrBuilder : clean, classify and structure OCR text
+  OcrBuilder --> API : OcrResult
+  API -> Pipeline : runReportAiPipeline(OcrResult)
+  Pipeline --> API : entities, validation, summary
+  API -> DB : Insert PatientReport and MedicalAiAnalysis
+  DB --> API : Persisted report
+  API --> Frontend : 201 Created with report details
+else OCR fails
+  OCR --> API : OcrSpaceError
+  API -> DB : Insert PatientReport with FAILED status
+  DB --> API : Persisted failed report
+  API --> Frontend : Report saved with review message
+end
+Frontend --> Patient : Display OCR result or failure status
+@enduml

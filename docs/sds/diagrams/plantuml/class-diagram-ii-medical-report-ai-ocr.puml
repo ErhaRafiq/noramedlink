@@ -1,0 +1,122 @@
+@startuml
+!include ./nora-medlink-style.puml
+hide circle
+title Figure 3.3 — Nora MedLink Class Diagram (ii): Medical Report and AI/OCR Classes
+
+class User {
+  - id: Int
+  - fullName: String
+  - role: UserRole
+  + hasRole(role: UserRole): Boolean
+}
+
+class PatientReport {
+  - id: Int
+  - patientId: Int
+  - departmentId: Int
+  - title: String
+  - originalFileName: String
+  - fileUrl: String
+  - fileType: String
+  - extractedText: Text
+  - formattedText: Text
+  - structuredDataJson: Json
+  - summary: Text
+  - validationStatus: String
+  - ocrStatus: String
+  - ocrConfidence: Float
+  - uploadDate: DateTime
+  - updatedAt: DateTime
+  + updateExtractedText(text: String): void
+  + assignDepartment(department: MedicalDepartment): void
+  + markReviewed(): void
+  + deleteReport(): void
+}
+
+class MedicalDepartment {
+  - id: Int
+  - name: String
+  - icon: String
+  - description: String
+  - createdAt: DateTime
+  + normalizeName(value: String): String
+  + departmentSlug(): String
+}
+
+class MedicalAiAnalysis {
+  - id: Int
+  - userId: Int
+  - patientReportId: Int
+  - medicalRecordId: Int
+  - source: String
+  - extractedEntities: Json
+  - confidenceScore: Float
+  - ruleWarnings: Json
+  - validationResults: Json
+  - doctorSummary: Text
+  - createdAt: DateTime
+  - updatedAt: DateTime
+  + buildDoctorSummary(): String
+  + recordValidationResults(): void
+}
+
+class ReportUploadController {
+  - acceptedFileTypes: String[]
+  - maxFileSizeMb: Int
+  + uploadReport(file: UploadFile, department: String): PatientReport
+  + regenerateOcr(reportId: Int): PatientReport
+  + updateReportText(reportId: Int, text: String): PatientReport
+}
+
+class FileStorageService {
+  - uploadRoot: Path
+  + saveUploadFile(file: UploadFile, department: String, patientId: Int): StoredFile
+  + storedPathToDiskPath(path: String): Path
+  + validateFile(file: UploadFile): Boolean
+}
+
+class OcrSpaceService {
+  - endpoint: String
+  - timeoutSeconds: Int
+  + extractReport(path: Path, fileName: String, fallbackDepartment: String): OcrResult
+  + cleanOcrText(rawText: String): String
+  + detectDepartment(text: String): String
+  + extractStructuredData(text: String): Json
+}
+
+class ReportAiPipeline {
+  - summarySchemaKeys: String[]
+  + run(cleanedText: String, formattedText: String, structuredPayload: Json, department: String): MedicalAiAnalysis
+  + normalizeSummaryJson(data: Json): Json
+  + selfCheckSummary(summary: Json): Json
+}
+
+class BioBertService {
+  - modelName: String
+  + extractMedicalEntities(text: String, fields: Json): Json
+}
+
+class RuleValidationService {
+  - validationRules: Json
+  + validateMedicalRules(text: String, fields: Json, entities: Json): Json
+}
+
+class OpenAiSummaryService {
+  - modelName: String
+  + generateClinicalSummary(prompt: String): Json
+  + generateFallbackNotice(error: String): String
+}
+
+User "1" *-- "0..*" PatientReport : uploads
+MedicalDepartment "1" o-- "0..*" PatientReport : classifies
+PatientReport "1" *-- "0..*" MedicalAiAnalysis : produces
+ReportUploadController --> FileStorageService : stores file
+ReportUploadController --> OcrSpaceService : requests OCR
+ReportUploadController --> ReportAiPipeline : invokes analysis
+ReportUploadController --> PatientReport : creates or updates
+OcrSpaceService --> PatientReport : populates OCR fields
+ReportAiPipeline --> BioBertService : extracts entities
+ReportAiPipeline --> RuleValidationService : validates rules
+ReportAiPipeline --> OpenAiSummaryService : summarizes and self-checks
+ReportAiPipeline --> MedicalAiAnalysis : creates
+@enduml

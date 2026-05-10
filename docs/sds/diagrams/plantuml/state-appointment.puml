@@ -1,0 +1,26 @@
+@startuml
+!include ./nora-medlink-style.puml
+title Figure 3.13 — Nora MedLink State Transition Diagram: Appointment
+
+[*] --> Draft
+Draft --> BOOKED : Patient confirms booking
+BOOKED --> RESCHEDULED : Date is updated
+RESCHEDULED --> BOOKED : New slot accepted
+BOOKED --> COMPLETED : Consultation completed
+BOOKED --> CANCELLED : Patient or doctor cancels
+RESCHEDULED --> CANCELLED : Cancellation requested
+BOOKED --> DELETED : Appointment deleted
+CANCELLED --> [*]
+COMPLETED --> [*]
+DELETED --> [*]
+
+state BOOKED {
+  [*] --> PaymentPending
+  PaymentPending --> PaymentSuccessful : Linked payment succeeds
+  PaymentPending --> PayOnVisit : Cash selected
+  PaymentPending --> PaymentFailed : Payment fails
+  PaymentFailed --> PaymentPending : Retry payment
+  PaymentSuccessful --> [*]
+  PayOnVisit --> [*]
+}
+@enduml

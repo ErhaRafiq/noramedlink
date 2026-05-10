@@ -1,0 +1,37 @@
+@startuml
+!include ./nora-medlink-style.puml
+title Figure 3.9 — Nora MedLink Sequence Diagram: Payment
+
+actor Patient
+participant "Next.js Payment Page" as Frontend
+participant "FastAPI Payment API" as API
+participant "Auth Dependency" as Auth
+participant "Payment Service" as PaymentService
+database "PostgreSQL Database" as DB
+
+Patient -> Frontend : Select method, amount and appointment
+Frontend -> API : POST /payments
+API -> Auth : get_current_user(token)
+Auth --> API : Authenticated user
+API -> PaymentService : validate method and phone requirement
+alt Method unsupported
+  PaymentService --> API : Validation error
+  API --> Frontend : 400 Unsupported payment method
+else Method valid
+  API -> DB : Verify appointment belongs to patient
+  DB --> API : Appointment row or none
+  API -> PaymentService : createReference() and createInvoiceNumber()
+  PaymentService --> API : reference, invoiceNumber
+  alt Wallet method
+    API -> DB : Insert Payment(status=SUCCESS)
+    API -> DB : Update Appointment.paymentStatus=SUCCESS
+  else Cash method
+    API -> DB : Insert Payment(status=PAY_ON_VISIT)
+  else Card or Raast method
+    API -> DB : Insert Payment(status=PENDING)
+  end
+  DB --> API : Payment saved
+  API --> Frontend : Payment details and invoice number
+end
+Frontend --> Patient : Display payment status
+@enduml

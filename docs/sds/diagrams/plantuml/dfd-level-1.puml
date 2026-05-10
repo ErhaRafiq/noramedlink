@@ -1,0 +1,66 @@
+@startuml
+!include ./nora-medlink-style.puml
+left to right direction
+title Figure 3.20 — Nora MedLink DFD Level 1
+
+actor Patient
+actor Doctor
+actor Administrator
+rectangle "1.0 Authentication and Profile Management" as P1
+rectangle "2.0 Report Upload, OCR and AI Analysis" as P2
+rectangle "3.0 Appointment Management" as P3
+rectangle "4.0 Payment Management" as P4
+rectangle "5.0 Medicine Reminder Management" as P5
+rectangle "6.0 Doctor Access and Dashboard" as P6
+rectangle "7.0 Administration and Emergency Management" as P7
+
+database "D1 Users and Profiles" as D1
+database "D2 Medical Reports and AI Analyses" as D2
+database "D3 Appointments and Access Grants" as D3
+database "D4 Payments and Invoices" as D4
+database "D5 Reminders, Tokens and Notifications" as D5
+database "D6 Emergency Bookings" as D6
+
+rectangle "OCR.Space Service" as OCR
+rectangle "OpenAI Service" as OpenAI
+rectangle "Notification Channel" as Notify
+
+Patient --> P1 : Signup, login, profile data
+Doctor --> P1 : Signup and login
+P1 <--> D1 : User credentials and profile records
+P1 --> Patient : Access token and profile status
+P1 --> Doctor : Access token and profile status
+
+Patient --> P2 : Report file and corrected OCR text
+P2 <--> D2 : Reports, OCR text, summaries and warnings
+P2 <--> OCR : Image file and extracted text
+P2 <--> OpenAI : Summary request and response
+P2 --> Patient : OCR result, summary and validation status
+
+Patient --> P3 : Doctor selection and appointment request
+Doctor --> P3 : Appointment status updates
+P3 <--> D3 : Appointment and dashboard access records
+P3 --> Patient : Booking confirmation
+P3 --> Doctor : Appointment schedule
+
+Patient --> P4 : Payment request
+P4 <--> D4 : Payment reference, status and invoice data
+P4 --> D3 : Appointment payment status update
+P4 --> Patient : Payment confirmation
+
+Patient --> P5 : Reminder schedule and push token
+P5 <--> D5 : Reminder, token and notification records
+P5 --> Notify : Due reminder notification
+Notify --> Patient : Medicine reminder alert
+
+Doctor --> P6 : Patient access request and dashboard view
+Patient --> P6 : Access OTP or consent
+P6 <--> D3 : Access grant and appointment context
+P6 <--> D2 : Authorized report summaries
+P6 --> Doctor : Patient context for review
+
+Administrator --> P7 : Emergency and payment administration
+P7 <--> D6 : Emergency booking records
+P7 <--> D4 : Payment status records
+P7 --> Administrator : Administrative dashboard data
+@enduml

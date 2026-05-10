@@ -1,0 +1,33 @@
+@startuml
+!include ./nora-medlink-style.puml
+title Figure 3.6 — Nora MedLink Sequence Diagram: AI Summary Generation
+
+actor Patient
+participant "Patient Report API" as API
+participant "Report AI Pipeline" as Pipeline
+participant "BioBERT Entity Service" as BioBERT
+participant "Rule Validation Service" as Rules
+participant "OpenAI Summary Service" as OpenAI
+participant "Summary Self-Check" as SelfCheck
+database "PostgreSQL Database" as DB
+
+Patient -> API : Save OCR text or upload report
+API -> Pipeline : run(cleanedText, formattedText, structuredData, department)
+Pipeline -> BioBERT : extractMedicalEntities(text, fields)
+BioBERT --> Pipeline : entities, metadata
+Pipeline -> Rules : validateMedicalRules(text, fields, entities)
+Rules --> Pipeline : validationStatus, warnings
+Pipeline -> OpenAI : generateClinicalSupportSummary(prompt)
+alt OpenAI returns valid JSON
+  OpenAI --> Pipeline : clinicalSummaryJson
+else OpenAI unavailable or invalid
+  OpenAI --> Pipeline : error
+  Pipeline -> Pipeline : build rule-based fallback summary
+end
+Pipeline -> SelfCheck : verify summary against OCR evidence
+SelfCheck --> Pipeline : passed, confidenceLevel, notes
+Pipeline --> API : MedicalAiAnalysis payload
+API -> DB : Update PatientReport and insert MedicalAiAnalysis
+DB --> API : Saved summary and validation data
+API --> Patient : Display summary, warnings and confidence level
+@enduml

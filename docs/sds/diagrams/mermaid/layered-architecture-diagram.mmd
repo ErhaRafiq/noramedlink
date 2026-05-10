@@ -1,0 +1,72 @@
+%%{init: {'theme': 'base', 'themeVariables': { 'background': '#ffffff', 'primaryColor': '#ffffff', 'primaryTextColor': '#111111', 'primaryBorderColor': '#111111', 'lineColor': '#111111', 'secondaryColor': '#f2f2f2', 'tertiaryColor': '#ffffff', 'fontFamily': 'Arial'}}}%%
+flowchart TB
+    subgraph L1["Presentation Layer"]
+        UI1["Patient Dashboard"]
+        UI2["Doctor Dashboard"]
+        UI3["Admin Pages"]
+        UI4["Appointment, Payment and Reminder Views"]
+    end
+
+    subgraph L2["Application Gateway Layer"]
+        NX1["Next.js Pages and Route Handlers"]
+        NX2["Backend Proxy API"]
+    end
+
+    subgraph L3["Backend API Layer"]
+        API1["FastAPI Auth Router"]
+        API2["FastAPI Patient and Report Routers"]
+        API3["FastAPI Appointment Router"]
+        API4["FastAPI Payment Router"]
+        API5["FastAPI Reminder Router"]
+        API6["FastAPI Doctor Router"]
+    end
+
+    subgraph L4["Domain Service Layer"]
+        S1["Authentication and Token Service"]
+        S2["File Storage Service"]
+        S3["OCR Processing Service"]
+        S4["Report AI Pipeline"]
+        S5["Rule Validation and BioBERT Services"]
+        S6["Notification Scheduling Logic"]
+    end
+
+    subgraph L5["Data and External Integration Layer"]
+        DB["PostgreSQL Database"]
+        FS["Uploaded Report Storage"]
+        OCR["OCR.Space API"]
+        OAI["OpenAI API"]
+        PUSH["Notification Channel"]
+    end
+
+    UI1 --> NX1
+    UI2 --> NX1
+    UI3 --> NX1
+    UI4 --> NX1
+    NX1 --> NX2
+    NX2 --> API1
+    NX2 --> API2
+    NX2 --> API3
+    NX2 --> API4
+    NX2 --> API5
+    NX2 --> API6
+    API1 --> S1
+    API2 --> S2
+    API2 --> S3
+    API2 --> S4
+    API3 --> S1
+    API4 --> S1
+    API5 --> S6
+    API6 --> S1
+    S3 --> OCR
+    S4 --> S5
+    S4 --> OAI
+    S2 --> FS
+    S1 --> DB
+    S4 --> DB
+    S6 --> DB
+    S6 --> PUSH
+    API3 --> DB
+    API4 --> DB
+
+    classDef formal fill:#ffffff,stroke:#111111,color:#111111;
+    class UI1,UI2,UI3,UI4,NX1,NX2,API1,API2,API3,API4,API5,API6,S1,S2,S3,S4,S5,S6,DB,FS,OCR,OAI,PUSH formal;

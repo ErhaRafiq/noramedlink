@@ -1,0 +1,32 @@
+@startuml
+!include ./nora-medlink-style.puml
+title Figure 3.11 — Nora MedLink Activity Diagram: Appointment Booking
+
+start
+:Patient opens appointment module;
+:System loads registered and demo doctors;
+:Patient filters doctor list;
+:Patient selects doctor and appointment date;
+if (Date is current or future?) then (Yes)
+  :Backend authenticates patient;
+  :Resolve registered doctor if available;
+  :Create Appointment with BOOKED status;
+  :Set payment status to PENDING;
+  if (Patient submitted access OTP?) then (Yes)
+    :Validate unused, unexpired OTP;
+    if (OTP valid and doctor registered?) then (Yes)
+      :Grant temporary patient dashboard access;
+    else (No)
+      :Continue appointment without access grant;
+    endif
+  else (No)
+    :Skip access grant;
+  endif
+  :Commit appointment transaction;
+  :Return booking confirmation;
+else (No)
+  :Reject appointment date;
+  :Return validation error;
+endif
+stop
+@enduml

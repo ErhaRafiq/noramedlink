@@ -1,0 +1,33 @@
+@startuml
+!include ./nora-medlink-style.puml
+title Figure 3.10 — Nora MedLink Activity Diagram: Report Upload and OCR
+
+start
+:Patient selects report file;
+:Patient enters title and department;
+:Frontend submits multipart form data;
+:Backend verifies patient session;
+if (File type and size valid?) then (Yes)
+  :Store file under patient upload path;
+  :Create pending PatientReport object;
+  :Send file to OCR.Space;
+  if (OCR text extracted?) then (Yes)
+    :Clean OCR text;
+    :Detect department and keywords;
+    :Extract structured report fields;
+    :Run AI entity, rule and summary pipeline;
+    :Set report status to COMPLETED;
+    :Save PatientReport and MedicalAiAnalysis;
+    :Return completed report to frontend;
+  else (No)
+    :Set report status to FAILED;
+    :Save report with OCR error summary;
+    :Return failure state for manual review;
+  endif
+else (No)
+  :Reject upload request;
+  :Return validation error;
+endif
+:Patient reviews report result;
+stop
+@enduml

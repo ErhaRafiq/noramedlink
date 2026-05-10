@@ -1,0 +1,8 @@
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          15980
+- Dir:          C:\Users\LENOVO\Desktop\fyp project\nora-medlink
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 15980 /F to stop it.

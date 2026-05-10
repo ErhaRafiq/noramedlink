@@ -1,0 +1,18 @@
+@startuml
+!include ./nora-medlink-style.puml
+title Figure 3.14 — Nora MedLink State Transition Diagram: Medical Report
+
+[*] --> PENDING : Upload request accepted
+PENDING --> OCR_PROCESSING : File stored
+OCR_PROCESSING --> COMPLETED : OCR and AI analysis succeed
+OCR_PROCESSING --> NEEDS_REVIEW : OCR returns weak or incomplete text
+OCR_PROCESSING --> FAILED : OCR service error
+COMPLETED --> REVIEWED : Patient edits or confirms OCR text
+NEEDS_REVIEW --> REVIEWED : Patient saves corrected text
+FAILED --> PENDING : Regenerate OCR requested
+REVIEWED --> COMPLETED : AI summary regenerated
+COMPLETED --> DELETED : Patient deletes report
+REVIEWED --> DELETED : Patient deletes report
+FAILED --> DELETED : Patient deletes report
+DELETED --> [*]
+@enduml

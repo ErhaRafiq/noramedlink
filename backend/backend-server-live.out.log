@@ -1,0 +1,733 @@
+INFO:     127.0.0.1:56385 - "OPTIONS /api/auth/signup HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56385 - "POST /api/auth/signup HTTP/1.1" 409 Conflict
+INFO:     127.0.0.1:59076 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62239 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62239 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59076 - "OPTIONS /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62239 - "OPTIONS /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59076 - "OPTIONS /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62239 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62239 - "OPTIONS /patient/vitals/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62239 - "OPTIONS /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62239 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59076 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59076 - "OPTIONS /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59076 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59076 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62239 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59076 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62239 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59076 - "GET /patient/vitals/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59076 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62239 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59076 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62239 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54110 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55425 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /patient/vitals/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49859 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54110 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55425 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54520 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54115 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58609 - "OPTIONS /patient/reports/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58609 - "POST /patient/reports/upload HTTP/1.1" 201 Created
+INFO:     127.0.0.1:58609 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58609 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58609 - "GET /patient/vitals/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58609 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58609 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58470 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58609 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52140 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64284 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58888 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64220 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52140 - "GET /patient/vitals/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64284 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58888 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52140 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64220 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64284 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50961 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50961 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50961 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56306 - "OPTIONS /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56720 - "OPTIONS /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50961 - "OPTIONS /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56306 - "OPTIONS /patient/vitals/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56720 - "OPTIONS /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50961 - "OPTIONS /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56306 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50961 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56306 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56720 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56306 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50961 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56720 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56306 - "GET /patient/vitals/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50961 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56720 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56306 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50961 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56720 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62061 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52672 - "GET /patient/vitals/latest HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53754 - "GET /patient/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60671 - "GET /patient/reports/tiles HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62061 - "GET /appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58740 - "GET /patient/dashboard HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53754 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54373 - "GET /patient/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52672 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60671 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55902 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53785 - "OPTIONS /api/patient/vitals/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63497 - "OPTIONS /api/patient/vitals/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59823 - "OPTIONS /api/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64317 - "OPTIONS /api/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54101 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55902 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53785 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63497 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59823 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64317 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55902 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53785 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63497 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59823 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64317 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55902 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53785 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54101 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63497 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64317 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59823 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56063 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54513 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59429 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59506 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56008 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56063 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54513 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51225 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59506 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59429 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56008 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51650 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63188 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64531 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61870 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62313 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51650 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63188 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59081 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64531 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62313 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61870 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54315 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58381 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56293 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64642 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52016 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54315 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64642 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56975 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58381 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52016 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56293 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64462 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62543 - "OPTIONS /api/patient/vitals/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62100 - "OPTIONS /api/patient/vitals/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56784 - "OPTIONS /api/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64557 - "OPTIONS /api/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61967 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64462 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62543 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62100 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56784 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64557 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64462 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62543 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62100 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56784 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64557 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64462 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62543 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61967 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64557 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62100 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56784 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55249 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59111 - "OPTIONS /api/patient/vitals/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60052 - "OPTIONS /api/patient/vitals/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54323 - "OPTIONS /api/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55249 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61219 - "OPTIONS /api/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59111 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54819 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60052 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54323 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55249 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59111 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54819 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60052 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54323 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55249 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59111 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54819 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61219 - "GET /api/auth/me HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:55249 - "GET /patient/risk-predictions HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:54323 - "GET /patient/doctor-summaries HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:60052 - "GET /patient/health-tips HTTP/1.1" 401 Unauthorized
+INFO:     127.0.0.1:52862 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52862 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56854 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60817 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56854 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60817 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56854 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60817 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60817 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52862 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56854 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56854 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56854 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60817 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56854 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60817 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52862 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56854 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60817 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52862 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56854 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52862 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60817 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56854 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61457 - "OPTIONS /api/reports/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61457 - "POST /api/reports/upload HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61457 - "POST /api/reports/upload HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61457 - "OPTIONS /api/ai/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61457 - "POST /api/ai/chat HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52869 - "OPTIONS /api/ai/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52869 - "POST /api/ai/chat HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53079 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55593 - "OPTIONS /api/patient/vitals/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49919 - "OPTIONS /api/patient/vitals/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52082 - "OPTIONS /api/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58190 - "OPTIONS /api/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57987 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53079 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55593 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49919 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52082 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58190 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53079 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55593 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49919 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52082 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58190 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53079 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55593 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57987 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49919 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58190 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52082 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57457 - "OPTIONS /api/reports/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57457 - "POST /api/reports/upload HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52226 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57076 - "OPTIONS /api/patient/vitals/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58096 - "OPTIONS /api/patient/vitals/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56425 - "OPTIONS /api/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58936 - "OPTIONS /api/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50386 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52226 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57076 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58096 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56425 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58936 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52226 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57076 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58096 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56425 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58936 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52226 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57076 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50386 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56425 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58096 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58936 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55735 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55484 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54938 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49759 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50060 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55735 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55484 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49759 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54938 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53093 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53093 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53093 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50060 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54938 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49759 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55484 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55735 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53093 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55484 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54938 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50060 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51431 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56399 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51431 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60302 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56399 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55453 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53137 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52902 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51431 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60302 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56399 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57867 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52948 - "OPTIONS /api/patient/vitals/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60855 - "OPTIONS /api/patient/vitals/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55550 - "OPTIONS /api/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55690 - "OPTIONS /api/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59101 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57867 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52948 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60855 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55550 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55690 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57867 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52948 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60855 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55550 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55690 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57867 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52948 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59101 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60855 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55690 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55550 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59919 - "OPTIONS /api/reports/upload HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59919 - "POST /api/reports/upload HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59919 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59919 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59919 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59919 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59919 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59919 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59919 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59919 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59919 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59919 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59919 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57004 - "POST /api/reports/upload HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51133 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63736 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50792 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53372 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51133 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63736 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50792 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57004 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51133 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53372 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63736 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53154 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62035 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59859 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53154 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62618 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54687 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62035 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61148 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53154 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59859 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62618 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61670 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49292 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49197 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52427 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56681 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61670 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49292 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50060 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49197 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52427 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56681 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56090 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53767 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54309 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64078 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57941 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56090 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53767 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58647 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64078 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54309 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57941 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59770 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49442 - "OPTIONS /api/patient/vitals/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58403 - "OPTIONS /api/patient/vitals/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63128 - "OPTIONS /api/reports HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54363 - "OPTIONS /api/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58070 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59770 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49442 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58403 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63128 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54363 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59770 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49442 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58403 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63128 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54363 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59770 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49442 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58070 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58403 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63128 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54363 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59897 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51988 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65404 - "GET /api/reports HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62784 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60676 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59897 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51988 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64026 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:65404 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62784 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60676 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62515 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57245 - "OPTIONS /api/patient/vitals/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64765 - "OPTIONS /api/patient/vitals/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60031 - "OPTIONS /api/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62515 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56994 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57245 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51784 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64765 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60031 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56994 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57245 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51784 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64765 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60031 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57245 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56994 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62515 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51784 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64765 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51784 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62515 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56994 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57245 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60031 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51784 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60031 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64765 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62515 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56994 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58173 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50190 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52300 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57771 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60015 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58173 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52300 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57771 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58982 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50190 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58969 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50956 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50400 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54507 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57007 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50400 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55255 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50956 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57007 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58969 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63081 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64099 - "OPTIONS /api/patient/vitals/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51773 - "OPTIONS /api/patient/vitals/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51012 - "OPTIONS /api/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62317 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64037 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63081 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64099 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51773 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51012 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64037 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63081 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64099 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51773 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51012 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64037 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62317 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63081 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64099 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51773 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51253 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58972 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61576 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53298 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63365 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61576 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55192 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51253 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58972 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53298 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55622 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57749 - "OPTIONS /api/patient/vitals/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64659 - "OPTIONS /api/patient/vitals/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53327 - "OPTIONS /api/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52891 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55898 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55622 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57749 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64659 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53327 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55898 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55622 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57749 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64659 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53327 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55898 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55622 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52891 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57749 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64659 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56831 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56831 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56831 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52085 - "OPTIONS /api/patient/vitals/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49176 - "OPTIONS /api/patient/vitals/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56831 - "OPTIONS /api/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52085 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56831 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52085 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56831 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52085 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56831 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52085 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56831 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52085 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56831 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52085 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56831 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52085 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56831 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49176 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52085 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56831 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52085 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56831 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52085 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56831 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52085 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56831 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52085 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49176 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56831 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52085 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49176 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56831 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50956 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59167 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52575 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50956 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59448 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57374 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64130 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59167 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52575 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50956 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62017 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63312 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57719 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49930 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55859 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63312 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63179 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62017 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49930 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57719 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57475 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54936 - "OPTIONS /api/patient/vitals/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58767 - "OPTIONS /api/patient/vitals/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50948 - "OPTIONS /api/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57475 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62806 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54936 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56288 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58767 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50948 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62806 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54936 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56288 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:58767 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50948 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54936 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57475 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56288 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62806 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58767 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52311 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:54985 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65246 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53479 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49407 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52311 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:65246 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54985 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53479 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64899 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:49655 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51631 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59498 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50952 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59197 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49655 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:49771 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51631 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50952 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59498 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55784 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55784 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55784 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63336 - "OPTIONS /api/patient/vitals/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52010 - "OPTIONS /api/patient/vitals/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52010 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55784 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52010 - "OPTIONS /api/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55784 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52010 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55784 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52010 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55784 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52010 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55784 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52010 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55784 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52010 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55784 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63336 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52010 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55784 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52010 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63336 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55784 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52010 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63336 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55784 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55784 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52010 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52010 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63336 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52010 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63336 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55784 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63336 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55784 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52010 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61319 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57203 - "OPTIONS /api/patient/vitals/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60281 - "OPTIONS /api/patient/vitals/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63806 - "OPTIONS /api/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59384 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59625 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61319 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57203 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60281 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63806 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59625 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61319 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57203 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60281 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63806 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59625 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59384 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57203 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60281 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61319 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59071 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59907 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61472 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53782 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52232 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59071 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59907 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62620 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61472 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:53782 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62031 - "OPTIONS /api/ai/chat HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62031 - "POST /api/ai/chat HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60730 - "OPTIONS /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60730 - "POST /api/auth/login HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60730 - "OPTIONS /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50226 - "OPTIONS /api/patient/vitals/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60215 - "OPTIONS /api/patient/vitals/trends HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50226 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60215 - "OPTIONS /api/doctors HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50226 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60215 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50226 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60215 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50226 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60215 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50226 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60215 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50226 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60215 - "OPTIONS /api/appointments HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50226 - "OPTIONS /api/medicines HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60730 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60215 - "OPTIONS /api/reminders/today HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50226 - "OPTIONS /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60215 - "OPTIONS /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60730 - "OPTIONS /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50226 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60215 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60730 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50226 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60215 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50226 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60215 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60215 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60730 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60215 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:60730 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50226 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60730 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50226 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:60215 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64643 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57044 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64643 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57044 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64643 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:57044 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:55553 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:64643 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57044 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55553 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59291 - "GET /api/patient/vitals/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51459 - "GET /api/patient/vitals/trends HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59291 - "GET /api/doctors HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51459 - "GET /api/appointments HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:59291 - "GET /api/medicines HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51459 - "GET /api/reminders/today HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:62073 - "GET /api/auth/me HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51459 - "GET /patient/health-tips HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59291 - "GET /patient/risk-predictions HTTP/1.1" 200 OK
+INFO:     127.0.0.1:62073 - "GET /patient/doctor-summaries HTTP/1.1" 200 OK

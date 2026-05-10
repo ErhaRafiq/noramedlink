@@ -1,0 +1,26 @@
+@startuml
+!include ./nora-medlink-style.puml
+left to right direction
+title Figure 3.19 — Nora MedLink DFD Level 0
+
+actor Patient
+actor Doctor
+actor Administrator
+rectangle "Nora MedLink System" as System
+database "Nora MedLink Database" as DB
+rectangle "OCR.Space Service" as OCR
+rectangle "OpenAI Service" as OpenAI
+rectangle "Notification Channel" as Notify
+
+Patient --> System : Registration, reports, appointments,\nreminders and payments
+Doctor --> System : Login, appointment review,\nauthorized patient data
+Administrator --> System : Administrative status updates
+System --> Patient : Dashboards, OCR results,\nsummaries and confirmations
+System --> Doctor : Doctor dashboard and patient context
+System --> Administrator : Management summaries
+System <--> DB : Persistent healthcare records
+System <--> OCR : Uploaded report images and OCR text
+System <--> OpenAI : Clinical-support summary prompts and results
+System --> Notify : Scheduled reminder notifications
+Notify --> Patient : Reminder alerts
+@enduml

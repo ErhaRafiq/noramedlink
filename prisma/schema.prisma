@@ -1,0 +1,514 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id                 Int      @id @default(autoincrement())
+  name               String   @map("full_name")
+  email              String   @unique
+    password           String   @map("hashed_password")
+    role               String   @default("PATIENT")
+    phone              String   @default("")
+    isActive           Boolean  @default(true) @map("is_active")
+    isEmailVerified    Boolean  @default(false) @map("is_email_verified")
+  isIdentityVerified Boolean  @default(false) @map("is_identity_verified")
+  dashboardAccessKey String?  @unique @map("dashboard_access_key")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  patientProfile           PatientProfile?
+  doctorProfile            DoctorProfile?
+  appointments             Appointment[]            @relation("PatientAppointments")
+  assignedAppointments     Appointment[]            @relation("DoctorAppointments")
+  emergencyBookings        EmergencyBooking[]
+  assignedEmergencies      EmergencyBooking[]       @relation("EmergencyDoctor")
+  payments                 Payment[]
+  vitals                   Vitals[]
+  medications              Medication[]
+  patientVitals            PatientVital[]
+  medicineReminders        MedicineReminder[]
+  reminderLogs             ReminderLog[]
+  reminders                Reminder[]
+  medicalRecords           MedicalRecord[]
+  patientReports           PatientReport[]
+  medicineHistory          MedicineHistory[]
+  healthRiskPredictions    HealthRiskPrediction[]
+  healthTips               HealthTip[]
+  doctorSummaries          DoctorSummary[]
+  patientDashboardOtps     PatientDashboardOtp[]
+  doctorDashboardAccesses  PatientDashboardAccess[] @relation("DoctorDashboardAccess")
+  patientDashboardAccesses PatientDashboardAccess[] @relation("PatientDashboardAccess")
+  notificationTokens       NotificationToken[]
+  notifications            Notification[]
+  medicalAiAnalyses        MedicalAiAnalysis[]
+
+  @@map("users")
+}
+
+model PatientProfile {
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @unique @map("user_id")
+  cnic               String
+  dateOfBirth        DateTime @map("date_of_birth") @db.Date
+  gender             String
+  verificationStatus String   @default("pending") @map("verification_status")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("patient_profiles")
+}
+
+model DoctorProfile {
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @unique @map("user_id")
+  pmdcNumber         String   @map("pmdc_number")
+  specialization     String
+  hospitalName       String   @map("hospital_name")
+  verificationStatus String   @default("pending") @map("verification_status")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("doctor_profiles")
+}
+
+model Appointment {
+  id            Int      @id @default(autoincrement())
+  doctorName    String   @map("doctor_name")
+  userId        Int      @map("user_id")
+  doctorId      Int?     @map("doctor_id")
+  specialty     String?  @map("specialty")
+  reason        String?  @map("reason")
+  date          DateTime @default(now()) @db.Timestamptz(6)
+  status        String   @default("BOOKED")
+  paymentStatus String   @default("PENDING") @map("payment_status")
+  notes         String?
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user     User      @relation("PatientAppointments", fields: [userId], references: [id], onDelete: Cascade)
+  doctor   User?     @relation("DoctorAppointments", fields: [doctorId], references: [id], onDelete: SetNull)
+  payments Payment[]
+
+  @@index([userId])
+  @@index([doctorId])
+  @@index([date])
+  @@map("appointments")
+}
+
+model EmergencyBooking {
+  id               Int      @id @default(autoincrement())
+  userId           Int      @map("user_id")
+  doctorId         Int?     @map("doctor_id")
+  patientName      String   @map("patient_name")
+  phone            String
+  address          String
+  symptoms         String
+  doctorName       String   @map("doctor_name")
+  status           String   @default("SEARCHING")
+  estimatedMinutes Int      @default(18) @map("estimated_minutes")
+  latitude         Float?
+  longitude        Float?
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user   User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  doctor User? @relation("EmergencyDoctor", fields: [doctorId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([doctorId])
+  @@index([status])
+  @@map("emergency_bookings")
+}
+
+model Payment {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  appointmentId Int?     @map("appointment_id")
+  amount        Int
+  method        String
+  purpose       String
+  status        String   @default("PENDING")
+  phone         String?
+  reference     String   @unique
+  transactionId String?  @map("transaction_id")
+  invoiceNumber String?  @unique @map("invoice_number")
+  invoiceUrl    String?  @map("invoice_url")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([appointmentId])
+  @@index([status])
+  @@map("payments")
+}
+
+model Vitals {
+  id            Int      @id @default(autoincrement())
+  userId        Int      @map("user_id")
+  bloodPressure String   @map("blood_pressure")
+  sugarLevel    String   @map("sugar_level")
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("vitals")
+}
+
+model Medication {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  patientId Int      @map("patient_id")
+  name      String
+  medicineName String  @map("medicine_name")
+  dosage    String
+  instructions String? @db.Text
+  startDate DateTime? @map("start_date") @db.Date
+  endDate   DateTime? @map("end_date") @db.Date
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  medicineReminders MedicineReminder[]
+
+  @@index([userId])
+  @@map("medications")
+}
+
+model PatientVital {
+  id                    Int      @id @default(autoincrement())
+  patientId             Int      @map("patient_id")
+  bloodPressureSystolic Int      @map("blood_pressure_systolic")
+  bloodPressureDiastolic Int      @map("blood_pressure_diastolic")
+  heartRate             Int      @map("heart_rate")
+  spo2                  Int
+  temperature           Float
+  sugarLevel            Float?   @map("sugar_level")
+  weight                Float?
+  recordedAt            DateTime @default(now()) @map("recorded_at") @db.Timestamptz(6)
+  createdAt             DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  patient User @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, recordedAt])
+  @@map("patient_vitals")
+}
+
+model MedicineReminder {
+  id           Int       @id @default(autoincrement())
+  medicationId Int       @map("medication_id")
+  patientId    Int       @map("patient_id")
+  reminderTime DateTime  @map("reminder_time") @db.Timestamptz(6)
+  frequency    String
+  status       String    @default("UPCOMING")
+  takenAt      DateTime? @map("taken_at") @db.Timestamptz(6)
+  skippedAt    DateTime? @map("skipped_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  medication Medication @relation(fields: [medicationId], references: [id], onDelete: Cascade)
+  patient    User       @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  logs       ReminderLog[]
+
+  @@index([patientId, reminderTime])
+  @@index([medicationId])
+  @@map("medicine_reminders")
+}
+
+model ReminderLog {
+  id           Int       @id @default(autoincrement())
+  reminderId   Int       @map("reminder_id")
+  patientId    Int       @map("patient_id")
+  scheduledFor DateTime  @map("scheduled_for") @db.Timestamptz(6)
+  status       String
+  takenAt      DateTime? @map("taken_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  reminder MedicineReminder @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+  patient  User             @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, scheduledFor])
+  @@index([reminderId])
+  @@map("reminder_logs")
+}
+
+model Reminder {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  title     String
+  dueAt     DateTime @map("due_at") @db.Timestamptz(6)
+  status    String   @default("UPCOMING")
+  fcmToken  String?  @map("fcm_token")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  notifications Notification[]
+
+  @@index([userId, dueAt])
+  @@index([status])
+  @@map("reminders")
+}
+
+model MedicalRecord {
+  id                 Int      @id @default(autoincrement())
+  userId             Int      @map("user_id")
+  title              String
+  category           String   @default("general-medicine")
+  notes              String?
+  fileName           String   @map("file_name")
+  imageUrl           String   @default("") @map("file_url")
+  fileType           String   @default("unknown") @map("file_type")
+  extractedText      String?  @map("extracted_text")
+  ocrRawText         String?  @map("ocr_raw_text")
+  editedOcrText      String?  @map("edited_ocr_text")
+  aiSummary          String?  @map("ai_summary")
+  extractedEntities  Json     @default("[]") @map("extracted_entities")
+  confidenceScore    Float?   @map("confidence_score")
+  possibleReportType String?  @map("possible_report_type")
+  detectedKeywords   Json     @default("[]") @map("detected_keywords")
+  structuredSections Json     @default("{}") @map("structured_sections")
+  scanStatus         String   @default("UPLOADED") @map("scan_status")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  aiAnalyses MedicalAiAnalysis[]
+
+  @@index([userId, createdAt])
+  @@index([category])
+  @@index([scanStatus])
+  @@map("medical_documents")
+}
+
+model MedicalDepartment {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  icon        String?
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  reports PatientReport[]
+
+  @@map("medical_departments")
+}
+
+model PatientReport {
+  id                 Int      @id @default(autoincrement())
+  patientId          Int      @map("patient_id")
+  departmentId       Int?     @map("department_id")
+  title              String
+  originalFileName   String   @map("original_file_name")
+  fileUrl            String   @map("file_url")
+  fileType           String   @map("file_type")
+  extractedText      String?  @map("extracted_text")
+  formattedText      String?  @map("formatted_text")
+  structuredDataJson Json     @default("{}") @map("structured_data_json")
+  summary            String?
+  extractedEntities  Json     @default("[]") @map("extracted_entities")
+  ruleWarnings       Json     @default("[]") @map("rule_warnings")
+  validationStatus   String   @default("SAFE") @map("validation_status")
+  validationResults  Json     @default("{}") @map("validation_results")
+  clinicalSummaryJson Json    @default("{}") @map("clinical_summary_json")
+  llmSelfCheck       Json     @default("{}") @map("llm_self_check")
+  summarySource      String   @default("rule_based") @map("summary_source")
+  ocrStatus          String   @default("PENDING") @map("ocr_status")
+  ocrConfidence      Float?   @map("ocr_confidence")
+  uploadDate         DateTime @default(now()) @map("upload_date") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  patient    User               @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  department MedicalDepartment? @relation(fields: [departmentId], references: [id])
+  aiAnalyses MedicalAiAnalysis[]
+
+  @@index([patientId, uploadDate])
+  @@index([departmentId])
+  @@index([ocrStatus])
+  @@index([validationStatus])
+  @@map("patient_reports")
+}
+
+model MedicalAiAnalysis {
+  id                Int      @id @default(autoincrement())
+  userId            Int      @map("user_id")
+  medicalRecordId   Int?     @map("medical_record_id")
+  patientReportId   Int?     @map("patient_report_id")
+  source            String   @default("rule_based")
+  extractedEntities Json     @default("[]") @map("extracted_entities")
+  confidenceScore   Float?   @map("confidence_score")
+  ruleWarnings      Json     @default("[]") @map("rule_warnings")
+  validationResults Json     @default("{}") @map("validation_results")
+  doctorSummary     String?  @map("doctor_summary")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  medicalRecord MedicalRecord? @relation(fields: [medicalRecordId], references: [id], onDelete: Cascade)
+  patientReport PatientReport? @relation(fields: [patientReportId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([medicalRecordId])
+  @@index([patientReportId])
+  @@map("medical_ai_analyses")
+}
+
+model MedicineHistory {
+  id           Int       @id @default(autoincrement())
+  patientId    Int       @map("patient_id")
+  medicineName String    @map("medicine_name")
+  dosage       String
+  frequency    String
+  startDate    DateTime  @map("start_date") @db.Date
+  endDate      DateTime? @map("end_date") @db.Date
+  reason       String
+  prescribedBy String?   @map("prescribed_by")
+  sideEffects  String?   @map("side_effects")
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  patient User @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@map("medicine_history")
+}
+
+model HealthRiskPrediction {
+  id             Int      @id @default(autoincrement())
+  patientId      Int      @map("patient_id")
+  riskTitle      String   @map("risk_title")
+  riskLevel      String   @map("risk_level")
+  reason         String
+  recommendation String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  patient User @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, createdAt])
+  @@map("health_risk_predictions")
+}
+
+model HealthTip {
+  id          Int      @id @default(autoincrement())
+  patientId   Int      @map("patient_id")
+  category    String
+  tipText     String   @map("tip_text")
+  basedOnData String   @map("based_on_data")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  patient User @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, createdAt])
+  @@map("health_tips")
+}
+
+model DoctorSummary {
+  id          Int      @id @default(autoincrement())
+  patientId   Int      @map("patient_id")
+  summaryText String   @map("summary_text")
+  generatedAt DateTime @default(now()) @map("generated_at") @db.Timestamptz(6)
+
+  patient User @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId, generatedAt])
+  @@map("doctor_summaries")
+}
+
+model PatientDashboardAccess {
+  id        Int       @id @default(autoincrement())
+  doctorId  Int       @map("doctor_id")
+  patientId Int       @map("patient_id")
+  status    String    @default("ACTIVE")
+  expiresAt DateTime? @map("expires_at") @db.Timestamptz(6)
+  endedAt   DateTime? @map("ended_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  doctor  User @relation("DoctorDashboardAccess", fields: [doctorId], references: [id], onDelete: Cascade)
+  patient User @relation("PatientDashboardAccess", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@unique([doctorId, patientId])
+  @@index([patientId])
+  @@map("patient_dashboard_access")
+}
+
+model PatientDashboardOtp {
+  id        Int       @id @default(autoincrement())
+  patientId Int       @map("patient_id")
+  code      String    @unique
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime? @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  patient User @relation(fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([patientId])
+  @@map("patient_dashboard_otps")
+}
+
+model SignupOtp {
+  id        Int      @id @default(autoincrement())
+  email     String
+  phone     String
+  role      String
+  otpHash   String   @map("otp_hash")
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(6)
+    attempts  Int      @default(0)
+    verified  Boolean  @default(false)
+    payloadJson Json    @default("{}") @map("payload_json")
+    createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([email])
+  @@index([phone])
+  @@index([role])
+  @@index([expiresAt])
+  @@index([verified])
+  @@index([createdAt])
+  @@map("signup_otps")
+}
+
+model NotificationToken {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  token      String   @unique
+  platform   String   @default("web")
+  lastSeenAt DateTime @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notification_tokens")
+}
+
+model Notification {
+  id           Int       @id @default(autoincrement())
+  userId       Int       @map("user_id")
+  reminderId   Int?      @map("reminder_id")
+  title        String
+  body         String
+  status       String    @default("UNREAD")
+  scheduledFor DateTime? @map("scheduled_for") @db.Timestamptz(6)
+  sentAt       DateTime? @map("sent_at") @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reminder Reminder? @relation(fields: [reminderId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([reminderId])
+  @@map("notifications")
+}

@@ -1,0 +1,31 @@
+@startuml
+!include ./nora-medlink-style.puml
+title Figure 3.12 — Nora MedLink Activity Diagram: Medicine Reminder
+
+start
+:Patient opens reminder module;
+:Patient enters reminder title and due time;
+if (Push token available?) then (Yes)
+  :Send token to backend;
+  :Upsert NotificationToken;
+else (No)
+  :Proceed without push token;
+endif
+:Backend authenticates user;
+if (Reminder data valid?) then (Yes)
+  :Create Reminder with UPCOMING status;
+  :Create Notification with SCHEDULED status;
+  :Save reminder and notification records;
+  :Return scheduled reminder;
+  if (Due time reached?) then (Yes)
+    :Notification channel reads scheduled notification;
+    :Send reminder to patient;
+    :Update notification delivery status;
+  else (No)
+    :Keep notification scheduled;
+  endif
+else (No)
+  :Return validation error;
+endif
+stop
+@enduml

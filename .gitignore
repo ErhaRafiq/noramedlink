@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -15,6 +16,7 @@
 
 # next.js
 /.next/
+.next/
 /out/
 
 # production
@@ -32,6 +34,29 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+!.env.local.example
+.env
+.env.local
+
+# local database
+*.db
+*.sqlite
+*.sqlite3
+dev.db
+dev.db-journal
+backend/nora_medlink.db
+backend/nora_medlink.db-journal
+backend/.testdeps/
+backend/venv/
+venv/
+backend/__pycache__/
+backend/**/__pycache__/
+__pycache__/
+backend/uploads/
+backend/uploads/*
+!backend/uploads/.gitkeep
+uploads/
 
 # vercel
 .vercel
@@ -39,3 +64,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+/app/generated/prisma
