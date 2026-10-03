@@ -22,6 +22,10 @@ function getDatabaseUrl() {
 function createPrismaClient() {
   const adapter = new PrismaPg({
     connectionString: getDatabaseUrl(),
+    // Run every session in UTC. Otherwise timestamp parameters (e.g. `new Date()` in
+    // expiry checks) are interpreted in the database's own time zone, which shifts
+    // OTP and dashboard-access expiry by the server's UTC offset.
+    options: "-c TimeZone=UTC",
   });
 
   return new PrismaClient({
