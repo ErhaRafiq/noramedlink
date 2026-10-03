@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
 from dependencies import get_current_user, require_patient
-from models import Appointment, PatientDashboardAccess, PatientDashboardOtp, User
+from models import Appointment, DoctorProfile, PatientDashboardAccess, PatientDashboardOtp, User
 from schemas import (
     AppointmentBookingResponse,
     AppointmentCreate,
@@ -17,58 +18,10 @@ from schemas import (
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
-DEMO_DOCTORS = [
-    {
-        "id": 1001,
-        "name": "Dr. Ayesha Khan",
-        "specialty": "Cardiology",
-        "location": "Lahore Medical Center",
-        "rating": 4.9,
-        "available_today": True,
-    },
-    {
-        "id": 1002,
-        "name": "Dr. Hamza Ali",
-        "specialty": "Dermatology",
-        "location": "Gulberg Clinic, Lahore",
-        "rating": 4.7,
-        "available_today": False,
-    },
-    {
-        "id": 1003,
-        "name": "Dr. Sara Ahmed",
-        "specialty": "Pediatrics",
-        "location": "Children Care Hospital",
-        "rating": 4.8,
-        "available_today": True,
-    },
-    {
-        "id": 1004,
-        "name": "Dr. Usman Raza",
-        "specialty": "Neurology",
-        "location": "Johar Town Specialist Clinic",
-        "rating": 4.6,
-        "available_today": True,
-    },
-    {
-        "id": 1005,
-        "name": "Dr. Fatima Noor",
-        "specialty": "Orthopedics",
-        "location": "Model Town Health Center",
-        "rating": 4.8,
-        "available_today": False,
-    },
-    {
-        "id": 1006,
-        "name": "Dr. Bilal Siddiqui",
-        "specialty": "General Medicine",
-        "location": "DHA Family Clinic",
-        "rating": 4.5,
-        "available_today": True,
-    },
-]
-
 CONSULTATION_ACCESS_HOURS = 2
+# Admin approval sets the doctor profile's status to "approved".
+VERIFIED_DOCTOR_STATUS = "approved"
+PATIENT_SETTABLE_STATUSES = {"CANCELLED"}
 
 
 def appointment_to_out(appointment: Appointment) -> AppointmentOut:
@@ -81,6 +34,8 @@ def appointment_to_out(appointment: Appointment) -> AppointmentOut:
         status=appointment.status,
         payment_status=appointment.payment_status,
         notes=appointment.notes,
+        specialty=appointment.specialty,
+        reason=appointment.reason,
         created_at=appointment.created_at,
         updated_at=appointment.updated_at,
     )
@@ -88,7 +43,25 @@ def appointment_to_out(appointment: Appointment) -> AppointmentOut:
 
 def can_access_appointment(user: User, appointment: Appointment) -> bool:
     role = user.role.lower()
-    return appointment.user_id == user.id or (role == "doctor" and appointment.doctor_id == user.id)
+    return (
+        role == "admin"
+        or appointment.user_id == user.id
+        or (role == "doctor" and appointment.doctor_id == user.id)
+    )
+
+
+def verified_doctors_query(db: Session):
+    """Active doctors whose profile an admin has approved. The only doctors patients may
+    discover or book."""
+    return (
+        db.query(User)
+        .join(DoctorProfile, DoctorProfile.user_id == User.id)
+        .filter(
+            func.lower(User.role) == "doctor",
+            User.is_active.is_(True),
+            func.lower(DoctorProfile.verification_status) == VERIFIED_DOCTOR_STATUS,
+        )
+    )
 
 
 def doctor_to_out(doctor: User) -> AppointmentDoctorOut:
@@ -99,22 +72,6 @@ def doctor_to_out(doctor: User) -> AppointmentDoctorOut:
         name=doctor.full_name,
         specialty=profile.specialization if profile else "General Medicine",
         location=profile.hospital_name if profile else "Nora MedLink Clinic",
-        rating=4.8,
-        available_today=True,
-        source="registered",
-    )
-
-
-def demo_doctor_to_out(doctor: dict[str, object]) -> AppointmentDoctorOut:
-    return AppointmentDoctorOut(
-        id=int(doctor["id"]),
-        doctor_id=None,
-        name=str(doctor["name"]),
-        specialty=str(doctor["specialty"]),
-        location=str(doctor["location"]),
-        rating=float(doctor["rating"]),
-        available_today=bool(doctor["available_today"]),
-        source="demo",
     )
 
 
@@ -139,23 +96,19 @@ def filter_doctors(
     if normalized_specialty and normalized_specialty != "all specialties":
         results = [doctor for doctor in results if doctor.specialty.lower() == normalized_specialty]
     if available_today is not None:
+        # Availability is not recorded yet, so no doctor is known to be available today.
         results = [doctor for doctor in results if doctor.available_today == available_today]
 
     return results
 
 
-def resolve_doctor(payload: AppointmentCreate, db: Session) -> User | None:
-    if payload.doctor_id:
-        doctor = db.get(User, payload.doctor_id)
-        if not doctor or doctor.role.lower() != "doctor":
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found.")
-        return doctor
-
-    return (
-        db.query(User)
-        .filter(User.role.ilike("doctor"), User.full_name == payload.doctor_name.strip())
-        .first()
-    )
+def resolve_doctor(payload: AppointmentCreate, db: Session) -> User:
+    if not payload.doctor_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Choose a doctor to book.")
+    doctor = verified_doctors_query(db).filter(User.id == payload.doctor_id).first()
+    if not doctor:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor not found.")
+    return doctor
 
 
 def grant_temporary_dashboard_access_by_otp(
@@ -214,31 +167,16 @@ def list_doctors(
     available_today: bool | None = None,
     db: Session = Depends(get_db),
 ):
-    registered_doctors = (
-        db.query(User)
-        .filter(User.role.ilike("doctor"))
-        .order_by(User.full_name.asc())
-        .limit(100)
-        .all()
-    )
-    doctors = [doctor_to_out(doctor) for doctor in registered_doctors]
-    registered_names = {doctor.name.lower() for doctor in doctors}
-    doctors.extend(
-        demo_doctor_to_out(doctor)
-        for doctor in DEMO_DOCTORS
-        if str(doctor["name"]).lower() not in registered_names
-    )
-
-    return filter_doctors(doctors, query, specialty, available_today)
+    doctors = verified_doctors_query(db).order_by(User.full_name.asc()).limit(100).all()
+    return filter_doctors([doctor_to_out(doctor) for doctor in doctors], query, specialty, available_today)
 
 
 @router.get("", response_model=list[AppointmentOut])
 def list_appointments(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     query = db.query(Appointment)
     if current_user.role.lower() == "doctor":
-        query = query.filter(
-            (Appointment.doctor_id == current_user.id) | (Appointment.doctor_name == current_user.full_name)
-        )
+        # Matched by id only: matching by name would show one doctor another's patients.
+        query = query.filter(Appointment.doctor_id == current_user.id)
     else:
         query = query.filter(Appointment.user_id == current_user.id)
 
@@ -253,6 +191,8 @@ def create_appointment(
     db: Session = Depends(get_db),
 ):
     appointment_date = payload.date or datetime.now(timezone.utc)
+    if appointment_date.tzinfo is None:
+        appointment_date = appointment_date.astimezone()  # naive input = server local time
     if appointment_date < datetime.now(timezone.utc) - timedelta(minutes=5):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -260,13 +200,17 @@ def create_appointment(
         )
 
     doctor = resolve_doctor(payload, db)
+    reason = payload.reason.strip() if payload.reason and payload.reason.strip() else None
+    notes = payload.notes.strip() if payload.notes and payload.notes.strip() else reason
 
     appointment = Appointment(
         user_id=current_user.id,
-        doctor_id=doctor.id if doctor else None,
-        doctor_name=(doctor.full_name if doctor else payload.doctor_name.strip()),
+        doctor_id=doctor.id,
+        doctor_name=doctor.full_name,
+        specialty=doctor.doctor_profile.specialization if doctor.doctor_profile else None,
+        reason=reason,
         date=appointment_date,
-        notes=payload.notes.strip() if payload.notes else None,
+        notes=notes,
         status="BOOKED",
         payment_status="PENDING",
     )
@@ -274,7 +218,7 @@ def create_appointment(
 
     dashboard_access_granted = False
     patient_access_otp = payload.patient_access_otp.strip() if payload.patient_access_otp else ""
-    if patient_access_otp and doctor:
+    if patient_access_otp:
         dashboard_access_granted = grant_temporary_dashboard_access_by_otp(
             db=db,
             doctor_id=doctor.id,
@@ -308,6 +252,12 @@ def update_appointment(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found.")
     if not can_access_appointment(current_user, appointment):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Appointment access denied.")
+
+    role = current_user.role.lower()
+    if payload.payment_status is not None and role != "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only an admin can change payment status.")
+    if payload.status is not None and role == "patient" and payload.status.strip().upper() not in PATIENT_SETTABLE_STATUSES:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Patients can only cancel an appointment.")
 
     if payload.date is not None:
         if payload.date < datetime.now(timezone.utc) - timedelta(minutes=5):

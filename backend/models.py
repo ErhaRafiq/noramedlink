@@ -117,6 +117,8 @@ class Appointment(Base):
     status: Mapped[str] = mapped_column(String(40), default="BOOKED", nullable=False)
     payment_status: Mapped[str] = mapped_column(String(40), default="PENDING", nullable=False)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    specialty: Mapped[str | None] = mapped_column(Text, nullable=True)
+    reason: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

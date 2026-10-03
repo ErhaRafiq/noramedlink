@@ -85,11 +85,14 @@ FASTAPI_PATIENT_ROUTES = [
     ("GET", "/api/backend/patient/medicine-reminders/today"),
     ("PATCH", "/api/backend/patient/medicine-reminders/1/mark-taken"),
     ("PATCH", "/api/backend/patient/medicine-reminders/1/skip"),
+    ("POST", "/api/backend/appointments"),
 ]
 # FastAPI endpoints open to any signed-in role.
 FASTAPI_ANY_USER_ROUTES = [
     ("GET", "/api/backend/reminders"),
     ("POST", "/api/backend/reminders"),
+    ("GET", "/api/backend/appointments"),
+    ("PUT", "/api/backend/appointments/1"),
 ]
 ALL_ROUTES = (ADMIN_ROUTES + DOCTOR_ROUTES + PATIENT_ROUTES + ANY_USER_ROUTES
               + FASTAPI_PATIENT_ROUTES + FASTAPI_ANY_USER_ROUTES)
@@ -162,7 +165,7 @@ engine = create_engine(DATABASE_URL)
 run_id = secrets.token_hex(4)
 
 
-def create_user(label: str, role: str, *, active: bool = True, doctor_status: str = "verified") -> int:
+def create_user(label: str, role: str, *, active: bool = True, doctor_status: str = "approved") -> int:
     """Create a test user plus the profile row signup would create for that role."""
     with engine.begin() as conn:
         user_id = conn.execute(
@@ -318,6 +321,8 @@ def run_tests() -> None:
     doctor = create_user("doctor", "DOCTOR")
     doctor_2 = create_user("doctor-2", "DOCTOR")
     admin = create_user("admin", "ADMIN")
+    doctor_pending = create_user("doctor-pending", "DOCTOR", doctor_status="pending")
+    doctor_inactive = create_user("doctor-inactive", "DOCTOR", active=False)
 
     tok_a, tok_b = token_for(patient_a), token_for(patient_b)
     tok_doctor, tok_doctor_2, tok_admin = token_for(doctor), token_for(doctor_2), token_for(admin)
@@ -461,6 +466,48 @@ def run_tests() -> None:
     skipped = response.json() if response.status_code == 200 else {}
     check("A skips it -> SKIPPED with a time", skipped.get("status") == "SKIPPED" and bool(skipped.get("skipped_at")),
           f"got {response.status_code} {skipped.get('status')}")
+
+    print("\n[5e] Doctor search and booking: verified doctors only, nothing invented")
+    listed = call("GET", "/api/backend/appointments/doctors").json()
+    listed_ids = {d["doctor_id"] for d in listed}
+    check("approved doctor is listed", doctor in listed_ids)
+    check("pending (unverified) doctor is not listed", doctor_pending not in listed_ids)
+    check("inactive doctor is not listed", doctor_inactive not in listed_ids)
+    check("no demo doctors (every entry is a registered doctor)", all(d["source"] == "registered" and d["doctor_id"] for d in listed))
+    check("no invented ratings or availability", all(d["rating"] is None and d["available_today"] is None for d in listed))
+
+    future = (datetime.now(timezone.utc) + timedelta(days=2)).replace(microsecond=0).isoformat()
+    booking = {"doctor_id": doctor, "doctor_name": "Someone Else", "specialty": "Cardiology", "date": future,
+               "reason": "Follow-up", "user_id": patient_b}
+    response = call("POST", "/api/backend/appointments", tok_a, booking)
+    booked = (response.json() or {}).get("appointment", {}) if response.status_code == 201 else {}
+    check("A books the approved doctor -> 201", response.status_code == 201, f"got {response.status_code}")
+    check("booking stored under A with the doctor's real name and specialty (request values ignored)",
+          booked.get("user_id") == patient_a and booked.get("doctor_name") == f"{TEST_PREFIX}doctor"
+          and booked.get("specialty") == "General Physician" and booked.get("reason") == "Follow-up", f"got {booked}")
+    response = call("POST", "/api/backend/appointments", tok_a, {**booking, "doctor_id": doctor_pending})
+    check("booking an unverified doctor -> 404", response.status_code == 404, f"got {response.status_code}")
+    response = call("POST", "/api/backend/appointments", tok_a, {"doctor_name": f"{TEST_PREFIX}doctor", "date": future})
+    check("booking by name only (no doctor_id) -> 400", response.status_code == 400, f"got {response.status_code}")
+
+    check("A sees the appointment", [a["id"] for a in call("GET", "/api/backend/appointments", tok_a).json()] == [booked.get("id")])
+    check("B sees no appointments", call("GET", "/api/backend/appointments", tok_b).json() == [])
+    check("the booked doctor sees it", booked.get("id") in [a["id"] for a in call("GET", "/api/backend/appointments", tok_doctor).json()])
+    check("another doctor does not", call("GET", "/api/backend/appointments", tok_doctor_2).json() == [])
+
+    appt = f"/api/backend/appointments/{booked.get('id')}"
+    response = call("PUT", appt, tok_a, {"payment_status": "SUCCESS"})
+    check("patient marking own appointment paid -> 403", response.status_code == 403, f"got {response.status_code}")
+    response = call("PUT", appt, tok_a, {"status": "COMPLETED"})
+    check("patient setting status COMPLETED -> 403", response.status_code == 403, f"got {response.status_code}")
+    response = call("PUT", appt, tok_b, {"status": "CANCELLED"})
+    check("B changing A's appointment -> 403", response.status_code == 403, f"got {response.status_code}")
+    response = call("PUT", appt, tok_admin, {"payment_status": "SUCCESS"})
+    check("admin can change payment status -> 200", response.status_code == 200 and response.json().get("payment_status") == "SUCCESS",
+          f"got {response.status_code}")
+    response = call("PUT", appt, tok_a, {"status": "CANCELLED"})
+    check("patient can cancel own appointment -> 200", response.status_code == 200 and response.json().get("status") == "CANCELLED",
+          f"got {response.status_code}")
 
     print("\n[6] Doctor grant lifecycle on doctor/overview")
     check("no grant -> patient A not listed", patient_a not in overview_patient_ids(tok_doctor))

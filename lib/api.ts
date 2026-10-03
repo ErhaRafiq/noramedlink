@@ -245,18 +245,32 @@ export const api = {
       body: JSON.stringify(payload),
     });
   },
-  doctors(token: string) {
-    return apiRequest<DoctorOption[]>("/api/doctors", { token });
+  async doctors(token: string): Promise<DoctorOption[]> {
+    // Verified doctors only (FastAPI /appointments/doctors), in the workspace's shape.
+    const doctors = await apiRequest<AppointmentDoctor[]>("/appointments/doctors", { token });
+    return doctors.map((doctor) => ({
+      id: doctor.id,
+      name: doctor.name,
+      specialty: doctor.specialty,
+      hospitalName: doctor.location,
+      rating: doctor.rating,
+      availableToday: doctor.available_today,
+      source: doctor.source,
+    }));
   },
   bookAppointment(token: string, payload: AppointmentBookingPayload) {
-    return apiRequest<AppointmentBookingResponseV2>("/api/appointments/book", {
+    return apiRequest<AppointmentBookingResponseV2>("/appointments", {
       method: "POST",
       token,
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        doctor_id: payload.doctorId,
+        date: `${payload.date}T${payload.time}`,
+        reason: payload.reason,
+      }),
     });
   },
   appointmentsV2(token: string) {
-    return apiRequest<Appointment[]>("/api/appointments", { token });
+    return apiRequest<Appointment[]>("/appointments", { token });
   },
   reports(token: string) {
     return apiRequest<MedicalDocument[]>("/patient/reports", { token, baseUrl: API_BASE_URL });

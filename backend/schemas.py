@@ -414,9 +414,14 @@ class SummaryResponse(BaseModel):
 
 
 class AppointmentCreate(BaseModel):
-    doctor_name: str = Field(min_length=1, max_length=180)
+    # doctor_id must name a verified, active doctor; the stored name and specialty
+    # come from that doctor's record. doctor_name / specialty are accepted for
+    # compatibility but not trusted.
     doctor_id: int | None = None
+    doctor_name: str | None = Field(default=None, max_length=180)
+    specialty: str | None = Field(default=None, max_length=120)
     date: datetime | None = None
+    reason: str | None = None
     notes: str | None = None
     patient_access_otp: str | None = Field(default=None, max_length=12)
 
@@ -437,6 +442,8 @@ class AppointmentOut(BaseModel):
     status: str
     payment_status: str
     notes: str | None
+    specialty: str | None = None
+    reason: str | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -453,9 +460,11 @@ class AppointmentDoctorOut(BaseModel):
     name: str
     specialty: str
     location: str
-    rating: float
-    available_today: bool
-    source: Literal["registered", "demo"]
+    # No ratings or availability are stored yet (Phase 2c); null means "not available",
+    # never an estimate.
+    rating: float | None = None
+    available_today: bool | None = None
+    source: Literal["registered"] = "registered"
 
 
 class PaymentCreate(BaseModel):

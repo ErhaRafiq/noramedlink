@@ -400,10 +400,14 @@ export default function DoctorsPage() {
                           className={`rounded-full px-3 py-1 text-xs font-bold ${
                             doctor.available_today
                               ? "bg-emerald-50 text-emerald-700"
-                              : "bg-amber-50 text-amber-700"
+                              : "bg-slate-100 text-slate-600"
                           }`}
                         >
-                          {doctor.available_today ? "Today" : "Later"}
+                          {doctor.available_today === null
+                            ? "Availability not set"
+                            : doctor.available_today
+                              ? "Today"
+                              : "Later"}
                         </span>
                       </div>
 
@@ -411,7 +415,7 @@ export default function DoctorsPage() {
                         <p className="flex items-center gap-2">
                           <Stethoscope className="h-4 w-4 text-blue-500" />
                           <span className="font-semibold text-slate-900">Rating:</span>
-                          {doctor.rating.toFixed(1)} / 5.0
+                          {doctor.rating === null ? "No ratings yet" : `${doctor.rating.toFixed(1)} / 5.0`}
                         </p>
                         <p className="flex items-start gap-2">
                           <MapPin className="mt-0.5 h-4 w-4 text-blue-500" />

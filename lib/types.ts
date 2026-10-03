@@ -355,9 +355,9 @@ export type AppointmentDoctor = {
   name: string;
   specialty: string;
   location: string;
-  rating: number;
-  available_today: boolean;
-  source: "registered" | "demo";
+  rating: number | null;
+  available_today: boolean | null;
+  source: "registered";
 };
 
 export type Appointment = {
@@ -400,9 +400,9 @@ export type DoctorOption = {
   name: string;
   specialty: string;
   hospitalName: string;
-  rating: number;
-  availableToday: boolean;
-  source: "registered" | "demo";
+  rating: number | null;
+  availableToday: boolean | null;
+  source: "registered";
 };
 
 export type PatientReportCategorySummary = {
