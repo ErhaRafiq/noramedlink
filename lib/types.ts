@@ -241,9 +241,9 @@ export type DailyVital = {
   patient_id: number;
   blood_pressure_systolic: number;
   blood_pressure_diastolic: number;
-  heart_rate: number;
-  spo2: number;
-  temperature: number;
+  heart_rate: number | null;
+  spo2: number | null;
+  temperature: number | null;
   sugar_level: number | null;
   weight: number | null;
   recorded_at: string;

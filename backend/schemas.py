@@ -151,6 +151,55 @@ class VitalsOut(BaseModel):
     created_at: datetime
 
 
+class BasicVitalsCreate(BaseModel):
+    """Blood pressure and sugar as free text (the /dashboard vitals form)."""
+
+    blood_pressure: str = Field(min_length=1, max_length=80)
+    sugar_level: str = Field(min_length=1, max_length=80)
+
+
+class PatientVitalCreate(BaseModel):
+    """Detailed reading. Accepts the camelCase names the workspace sends."""
+
+    model_config = {"populate_by_name": True}
+
+    blood_pressure_systolic: int = Field(alias="bloodPressureSystolic")
+    blood_pressure_diastolic: int = Field(alias="bloodPressureDiastolic")
+    heart_rate: int = Field(alias="heartRate")
+    spo2: int
+    temperature: float
+    sugar_level: float | None = Field(default=None, alias="sugarLevel")
+    weight: float | None = None
+    recorded_at: datetime | None = Field(default=None, alias="recordedAt")
+
+
+class DailyVitalOut(BaseModel):
+    """Latest vitals. Values that were not recorded are null, never estimated."""
+
+    id: int
+    patient_id: int
+    blood_pressure_systolic: int
+    blood_pressure_diastolic: int
+    heart_rate: int | None
+    spo2: int | None
+    temperature: float | None
+    sugar_level: float | None
+    weight: float | None
+    recorded_at: datetime
+    created_at: datetime
+
+
+class VitalTrendOut(BaseModel):
+    recorded_at: datetime
+    blood_pressure_systolic: int
+    blood_pressure_diastolic: int
+    heart_rate: int
+    spo2: int
+    temperature: float
+    sugar_level: float | None
+    weight: float | None
+
+
 class PatientReportOut(BaseModel):
     id: int
     patient_id: int

@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 from database import check_database_connection, ensure_runtime_dirs, get_upload_root_path, run_migrations
-from routers import admin, appointments, auth, doctor, medical_ai, nlp, ocr, patient, payments, reminders, reports
+from routers import admin, appointments, auth, doctor, medical_ai, nlp, ocr, patient, payments, reminders, reports, vitals
 
 
 @asynccontextmanager
@@ -61,6 +61,7 @@ app.include_router(appointments.router)
 app.include_router(payments.router)
 app.include_router(reminders.router)
 app.include_router(medical_ai.router)
+app.include_router(vitals.router)
 
 
 @app.exception_handler(SQLAlchemyError)

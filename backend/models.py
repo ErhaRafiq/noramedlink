@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, JSON, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -187,6 +187,27 @@ class Vitals(Base):
     blood_pressure: Mapped[str] = mapped_column(String(80), nullable=False)
     sugar_level: Mapped[str] = mapped_column(String(80), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PatientVital(Base):
+    """Detailed daily vitals (Prisma model PatientVital)."""
+
+    __tablename__ = "patient_vitals"
+    __table_args__ = (
+        Index("patient_vitals_patient_id_recorded_at_idx", "patient_id", "recorded_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    blood_pressure_systolic: Mapped[int] = mapped_column(Integer, nullable=False)
+    blood_pressure_diastolic: Mapped[int] = mapped_column(Integer, nullable=False)
+    heart_rate: Mapped[int] = mapped_column(Integer, nullable=False)
+    spo2: Mapped[int] = mapped_column(Integer, nullable=False)
+    temperature: Mapped[float] = mapped_column(Float, nullable=False)
+    sugar_level: Mapped[float | None] = mapped_column(Float, nullable=True)
+    weight: Mapped[float | None] = mapped_column(Float, nullable=True)
+    recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class Medication(Base):

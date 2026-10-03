@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
+import { api } from "@/lib/api";
 import { authHeaders, getSession } from "@/lib/auth";
 
 type Vitals = {
@@ -1148,31 +1149,17 @@ export default function DashboardPage() {
     setIsSavingVitals(true);
 
     try {
-      const response = await fetch("/api/vitals/add", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
-        body: JSON.stringify({
-          bloodPressure,
-          sugarLevel,
-        }),
+      await api.addBasicVitals(session.token, {
+        blood_pressure: bloodPressure,
+        sugar_level: sugarLevel,
       });
-
-      const data = (await response.json()) as { message?: string };
-
-      if (!response.ok) {
-        setStatusMessage(data.message ?? "Unable to save vitals.");
-        return;
-      }
 
       setBloodPressure("");
       setSugarLevel("");
       setStatusMessage("Vitals saved and dashboard updated.");
       await loadDashboard();
-    } catch {
-      setStatusMessage("Unable to save vitals. Please try again.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Unable to save vitals. Please try again.");
     } finally {
       setIsSavingVitals(false);
     }

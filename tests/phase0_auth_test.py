@@ -1,4 +1,7 @@
-"""Phase 0 acceptance tests: route authentication and ownership.
+"""Acceptance tests: route authentication and ownership (Phase 0, extended in Phase 1).
+
+Phase 1 moves routes from Next.js to FastAPI; their checks move with them and call
+FastAPI through the same-origin /api/backend proxy, exactly as the frontend does.
 
 Runs against a local Next.js dev server (default http://localhost:3000) and the
 local development database. It creates temporary users whose email starts with
@@ -62,8 +65,6 @@ PATIENT_ROUTES = [
     ("POST", "/api/medical-records/delete"),
     ("POST", "/api/payments/create"),
     ("POST", "/api/emergency/book"),
-    ("POST", "/api/vitals/add"),
-    ("GET", "/api/vitals/latest"),
     ("POST", "/api/reminders/add"),
     ("POST", "/api/appointment/create"),
 ]
@@ -72,7 +73,15 @@ ANY_USER_ROUTES = [
     ("POST", "/api/ocr/extract"),
     ("POST", "/api/ai/analyze-report"),
 ]
-ALL_ROUTES = ADMIN_ROUTES + DOCTOR_ROUTES + PATIENT_ROUTES + ANY_USER_ROUTES
+# FastAPI endpoints (through the proxy) that replaced Next routes in Phase 1.
+FASTAPI_PATIENT_ROUTES = [
+    ("POST", "/api/backend/patient/vitals/basic"),
+    ("POST", "/api/backend/patient/vitals"),
+    ("GET", "/api/backend/patient/vitals/today"),
+    ("GET", "/api/backend/patient/vitals/trends"),
+    ("GET", "/api/backend/patient/vitals/latest"),
+]
+ALL_ROUTES = ADMIN_ROUTES + DOCTOR_ROUTES + PATIENT_ROUTES + ANY_USER_ROUTES + FASTAPI_PATIENT_ROUTES
 
 # Tables holding rows that belong to a user, children before parents.
 # (table, column) pairs; only rows whose column is a phase0-test- user id are deleted.
@@ -90,6 +99,7 @@ USER_OWNED_ROWS = [
     ("patient_dashboard_otps", "patient_id"),
     ("reminders", "user_id"),
     ("vitals", "user_id"),
+    ("patient_vitals", "patient_id"),
     ("medications", "user_id"),
     ("medical_documents", "user_id"),
     ("patient_reports", "patient_id"),
@@ -139,9 +149,10 @@ engine = create_engine(DATABASE_URL)
 run_id = secrets.token_hex(4)
 
 
-def create_user(label: str, role: str, *, active: bool = True) -> int:
+def create_user(label: str, role: str, *, active: bool = True, doctor_status: str = "verified") -> int:
+    """Create a test user plus the profile row signup would create for that role."""
     with engine.begin() as conn:
-        return conn.execute(
+        user_id = conn.execute(
             text(
                 """
                 insert into users (full_name, email, hashed_password, role, phone,
@@ -159,6 +170,27 @@ def create_user(label: str, role: str, *, active: bool = True) -> int:
                 "active": active,
             },
         ).scalar_one()
+        if role == "PATIENT":
+            conn.execute(
+                text(
+                    """
+                    insert into patient_profiles (user_id, cnic, date_of_birth, gender, verification_status)
+                    values (:uid, '00000-0000000-0', '1990-01-01', 'unspecified', 'verified')
+                    """
+                ),
+                {"uid": user_id},
+            )
+        elif role == "DOCTOR":
+            conn.execute(
+                text(
+                    """
+                    insert into doctor_profiles (user_id, pmdc_number, specialization, hospital_name, verification_status)
+                    values (:uid, :pmdc, 'General Physician', 'phase0-test hospital', :status)
+                    """
+                ),
+                {"uid": user_id, "pmdc": f"{TEST_PREFIX}{label}-{run_id}", "status": doctor_status},
+            )
+        return user_id
 
 
 def create_record(user_id: int, title: str) -> int:
@@ -280,6 +312,16 @@ def run_tests() -> None:
     # Legacy identity fields that must now be ignored.
     spoof_body = {"userId": admin, "adminId": admin, "doctorId": doctor, "patientId": patient_a}
 
+    print("\n[0] /api/backend proxy only reaches the configured FastAPI server")
+    check("proxy forwards to FastAPI", call("GET", "/api/backend/health").status_code == 200)
+    response = call("GET", "/api/backend/health%00")
+    check("control character in path -> 400", response.status_code == 400, f"got {response.status_code}")
+    for path in ("/api/backend/http:%2F%2Fexample.com/x", "/api/backend/%2F%2Fexample.com/x", "/api/backend/@example.com/x"):
+        response = call("GET", path)
+        detail = response.json().get("detail") if "json" in response.headers.get("content-type", "") else None
+        check(f"{path} stays on FastAPI (its own 404)", response.status_code == 404 and detail == "Not Found",
+              f"got {response.status_code} {detail!r}")
+
     print("\n[1] No token -> 401 on every patched route (legacy userId params ignored)")
     for method, path in ALL_ROUTES:
         target = f"{path}?userId={admin}" if method == "GET" else path
@@ -301,13 +343,15 @@ def run_tests() -> None:
     for method, path in DOCTOR_ROUTES:
         response = call(method, path, tok_a)
         check(f"patient on {path} -> 403", response.status_code == 403, f"got {response.status_code}")
-    for method, path in PATIENT_ROUTES:
+    for method, path in PATIENT_ROUTES + FASTAPI_PATIENT_ROUTES:
         response = call(method, path, tok_doctor)
         check(f"doctor on {path} -> 403", response.status_code == 403, f"got {response.status_code}")
     response = call("POST", "/api/summarize", tok_doctor, {})
     check("doctor on summarize saved-report mode -> 403", response.status_code == 403, f"got {response.status_code}")
     response = call("GET", "/api/dashboard", token_for(inactive))
     check("inactive patient account -> 403", response.status_code == 403, f"got {response.status_code}")
+    response = call("GET", "/api/backend/patient/vitals/today", token_for(inactive))
+    check("inactive patient account on FastAPI -> 403", response.status_code == 403, f"got {response.status_code}")
 
     print("\n[4] Correct role -> allowed (positive controls)")
     check("admin on admin/overview -> 200", call("GET", "/api/admin/overview", tok_admin).status_code == 200)
@@ -333,15 +377,32 @@ def run_tests() -> None:
     check("B deleting own record -> 200", response.status_code == 200, f"got {response.status_code}")
     check("B's record is gone", scalar("select count(*) from medical_documents where id = :id", id=record_b) == 0)
 
-    response = call("POST", "/api/vitals/add", tok_a, {"userId": patient_b, "bloodPressure": "120/80", "sugarLevel": "95"})
-    check("A adds vitals (body userId=B ignored) -> 201", response.status_code == 201, f"got {response.status_code}")
+    response = call("POST", "/api/backend/patient/vitals/basic", tok_a,
+                    {"user_id": patient_b, "userId": patient_b, "blood_pressure": "120/80", "sugar_level": "95"})
+    check("A adds vitals (body user id=B ignored) -> 201", response.status_code == 201, f"got {response.status_code}")
     check("vitals stored under A", scalar("select count(*) from vitals where user_id = :id", id=patient_a) == 1)
     check("no vitals stored under B", scalar("select count(*) from vitals where user_id = :id", id=patient_b) == 0)
-    response = call("GET", f"/api/vitals/latest?userId={patient_b}", tok_a)
-    vitals = response.json().get("vitals") or {}
-    check("vitals/latest (with ?userId=B) returns A's vitals", vitals.get("userId") == patient_a, f"got {vitals.get('userId')}")
-    response = call("GET", "/api/vitals/latest", tok_b)
-    check("B's vitals/latest is empty", response.status_code == 200 and response.json().get("vitals") is None)
+    response = call("GET", f"/api/backend/patient/vitals/latest?user_id={patient_b}&userId={patient_b}", tok_a)
+    vitals = response.json() or {}
+    check("vitals/latest (with ?user_id=B) returns A's vitals", vitals.get("user_id") == patient_a, f"got {vitals.get('user_id')}")
+    response = call("GET", "/api/backend/patient/vitals/today", tok_b)
+    check("B's vitals/today is empty", response.status_code == 200 and response.json() is None)
+
+    print("\n[5b] Vitals: nothing is estimated or invented")
+    today = call("GET", "/api/backend/patient/vitals/today", tok_a).json() or {}
+    check("simple log only -> BP parsed from it", (today.get("blood_pressure_systolic"), today.get("blood_pressure_diastolic")) == (120, 80), f"got {today}")
+    check("simple log only -> heart rate, SpO2, temperature are null (not 72/98/98.4)",
+          today.get("heart_rate") is None and today.get("spo2") is None and today.get("temperature") is None, f"got {today}")
+    reading = {"bloodPressureSystolic": 130, "bloodPressureDiastolic": 85, "heartRate": 77, "spo2": 97, "temperature": 98.9}
+    response = call("POST", "/api/backend/patient/vitals", tok_a, reading)
+    check("A adds a detailed reading -> 201", response.status_code == 201, f"got {response.status_code}")
+    today = call("GET", "/api/backend/patient/vitals/today", tok_a).json() or {}
+    check("today returns the detailed reading", (today.get("heart_rate"), today.get("spo2")) == (77, 97), f"got {today}")
+    trends = call("GET", "/api/backend/patient/vitals/trends", tok_a).json()
+    check("trends has A's reading", len(trends) == 1 and trends[0]["heart_rate"] == 77, f"got {trends}")
+    check("B has no trends", call("GET", "/api/backend/patient/vitals/trends", tok_b).json() == [])
+    check("detailed reading mirrored into the simple log",
+          scalar("select count(*) from vitals where user_id = :id and blood_pressure = '130/85'", id=patient_a) == 1)
 
     print("\n[6] Doctor grant lifecycle on doctor/overview")
     check("no grant -> patient A not listed", patient_a not in overview_patient_ids(tok_doctor))

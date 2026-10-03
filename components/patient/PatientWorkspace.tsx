@@ -111,11 +111,12 @@ const QUICK_ACTIONS = [
   "Show tips to manage cholesterol",
 ];
 
-const DEFAULT_VITALS = {
-  bloodPressure: "118/76 mmHg",
-  heartRate: "72 bpm",
-  spo2: "98%",
-  temperature: "98.4°F",
+// Shown when nothing has been recorded. Never fill in typical values as if they were the patient's.
+const NO_VITALS = {
+  bloodPressure: "Not recorded",
+  heartRate: "Not recorded",
+  spo2: "Not recorded",
+  temperature: "Not recorded",
 };
 
 const MOCK_MEDICINES = [
@@ -154,12 +155,12 @@ function formatDate(value?: string | null) {
 }
 
 function formatVitalCardValue(vital: DailyVital | null) {
-  if (!vital) return DEFAULT_VITALS;
+  if (!vital) return NO_VITALS;
   return {
     bloodPressure: `${vital.blood_pressure_systolic}/${vital.blood_pressure_diastolic} mmHg`,
-    heartRate: `${vital.heart_rate} bpm`,
-    spo2: `${vital.spo2}%`,
-    temperature: `${vital.temperature.toFixed(1)}°F`,
+    heartRate: vital.heart_rate === null ? NO_VITALS.heartRate : `${vital.heart_rate} bpm`,
+    spo2: vital.spo2 === null ? NO_VITALS.spo2 : `${vital.spo2}%`,
+    temperature: vital.temperature === null ? NO_VITALS.temperature : `${vital.temperature.toFixed(1)}°F`,
   };
 }
 

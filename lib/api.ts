@@ -213,11 +213,18 @@ export const api = {
   patientLatestVitals(token: string) {
     return apiRequest<PatientVitals | null>("/patient/vitals/latest", { token });
   },
+  addBasicVitals(token: string, payload: { blood_pressure: string; sugar_level: string }) {
+    return apiRequest<PatientVitals>("/patient/vitals/basic", {
+      method: "POST",
+      token,
+      body: JSON.stringify(payload),
+    });
+  },
   patientVitalsToday(token: string) {
-    return apiRequest<DailyVital | null>("/api/patient/vitals/today", { token });
+    return apiRequest<DailyVital | null>("/patient/vitals/today", { token });
   },
   patientVitalsTrends(token: string) {
-    return apiRequest<VitalTrendPoint[]>("/api/patient/vitals/trends", { token });
+    return apiRequest<VitalTrendPoint[]>("/patient/vitals/trends", { token });
   },
   createPatientVital(
     token: string,
@@ -232,7 +239,7 @@ export const api = {
       recordedAt?: string;
     },
   ) {
-    return apiRequest<DailyVital>("/api/patient/vitals", {
+    return apiRequest<DailyVital>("/patient/vitals", {
       method: "POST",
       token,
       body: JSON.stringify(payload),
