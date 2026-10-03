@@ -1,3 +1,5 @@
+import { backendBaseUrl, buildBackendUrl } from "@/lib/backend-url";
+
 export const runtime = "nodejs";
 
 type BackendRouteContext = {
@@ -5,16 +7,6 @@ type BackendRouteContext = {
     path: string[];
   }>;
 };
-
-const DEFAULT_BACKEND_URL = "http://127.0.0.1:8000";
-
-function backendBaseUrl() {
-  return (
-    process.env.SERVER_API_URL ||
-    process.env.FASTAPI_URL ||
-    DEFAULT_BACKEND_URL
-  ).replace(/\/$/, "");
-}
 
 function forwardedHeaders(request: Request) {
   const headers = new Headers();
@@ -40,8 +32,12 @@ function forwardedHeaders(request: Request) {
 async function proxyToBackend(request: Request, context: BackendRouteContext) {
   const { path } = await context.params;
   const incomingUrl = new URL(request.url);
-  const targetPath = path.map((segment) => encodeURIComponent(segment)).join("/");
-  const targetUrl = `${backendBaseUrl()}/${targetPath}${incomingUrl.search}`;
+  const targetUrl = buildBackendUrl(path ?? [], incomingUrl.search);
+
+  if (!targetUrl) {
+    return Response.json({ detail: "Invalid backend path." }, { status: 400 });
+  }
+
   const method = request.method.toUpperCase();
   const hasBody = method !== "GET" && method !== "HEAD";
 

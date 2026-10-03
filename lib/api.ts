@@ -35,10 +35,9 @@ import type {
   AdminUser,
 } from "@/lib/types";
 
-const API_BASE_URL = (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000").replace(
-  /\/$/,
-  "",
-);
+// All FastAPI calls go through the same-origin proxy (app/api/backend/[...path]),
+// which forwards to the server-side SERVER_API_URL. NEXT_PUBLIC_API_URL is no longer used.
+const API_BASE_URL = "/api/backend";
 
 type RequestOptions = RequestInit & {
   token?: string;
