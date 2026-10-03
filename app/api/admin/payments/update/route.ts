@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
@@ -11,33 +12,19 @@ const paymentStatuses = new Set([
 ]);
 
 type UpdatePaymentBody = {
-  adminId?: number;
   paymentId?: number;
   status?: string;
 };
 
-async function requireAdmin(adminId: number) {
-  const user = await prisma.user.findUnique({
-    where: { id: adminId },
-    select: { role: true },
-  });
-
-  return user?.role === "ADMIN";
-}
-
 export async function POST(request: Request) {
-  const body = (await request.json()) as UpdatePaymentBody;
-  const adminId = Number(body.adminId);
+  const auth = await requireUser(request, ["admin"]);
+  if (auth instanceof Response) {
+    return auth;
+  }
+
+  const body = (await request.json().catch(() => ({}))) as UpdatePaymentBody;
   const paymentId = Number(body.paymentId);
   const status = body.status?.trim().toUpperCase();
-
-  if (!Number.isInteger(adminId) || adminId <= 0) {
-    return Response.json({ message: "Valid admin user ID is required." }, { status: 400 });
-  }
-
-  if (!(await requireAdmin(adminId))) {
-    return Response.json({ message: "Admin access is required." }, { status: 403 });
-  }
 
   if (!Number.isInteger(paymentId) || paymentId <= 0) {
     return Response.json({ message: "Valid payment ID is required." }, { status: 400 });

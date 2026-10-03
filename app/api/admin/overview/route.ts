@@ -1,32 +1,12 @@
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
-function parseAdminId(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const userId = Number(searchParams.get("userId"));
-
-  return Number.isInteger(userId) && userId > 0 ? userId : null;
-}
-
-async function requireAdmin(userId: number) {
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true, role: true },
-  });
-
-  return user?.role === "ADMIN";
-}
-
 export async function GET(request: Request) {
-  const adminId = parseAdminId(request);
-
-  if (!adminId) {
-    return Response.json({ message: "Valid admin user ID is required." }, { status: 400 });
-  }
-
-  if (!(await requireAdmin(adminId))) {
-    return Response.json({ message: "Admin access is required." }, { status: 403 });
+  const auth = await requireUser(request, ["admin"]);
+  if (auth instanceof Response) {
+    return auth;
   }
 
   const [

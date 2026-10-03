@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
@@ -11,35 +12,21 @@ const emergencyStatuses = new Set([
 ]);
 
 type UpdateEmergencyBody = {
-  adminId?: number;
   bookingId?: number;
   status?: string;
   estimatedMinutes?: number;
 };
 
-async function requireAdmin(adminId: number) {
-  const user = await prisma.user.findUnique({
-    where: { id: adminId },
-    select: { role: true },
-  });
-
-  return user?.role === "ADMIN";
-}
-
 export async function POST(request: Request) {
-  const body = (await request.json()) as UpdateEmergencyBody;
-  const adminId = Number(body.adminId);
+  const auth = await requireUser(request, ["admin"]);
+  if (auth instanceof Response) {
+    return auth;
+  }
+
+  const body = (await request.json().catch(() => ({}))) as UpdateEmergencyBody;
   const bookingId = Number(body.bookingId);
   const status = body.status?.trim().toUpperCase();
   const estimatedMinutes = Number(body.estimatedMinutes);
-
-  if (!Number.isInteger(adminId) || adminId <= 0) {
-    return Response.json({ message: "Valid admin user ID is required." }, { status: 400 });
-  }
-
-  if (!(await requireAdmin(adminId))) {
-    return Response.json({ message: "Admin access is required." }, { status: 403 });
-  }
 
   if (!Number.isInteger(bookingId) || bookingId <= 0) {
     return Response.json({ message: "Valid booking ID is required." }, { status: 400 });
