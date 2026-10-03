@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 
+import { authHeaders } from "@/lib/auth";
+
 type SummaryResponse = {
   summary: string;
   key_findings: string[];
@@ -71,8 +73,9 @@ export default function SummarizePage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...authHeaders(),
         },
-        body: JSON.stringify({ userId }),
+        body: JSON.stringify({}),
       });
       const data = (await response.json()) as SummaryResponse & { message?: string };
 
@@ -108,6 +111,7 @@ export default function SummarizePage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...authHeaders(),
         },
         body: JSON.stringify({ text }),
       });

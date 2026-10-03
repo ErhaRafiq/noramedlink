@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
+import { authHeaders, getSession } from "@/lib/auth";
+
 type Vitals = {
   id: number;
   bloodPressure: string;
@@ -312,14 +314,6 @@ const seriousThreatKeywords = [
   "very high",
   "very low",
 ];
-
-function getStoredValue(key: string) {
-  if (typeof window === "undefined") {
-    return "";
-  }
-
-  return localStorage.getItem(key) ?? "";
-}
 
 function parseBloodPressure(value?: string) {
   const match = value?.match(/(\d+)\s*\/\s*(\d+)/);
@@ -923,9 +917,9 @@ export default function DashboardPage() {
   };
 
   const deleteMedicalRecord = async (recordId: number) => {
-    const userId = getStoredValue("userId");
+    const session = getSession();
 
-    if (!userId) {
+    if (!session) {
       setStatusMessage("Please login before removing reports.");
       return;
     }
@@ -946,8 +940,9 @@ export default function DashboardPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...authHeaders(),
         },
-        body: JSON.stringify({ userId, recordId }),
+        body: JSON.stringify({ recordId }),
       });
       const data = (await response.json()) as { message?: string };
 
@@ -975,9 +970,9 @@ export default function DashboardPage() {
   };
 
   const generateDashboardOtp = async () => {
-    const userId = getStoredValue("userId");
+    const session = getSession();
 
-    if (!userId) {
+    if (!session) {
       setStatusMessage("Please login before generating a doctor OTP.");
       return;
     }
@@ -988,8 +983,7 @@ export default function DashboardPage() {
     try {
       const response = await fetch("/api/dashboard/access-otp", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId }),
+        headers: { "Content-Type": "application/json", ...authHeaders() },
       });
       const data = (await response.json()) as {
         message?: string;
@@ -1024,9 +1018,9 @@ export default function DashboardPage() {
   };
 
   const loadDashboard = useCallback(async () => {
-    const userId = getStoredValue("userId");
+    const session = getSession();
 
-    if (!userId) {
+    if (!session) {
       setIsLoading(false);
       setStatusMessage("Please login to view your dashboard.");
       return;
@@ -1035,7 +1029,7 @@ export default function DashboardPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`/api/dashboard?userId=${userId}`);
+      const response = await fetch("/api/dashboard", { headers: authHeaders() });
       const data = (await response.json()) as Partial<DashboardData> & {
         message?: string;
       };
@@ -1061,9 +1055,9 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
-    const userId = getStoredValue("userId");
+    const session = getSession();
 
-    if (!userId) {
+    if (!session) {
       setTimeout(() => {
         setIsLoading(false);
         setStatusMessage("Please login to view your dashboard.");
@@ -1073,7 +1067,8 @@ export default function DashboardPage() {
 
     const controller = new AbortController();
 
-    fetch(`/api/dashboard?userId=${userId}`, {
+    fetch("/api/dashboard", {
+      headers: authHeaders(),
       signal: controller.signal,
     })
       .then(async (response) => {
@@ -1143,9 +1138,9 @@ export default function DashboardPage() {
   const handleVitalsSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatusMessage("");
-    const userId = getStoredValue("userId");
+    const session = getSession();
 
-    if (!userId) {
+    if (!session) {
       setStatusMessage("Please login before adding vitals.");
       return;
     }
@@ -1157,9 +1152,9 @@ export default function DashboardPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...authHeaders(),
         },
         body: JSON.stringify({
-          userId,
           bloodPressure,
           sugarLevel,
         }),
@@ -1186,9 +1181,9 @@ export default function DashboardPage() {
   const handleMedicineReminderSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatusMessage("");
-    const userId = getStoredValue("userId");
+    const session = getSession();
 
-    if (!userId) {
+    if (!session) {
       setStatusMessage("Please login before adding a medicine reminder.");
       return;
     }
@@ -1211,9 +1206,9 @@ export default function DashboardPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...authHeaders(),
         },
         body: JSON.stringify({
-          userId,
           title: `Take ${medicineReminderName.trim()}`,
           dueAt: medicineReminderAt,
         }),
@@ -1240,9 +1235,9 @@ export default function DashboardPage() {
   const scanRecord = async (fileName: string, imageData: string, extractedText?: string) => {
     setStatusMessage("");
 
-    const userId = getStoredValue("userId");
+    const session = getSession();
 
-    if (!userId) {
+    if (!session) {
       setStatusMessage("Please login before uploading records.");
       return;
     }
@@ -1255,9 +1250,9 @@ export default function DashboardPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...authHeaders(),
         },
         body: JSON.stringify({
-          userId,
           fileName,
           imageData,
           ...(trimmedExtractedText ? { extractedText: trimmedExtractedText } : {}),
@@ -1312,9 +1307,9 @@ export default function DashboardPage() {
   const handleRecordSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setStatusMessage("");
-    const userId = getStoredValue("userId");
+    const session = getSession();
 
-    if (!userId) {
+    if (!session) {
       setStatusMessage("Please login before uploading records.");
       return;
     }

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 
+import { authHeaders } from "@/lib/auth";
+
 type BookingResponse = {
   message?: string;
   booking?: {
@@ -68,9 +70,9 @@ export default function EmergencyPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...authHeaders(),
         },
         body: JSON.stringify({
-          userId,
           patientName,
           phone,
           address,

@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
+import { authHeaders } from "@/lib/auth";
+
 type DoctorOverview = {
   doctor: {
     id: number;
@@ -144,12 +146,12 @@ export default function DoctorDashboardPage() {
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [activePatientId, setActivePatientId] = useState<number | null>(null);
 
-  const loadOverview = useCallback(async (activeDoctorId: string) => {
+  const loadOverview = useCallback(async () => {
     setIsLoading(true);
     setStatusMessage("");
 
     try {
-      const response = await fetch(`/api/doctor/overview?userId=${activeDoctorId}`);
+      const response = await fetch("/api/doctor/overview", { headers: authHeaders() });
       const data = (await response.json()) as DoctorOverview & { message?: string };
 
       if (!response.ok) {
@@ -174,7 +176,7 @@ export default function DoctorDashboardPage() {
     }
 
     const timeoutId = window.setTimeout(() => {
-      void loadOverview(doctorId);
+      void loadOverview();
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
@@ -207,11 +209,8 @@ export default function DoctorDashboardPage() {
     try {
       const response = await fetch("/api/doctor/access/unlock", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          doctorId,
-          patientAccessOtp,
-        }),
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ patientAccessOtp }),
       });
       const data = (await response.json()) as {
         message?: string;
@@ -225,7 +224,7 @@ export default function DoctorDashboardPage() {
 
       setStatusMessage(data.message ?? "Patient dashboard unlocked.");
       setPatientAccessOtp("");
-      await loadOverview(doctorId);
+      await loadOverview();
 
       if (data.patient?.id) {
         setActivePatientId(data.patient.id);
@@ -243,8 +242,8 @@ export default function DoctorDashboardPage() {
     try {
       const response = await fetch("/api/doctor/access/end", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ doctorId, patientId }),
+        headers: { "Content-Type": "application/json", ...authHeaders() },
+        body: JSON.stringify({ patientId }),
       });
       const data = (await response.json()) as { message?: string };
 
@@ -255,7 +254,7 @@ export default function DoctorDashboardPage() {
 
       setStatusMessage(data.message ?? "Consultation session ended.");
       setActivePatientId(null);
-      await loadOverview(doctorId);
+      await loadOverview();
     } catch {
       setStatusMessage("Unable to end consultation session.");
     }

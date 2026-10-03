@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 
+import { authHeaders } from "@/lib/auth";
+
 type PaymentMethod = "EASYPAISA" | "JAZZCASH" | "NAYAPAY" | "CASH";
 
 const paymentOptions: Array<{
@@ -92,9 +94,9 @@ export default function PaymentsClient() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...authHeaders(),
         },
         body: JSON.stringify({
-          userId,
           amount,
           method,
           phone: isCashPayment ? undefined : phone,
