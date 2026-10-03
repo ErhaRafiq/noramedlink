@@ -128,88 +128,16 @@ def ensure_runtime_dirs() -> None:
     get_upload_root_path().mkdir(parents=True, exist_ok=True)
 
 
-def ensure_schema_compatibility() -> None:
-    """Keep local/dev databases compatible; PostgreSQL production should still use Prisma migrations."""
+def run_migrations() -> None:
+    """Bring the database schema to the latest Alembic revision (backend/migrations).
+
+    Every migration is additive and checks what already exists, so this is safe on
+    fresh databases and on ones created earlier by create_all or Prisma.
+    """
+    from alembic import command
+    from alembic.config import Config
+
+    config = Config(str(BACKEND_DIR / "alembic.ini"))
     with engine.begin() as connection:
-        if DATABASE_BACKEND == "postgresql":
-            connection.execute(
-                text(
-                    """
-                    ALTER TABLE users
-                    ADD COLUMN IF NOT EXISTS is_active BOOLEAN NOT NULL DEFAULT true
-                    """
-                )
-            )
-            connection.execute(
-                text(
-                    """
-                    ALTER TABLE signup_otps
-                    ADD COLUMN IF NOT EXISTS payload_json JSONB NOT NULL DEFAULT '{}'::jsonb
-                    """
-                )
-            )
-            connection.execute(
-                text(
-                    """
-                    ALTER TABLE patient_reports
-                    ADD COLUMN IF NOT EXISTS extracted_entities JSONB NOT NULL DEFAULT '[]'::jsonb,
-                    ADD COLUMN IF NOT EXISTS rule_warnings JSONB NOT NULL DEFAULT '[]'::jsonb,
-                    ADD COLUMN IF NOT EXISTS validation_status TEXT NOT NULL DEFAULT 'SAFE',
-                    ADD COLUMN IF NOT EXISTS validation_results JSONB NOT NULL DEFAULT '{}'::jsonb,
-                    ADD COLUMN IF NOT EXISTS clinical_summary_json JSONB NOT NULL DEFAULT '{}'::jsonb,
-                    ADD COLUMN IF NOT EXISTS llm_self_check JSONB NOT NULL DEFAULT '{}'::jsonb,
-                    ADD COLUMN IF NOT EXISTS summary_source TEXT NOT NULL DEFAULT 'rule_based'
-                    """
-                )
-            )
-            connection.execute(text("ALTER TABLE medical_ai_analyses ADD COLUMN IF NOT EXISTS patient_report_id INTEGER"))
-            connection.execute(
-                text(
-                    'CREATE INDEX IF NOT EXISTS patient_reports_validation_status_idx ON patient_reports("validation_status")'
-                )
-            )
-            connection.execute(
-                text(
-                    'CREATE INDEX IF NOT EXISTS medical_ai_analyses_patient_report_id_idx ON medical_ai_analyses("patient_report_id")'
-                )
-            )
-            return
-
-        if DATABASE_BACKEND == "sqlite":
-            user_columns = {
-                row[1]
-                for row in connection.execute(text("PRAGMA table_info(users)")).fetchall()
-            }
-            if "is_active" not in user_columns:
-                connection.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"))
-
-            otp_columns = {
-                row[1]
-                for row in connection.execute(text("PRAGMA table_info(signup_otps)")).fetchall()
-            }
-            if "payload_json" not in otp_columns:
-                connection.execute(text("ALTER TABLE signup_otps ADD COLUMN payload_json TEXT NOT NULL DEFAULT '{}'"))
-
-            report_columns = {
-                row[1]
-                for row in connection.execute(text("PRAGMA table_info(patient_reports)")).fetchall()
-            }
-            sqlite_report_columns = {
-                "extracted_entities": "TEXT NOT NULL DEFAULT '[]'",
-                "rule_warnings": "TEXT NOT NULL DEFAULT '[]'",
-                "validation_status": "TEXT NOT NULL DEFAULT 'SAFE'",
-                "validation_results": "TEXT NOT NULL DEFAULT '{}'",
-                "clinical_summary_json": "TEXT NOT NULL DEFAULT '{}'",
-                "llm_self_check": "TEXT NOT NULL DEFAULT '{}'",
-                "summary_source": "TEXT NOT NULL DEFAULT 'rule_based'",
-            }
-            for column, ddl in sqlite_report_columns.items():
-                if column not in report_columns:
-                    connection.execute(text(f"ALTER TABLE patient_reports ADD COLUMN {column} {ddl}"))
-
-            analysis_columns = {
-                row[1]
-                for row in connection.execute(text("PRAGMA table_info(medical_ai_analyses)")).fetchall()
-            }
-            if "patient_report_id" not in analysis_columns:
-                connection.execute(text("ALTER TABLE medical_ai_analyses ADD COLUMN patient_report_id INTEGER"))
+        config.attributes["connection"] = connection
+        command.upgrade(config, "head")

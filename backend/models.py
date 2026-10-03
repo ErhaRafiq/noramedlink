@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, JSON, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, JSON, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -177,6 +177,10 @@ class Payment(Base):
 
 class Vitals(Base):
     __tablename__ = "vitals"
+    # Matches the Prisma schema's @@index declarations.
+    __table_args__ = (
+        Index("vitals_user_id_created_at_idx", "user_id", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -198,6 +202,10 @@ class Medication(Base):
 
 class Reminder(Base):
     __tablename__ = "reminders"
+    # Matches the Prisma schema's @@index declarations.
+    __table_args__ = (
+        Index("reminders_user_id_due_at_idx", "user_id", "due_at"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -215,6 +223,10 @@ class Reminder(Base):
 
 class MedicalDocument(Base):
     __tablename__ = "medical_documents"
+    # Matches the Prisma schema's @@index declarations.
+    __table_args__ = (
+        Index("medical_documents_user_id_created_at_idx", "user_id", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -324,6 +336,10 @@ class MedicalDepartment(Base):
 
 class PatientReport(Base):
     __tablename__ = "patient_reports"
+    # Matches the Prisma schema's @@index declarations.
+    __table_args__ = (
+        Index("patient_reports_patient_id_upload_date_idx", "patient_id", "upload_date"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -367,6 +383,10 @@ class PatientReport(Base):
 
 class MedicalAiAnalysis(Base):
     __tablename__ = "medical_ai_analyses"
+    # Matches the Prisma schema's @@index declarations.
+    __table_args__ = (
+        Index("medical_ai_analyses_user_id_created_at_idx", "user_id", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -422,6 +442,10 @@ class MedicineHistory(Base):
 
 class HealthRiskPrediction(Base):
     __tablename__ = "health_risk_predictions"
+    # Matches the Prisma schema's @@index declarations.
+    __table_args__ = (
+        Index("health_risk_predictions_patient_id_created_at_idx", "patient_id", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -436,6 +460,10 @@ class HealthRiskPrediction(Base):
 
 class HealthTip(Base):
     __tablename__ = "health_tips"
+    # Matches the Prisma schema's @@index declarations.
+    __table_args__ = (
+        Index("health_tips_patient_id_created_at_idx", "patient_id", "created_at"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -449,6 +477,10 @@ class HealthTip(Base):
 
 class DoctorSummary(Base):
     __tablename__ = "doctor_summaries"
+    # Matches the Prisma schema's @@index declarations.
+    __table_args__ = (
+        Index("doctor_summaries_patient_id_generated_at_idx", "patient_id", "generated_at"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -523,6 +555,11 @@ class NotificationToken(Base):
 
 class Notification(Base):
     __tablename__ = "notifications"
+    # Matches the Prisma schema's @@index declarations.
+    __table_args__ = (
+        Index("notifications_user_id_created_at_idx", "user_id", "created_at"),
+        Index("notifications_reminder_id_idx", "reminder_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)

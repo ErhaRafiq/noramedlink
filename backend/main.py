@@ -13,15 +13,15 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
-from database import Base, check_database_connection, engine, ensure_runtime_dirs, ensure_schema_compatibility, get_upload_root_path
+from database import check_database_connection, ensure_runtime_dirs, get_upload_root_path, run_migrations
 from routers import admin, appointments, auth, doctor, medical_ai, nlp, ocr, patient, payments, reminders, reports
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     ensure_runtime_dirs()
-    Base.metadata.create_all(bind=engine)
-    ensure_schema_compatibility()
+    # Schema changes go through Alembic migrations (backend/migrations), not create_all.
+    run_migrations()
     yield
 
 
