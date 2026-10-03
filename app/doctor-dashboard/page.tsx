@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
-import { authHeaders } from "@/lib/auth";
+import { api } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 
 type DoctorOverview = {
   doctor: {
@@ -151,20 +152,18 @@ export default function DoctorDashboardPage() {
     setStatusMessage("");
 
     try {
-      const response = await fetch("/api/doctor/overview", { headers: authHeaders() });
-      const data = (await response.json()) as DoctorOverview & { message?: string };
-
-      if (!response.ok) {
+      const session = getSession();
+      if (!session) {
         setOverview(null);
-        setStatusMessage(data.message ?? "Doctor dashboard could not be loaded.");
+        setStatusMessage("Login to open the doctor dashboard.");
         return;
       }
-
+      const data = await api.doctorOverview<DoctorOverview>(session.token);
       setOverview(data);
       setActivePatientId((currentPatientId) => currentPatientId ?? data.patients[0]?.id ?? null);
-    } catch {
+    } catch (error) {
       setOverview(null);
-      setStatusMessage("Unable to load doctor dashboard.");
+      setStatusMessage(error instanceof Error ? error.message : "Unable to load doctor dashboard.");
     } finally {
       setIsLoading(false);
     }
@@ -207,21 +206,12 @@ export default function DoctorDashboardPage() {
     setIsUnlocking(true);
 
     try {
-      const response = await fetch("/api/doctor/access/unlock", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ patientAccessOtp }),
-      });
-      const data = (await response.json()) as {
-        message?: string;
-        patient?: { id: number };
-      };
-
-      if (!response.ok) {
-        setStatusMessage(data.message ?? "Unable to unlock patient dashboard.");
+      const session = getSession();
+      if (!session) {
+        setStatusMessage("Login to open the doctor dashboard.");
         return;
       }
-
+      const data = await api.unlockPatientDashboard(session.token, patientAccessOtp);
       setStatusMessage(data.message ?? "Patient dashboard unlocked.");
       setPatientAccessOtp("");
       await loadOverview();
@@ -229,8 +219,8 @@ export default function DoctorDashboardPage() {
       if (data.patient?.id) {
         setActivePatientId(data.patient.id);
       }
-    } catch {
-      setStatusMessage("Unable to unlock patient dashboard.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Unable to unlock patient dashboard.");
     } finally {
       setIsUnlocking(false);
     }
@@ -240,23 +230,17 @@ export default function DoctorDashboardPage() {
     setStatusMessage("");
 
     try {
-      const response = await fetch("/api/doctor/access/end", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-        body: JSON.stringify({ patientId }),
-      });
-      const data = (await response.json()) as { message?: string };
-
-      if (!response.ok) {
-        setStatusMessage(data.message ?? "Unable to end consultation session.");
+      const session = getSession();
+      if (!session) {
+        setStatusMessage("Login to open the doctor dashboard.");
         return;
       }
-
+      const data = await api.endPatientDashboardAccess(session.token, patientId);
       setStatusMessage(data.message ?? "Consultation session ended.");
       setActivePatientId(null);
       await loadOverview();
-    } catch {
-      setStatusMessage("Unable to end consultation session.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Unable to end consultation session.");
     }
   };
 

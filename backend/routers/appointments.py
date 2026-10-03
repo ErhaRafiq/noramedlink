@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from dependencies import get_current_user, require_patient
-from models import Appointment, DoctorProfile, PatientDashboardAccess, PatientDashboardOtp, User
+from models import Appointment, DoctorProfile, User
 from schemas import (
     AppointmentBookingResponse,
     AppointmentCreate,
@@ -14,11 +14,11 @@ from schemas import (
     AppointmentOut,
     AppointmentUpdate,
 )
+from services.dashboard_access import grant_access_by_otp
 
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
-CONSULTATION_ACCESS_HOURS = 2
 # Admin approval sets the doctor profile's status to "approved".
 VERIFIED_DOCTOR_STATUS = "approved"
 PATIENT_SETTABLE_STATUSES = {"CANCELLED"}
@@ -111,55 +111,6 @@ def resolve_doctor(payload: AppointmentCreate, db: Session) -> User:
     return doctor
 
 
-def grant_temporary_dashboard_access_by_otp(
-    db: Session,
-    doctor_id: int,
-    otp_code: str,
-    expected_patient_id: int,
-) -> bool:
-    now = datetime.now(timezone.utc)
-    otp = (
-        db.query(PatientDashboardOtp)
-        .filter(
-            PatientDashboardOtp.code == otp_code.strip(),
-            PatientDashboardOtp.used_at.is_(None),
-            PatientDashboardOtp.expires_at > now,
-            PatientDashboardOtp.patient_id == expected_patient_id,
-        )
-        .first()
-    )
-
-    if not otp:
-        return False
-
-    otp.used_at = now
-    expires_at = now + timedelta(hours=CONSULTATION_ACCESS_HOURS)
-    access = (
-        db.query(PatientDashboardAccess)
-        .filter(
-            PatientDashboardAccess.doctor_id == doctor_id,
-            PatientDashboardAccess.patient_id == expected_patient_id,
-        )
-        .first()
-    )
-
-    if access:
-        access.status = "ACTIVE"
-        access.expires_at = expires_at
-        access.ended_at = None
-    else:
-        db.add(
-            PatientDashboardAccess(
-                doctor_id=doctor_id,
-                patient_id=expected_patient_id,
-                status="ACTIVE",
-                expires_at=expires_at,
-            )
-        )
-
-    return True
-
-
 @router.get("/doctors", response_model=list[AppointmentDoctorOut])
 def list_doctors(
     query: str | None = None,
@@ -219,11 +170,9 @@ def create_appointment(
     dashboard_access_granted = False
     patient_access_otp = payload.patient_access_otp.strip() if payload.patient_access_otp else ""
     if patient_access_otp:
-        dashboard_access_granted = grant_temporary_dashboard_access_by_otp(
-            db=db,
-            doctor_id=doctor.id,
-            otp_code=patient_access_otp,
-            expected_patient_id=current_user.id,
+        dashboard_access_granted = (
+            grant_access_by_otp(db, doctor.id, patient_access_otp, expected_patient_id=current_user.id, commit=False)
+            is not None
         )
 
     db.commit()

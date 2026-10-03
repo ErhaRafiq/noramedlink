@@ -325,6 +325,31 @@ export const api = {
       body: JSON.stringify(payload),
     });
   },
+  patientOverview<T>(token: string, init?: { signal?: AbortSignal }) {
+    return apiRequest<T>("/patient/overview", { token, signal: init?.signal });
+  },
+  issueDashboardOtp(token: string) {
+    return apiRequest<{ message: string; otp: { code: string; expiresAt: string } }>("/patient/dashboard-otp", {
+      method: "POST",
+      token,
+    });
+  },
+  doctorOverview<T>(token: string) {
+    return apiRequest<T>("/doctor/overview", { token });
+  },
+  unlockPatientDashboard(token: string, patientAccessOtp: string) {
+    return apiRequest<{ message: string; patient: { id: number; name: string; email: string }; expiresAt: string }>(
+      "/doctor/access/unlock",
+      { method: "POST", token, body: JSON.stringify({ patientAccessOtp }) },
+    );
+  },
+  endPatientDashboardAccess(token: string, patientId: number) {
+    return apiRequest<{ message: string }>("/doctor/access/end", {
+      method: "POST",
+      token,
+      body: JSON.stringify({ patientId }),
+    });
+  },
   createPayment(
     token: string,
     payload: { amount: number; method: string; purpose: string; phone?: string; appointment_id?: number },

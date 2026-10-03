@@ -982,24 +982,11 @@ export default function DashboardPage() {
     setStatusMessage("");
 
     try {
-      const response = await fetch("/api/dashboard/access-otp", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...authHeaders() },
-      });
-      const data = (await response.json()) as {
-        message?: string;
-        otp?: { code: string; expiresAt: string };
-      };
-
-      if (!response.ok || !data.otp) {
-        setStatusMessage(data.message ?? "Unable to generate OTP.");
-        return;
-      }
-
+      const data = await api.issueDashboardOtp(session.token);
       setDashboardOtp(data.otp);
       setStatusMessage("One-time doctor OTP generated. Share it only with your doctor.");
-    } catch {
-      setStatusMessage("Unable to generate OTP.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Unable to generate OTP.");
     } finally {
       setIsGeneratingOtp(false);
     }
@@ -1030,16 +1017,7 @@ export default function DashboardPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/dashboard", { headers: authHeaders() });
-      const data = (await response.json()) as Partial<DashboardData> & {
-        message?: string;
-      };
-
-      if (!response.ok) {
-        setStatusMessage(data.message ?? "Unable to load dashboard.");
-        return;
-      }
-
+      const data = await api.patientOverview<Partial<DashboardData>>(session.token);
       setDashboard({
         latestVitals: data.latestVitals ?? null,
         vitalsHistory: data.vitalsHistory ?? [],
@@ -1048,8 +1026,8 @@ export default function DashboardPage() {
         reminders: data.reminders ?? [],
         medicalRecords: data.medicalRecords ?? [],
       });
-    } catch {
-      setStatusMessage("Unable to load dashboard. Please try again.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Unable to load dashboard. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -1068,20 +1046,9 @@ export default function DashboardPage() {
 
     const controller = new AbortController();
 
-    fetch("/api/dashboard", {
-      headers: authHeaders(),
-      signal: controller.signal,
-    })
-      .then(async (response) => {
-        const data = (await response.json()) as Partial<DashboardData> & {
-          message?: string;
-        };
-
-        if (!response.ok) {
-          setStatusMessage(data.message ?? "Unable to load dashboard.");
-          return;
-        }
-
+    api
+      .patientOverview<Partial<DashboardData>>(session.token, { signal: controller.signal })
+      .then((data) => {
         setDashboard({
           latestVitals: data.latestVitals ?? null,
           vitalsHistory: data.vitalsHistory ?? [],
@@ -1092,11 +1059,12 @@ export default function DashboardPage() {
         });
       })
       .catch((error: unknown) => {
-        if (error instanceof DOMException && error.name === "AbortError") {
+        // apiRequest wraps network errors, so check the signal rather than the error type.
+        if (controller.signal.aborted) {
           return;
         }
 
-        setStatusMessage("Unable to load dashboard. Please try again.");
+        setStatusMessage(error instanceof Error ? error.message : "Unable to load dashboard. Please try again.");
       })
       .finally(() => {
         setIsLoading(false);

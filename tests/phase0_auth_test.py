@@ -50,18 +50,15 @@ LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 # Next.js admin routes were all removed in Phase 1; admin endpoints are in FASTAPI_ADMIN_ROUTES.
 ADMIN_ROUTES: list[tuple[str, str]] = []
 DOCTOR_ROUTES = [
-    ("GET", "/api/doctor/overview"),
-    ("POST", "/api/doctor/access/unlock"),
-    ("POST", "/api/doctor/access/end"),
+    ("GET", "/api/backend/doctor/overview"),
+    ("POST", "/api/backend/doctor/access/unlock"),
+    ("POST", "/api/backend/doctor/access/end"),
 ]
 PATIENT_ROUTES = [
-    ("GET", "/api/dashboard"),
-    ("POST", "/api/dashboard/access-otp"),
     ("POST", "/api/medical-records/upload"),
     ("POST", "/api/medical-records/scan"),
     ("POST", "/api/medical-records/delete"),
     ("POST", "/api/emergency/book"),
-    ("POST", "/api/appointment/create"),
 ]
 ANY_USER_ROUTES = [
     ("POST", "/api/summarize"),
@@ -83,6 +80,8 @@ FASTAPI_PATIENT_ROUTES = [
     ("PATCH", "/api/backend/patient/medicine-reminders/1/skip"),
     ("POST", "/api/backend/appointments"),
     ("POST", "/api/backend/payments"),
+    ("GET", "/api/backend/patient/overview"),
+    ("POST", "/api/backend/patient/dashboard-otp"),
 ]
 # FastAPI endpoints restricted to admins.
 FASTAPI_ADMIN_ROUTES = [
@@ -314,7 +313,7 @@ def call(method: str, path: str, token: str | None = None, body: dict | None = N
 
 
 def overview_patient_ids(doctor_token: str) -> list[int]:
-    response = call("GET", "/api/doctor/overview", doctor_token)
+    response = call("GET", "/api/backend/doctor/overview", doctor_token)
     if response.status_code != 200:
         raise AssertionError(f"doctor/overview returned {response.status_code}")
     return [patient["id"] for patient in response.json().get("patients", [])]
@@ -355,11 +354,11 @@ def run_tests() -> None:
         check(f"{method} {path} without token -> 401", response.status_code == 401, f"got {response.status_code}")
 
     print("\n[2] Invalid tokens -> 401")
-    response = call("GET", "/api/dashboard", token_for(patient_a, exp=int(time.time()) - 60))
+    response = call("GET", "/api/backend/patient/overview", token_for(patient_a, exp=int(time.time()) - 60))
     check("expired token -> 401", response.status_code == 401, f"got {response.status_code}")
     response = call("GET", "/api/backend/api/admin/dashboard-stats", tampered_token(tok_a, admin))
     check("token with tampered subject -> 401", response.status_code == 401, f"got {response.status_code}")
-    response = call("GET", "/api/dashboard", "not-a-jwt")
+    response = call("GET", "/api/backend/patient/overview", "not-a-jwt")
     check("malformed token -> 401", response.status_code == 401, f"got {response.status_code}")
 
     print("\n[3] Wrong role -> 403")
@@ -376,21 +375,21 @@ def run_tests() -> None:
         check(f"doctor on {path} -> 403", response.status_code == 403, f"got {response.status_code}")
     response = call("POST", "/api/summarize", tok_doctor, {})
     check("doctor on summarize saved-report mode -> 403", response.status_code == 403, f"got {response.status_code}")
-    response = call("GET", "/api/dashboard", token_for(inactive))
+    response = call("GET", "/api/backend/patient/overview", token_for(inactive))
     check("inactive patient account -> 403", response.status_code == 403, f"got {response.status_code}")
     response = call("GET", "/api/backend/patient/vitals/today", token_for(inactive))
-    check("inactive patient account on FastAPI -> 403", response.status_code == 403, f"got {response.status_code}")
+    check("inactive patient account on vitals -> 403", response.status_code == 403, f"got {response.status_code}")
 
     print("\n[4] Correct role -> allowed (positive controls)")
     check("admin on admin dashboard-stats -> 200", call("GET", "/api/backend/api/admin/dashboard-stats", tok_admin).status_code == 200)
-    check("doctor on doctor/overview -> 200", call("GET", "/api/doctor/overview", tok_doctor).status_code == 200)
-    check("patient on dashboard -> 200", call("GET", "/api/dashboard", tok_a).status_code == 200)
+    check("doctor on doctor/overview -> 200", call("GET", "/api/backend/doctor/overview", tok_doctor).status_code == 200)
+    check("patient on overview -> 200", call("GET", "/api/backend/patient/overview", tok_a).status_code == 200)
 
     print("\n[5] Ownership: Patient A cannot read or delete Patient B's records")
     record_a = create_record(patient_a, f"{TEST_PREFIX}record A")
     record_b = create_record(patient_b, f"{TEST_PREFIX}record B")
 
-    response = call("GET", f"/api/dashboard?userId={patient_b}", tok_a)
+    response = call("GET", f"/api/backend/patient/overview?user_id={patient_b}&userId={patient_b}", tok_a)
     record_ids = [record["id"] for record in response.json().get("medicalRecords", [])]
     check("A's dashboard lists A's record", record_a in record_ids, f"ids={record_ids}")
     check("A's dashboard (with ?userId=B) does not list B's record", record_b not in record_ids, f"ids={record_ids}")
@@ -545,34 +544,50 @@ def run_tests() -> None:
     create_grant(doctor, patient_a, expires_in=timedelta(minutes=-5))
     check("expired grant -> patient A not listed", patient_a not in overview_patient_ids(tok_doctor))
 
+    overview = call("GET", "/api/backend/doctor/overview", tok_doctor).json()
+    check("no grant -> none of A's medical records or medications visible",
+          all(r["userId"] != patient_a for r in overview["medicalRecords"] + overview["medications"]))
     create_grant(doctor, patient_a, expires_in=timedelta(hours=1))
     check("active grant -> patient A listed", patient_a in overview_patient_ids(tok_doctor))
+    overview = call("GET", "/api/backend/doctor/overview", tok_doctor).json()
+    check("active grant -> A's record and latest vitals visible",
+          record_a in [r["id"] for r in overview["medicalRecords"]]
+          and next(p for p in overview["patients"] if p["id"] == patient_a)["latestVitals"] is not None)
     check("grant is per doctor -> doctor 2 does not see A", patient_a not in overview_patient_ids(tok_doctor_2))
 
-    response = call("POST", "/api/doctor/access/end", tok_doctor_2, {"patientId": patient_a, "doctorId": doctor})
+    response = call("POST", "/api/backend/doctor/access/end", tok_doctor_2, {"patientId": patient_a, "doctorId": doctor})
     check("doctor 2 calling access/end (doctorId spoofed) -> 200", response.status_code == 200, f"got {response.status_code}")
     check("doctor 2 cannot end doctor 1's grant -> A still listed", patient_a in overview_patient_ids(tok_doctor))
 
-    response = call("POST", "/api/doctor/access/end", tok_doctor, {"patientId": patient_a})
+    response = call("POST", "/api/backend/doctor/access/end", tok_doctor, {"patientId": patient_a})
     check("doctor ends access -> 200", response.status_code == 200, f"got {response.status_code}")
     check("after access/end -> patient A not listed", patient_a not in overview_patient_ids(tok_doctor))
 
     print("\n[7] OTP unlock flow (patient-issued OTP -> doctor unlock -> end)")
-    response = call("POST", "/api/dashboard/access-otp", tok_a, {"userId": patient_b})
+    response = call("POST", "/api/backend/patient/dashboard-otp", tok_a, {"userId": patient_b, "user_id": patient_b})
     otp = (response.json().get("otp") or {}).get("code")
     check("A generates dashboard OTP -> 200", response.status_code == 200 and bool(otp), f"got {response.status_code}")
     check(
         "OTP belongs to A (body userId=B ignored)",
         scalar("select patient_id from patient_dashboard_otps where code = :c", c=otp) == patient_a,
     )
-    response = call("POST", "/api/doctor/access/unlock", tok_doctor, {"patientAccessOtp": otp, "doctorId": doctor_2})
+    response = call("POST", "/api/backend/doctor/access/unlock", tok_doctor, {"patientAccessOtp": otp, "doctorId": doctor_2})
     check("doctor unlocks with OTP -> 200", response.status_code == 200, f"got {response.status_code}")
     check("after unlock -> A listed for doctor", patient_a in overview_patient_ids(tok_doctor))
     check("after unlock -> A not listed for doctor 2 (doctorId spoof ignored)", patient_a not in overview_patient_ids(tok_doctor_2))
-    response = call("POST", "/api/doctor/access/unlock", tok_doctor, {"patientAccessOtp": otp})
+    response = call("POST", "/api/backend/doctor/access/unlock", tok_doctor, {"patientAccessOtp": otp})
     check("OTP is single-use -> second unlock 404", response.status_code == 404, f"got {response.status_code}")
-    call("POST", "/api/doctor/access/end", tok_doctor, {"patientId": patient_a})
+    call("POST", "/api/backend/doctor/access/end", tok_doctor, {"patientId": patient_a})
     check("after end -> A not listed", patient_a not in overview_patient_ids(tok_doctor))
+
+    otp = call("POST", "/api/backend/patient/dashboard-otp", tok_a).json()["otp"]["code"]
+    response = call("POST", "/api/backend/appointments", tok_a,
+                    {"doctor_id": doctor_2, "date": future, "reason": "Second opinion", "patient_access_otp": otp})
+    check("booking with an OTP -> access granted", response.status_code == 201 and response.json().get("dashboard_access_granted") is True,
+          f"got {response.status_code}")
+    check("booked doctor (2) now sees A", patient_a in overview_patient_ids(tok_doctor_2))
+    check("other doctor still does not", patient_a not in overview_patient_ids(tok_doctor))
+    call("POST", "/api/backend/doctor/access/end", tok_doctor_2, {"patientId": patient_a})
 
 
 def main() -> int:
