@@ -293,7 +293,7 @@ export const api = {
     });
   },
   medicines(token: string) {
-    return apiRequest<MedicationSchedule[]>("/api/medicines", { token });
+    return apiRequest<MedicationSchedule[]>("/patient/medications", { token });
   },
   createMedicineSchedule(
     token: string,
@@ -305,7 +305,7 @@ export const api = {
       endDate?: string | null;
     },
   ) {
-    return apiRequest<MedicationSchedule>("/api/medicines", {
+    return apiRequest<MedicationSchedule>("/patient/medications", {
       method: "POST",
       token,
       body: JSON.stringify(payload),

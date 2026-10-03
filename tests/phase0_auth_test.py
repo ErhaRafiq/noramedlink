@@ -80,6 +80,8 @@ FASTAPI_PATIENT_ROUTES = [
     ("GET", "/api/backend/patient/vitals/today"),
     ("GET", "/api/backend/patient/vitals/trends"),
     ("GET", "/api/backend/patient/vitals/latest"),
+    ("GET", "/api/backend/patient/medications"),
+    ("POST", "/api/backend/patient/medications"),
 ]
 ALL_ROUTES = ADMIN_ROUTES + DOCTOR_ROUTES + PATIENT_ROUTES + ANY_USER_ROUTES + FASTAPI_PATIENT_ROUTES
 
@@ -403,6 +405,18 @@ def run_tests() -> None:
     check("B has no trends", call("GET", "/api/backend/patient/vitals/trends", tok_b).json() == [])
     check("detailed reading mirrored into the simple log",
           scalar("select count(*) from vitals where user_id = :id and blood_pressure = '130/85'", id=patient_a) == 1)
+
+    print("\n[5c] Medication schedules are per patient")
+    med = {"medicineName": "Phase0 Testamol", "dosage": "1 tablet", "startDate": "2026-01-01", "userId": patient_b}
+    response = call("POST", "/api/backend/patient/medications", tok_a, med)
+    created = response.json() if response.status_code == 201 else {}
+    check("A creates a medication (body userId=B ignored) -> 201", response.status_code == 201, f"got {response.status_code}")
+    check("medication stored under A", created.get("patient_id") == patient_a
+          and scalar("select user_id from medications where id = :id", id=created.get("id", 0)) == patient_a)
+    check("A's list has it", [m["id"] for m in call("GET", "/api/backend/patient/medications", tok_a).json()] == [created.get("id")])
+    check("B's list is empty", call("GET", "/api/backend/patient/medications", tok_b).json() == [])
+    response = call("POST", "/api/backend/patient/medications", tok_a, {**med, "endDate": "2025-01-01"})
+    check("end date before start date -> 400", response.status_code == 400, f"got {response.status_code}")
 
     print("\n[6] Doctor grant lifecycle on doctor/overview")
     check("no grant -> patient A not listed", patient_a not in overview_patient_ids(tok_doctor))

@@ -211,12 +211,18 @@ class PatientVital(Base):
 
 
 class Medication(Base):
+    """A patient's medicine schedule. The API exposes `name` as medicine_name and
+    `user_id` as patient_id (the Prisma model's duplicate columns are not added)."""
+
     __tablename__ = "medications"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     dosage: Mapped[str] = mapped_column(String(120), nullable=False)
+    instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    start_date: Mapped[date | None] = mapped_column(Date, nullable=True)
+    end_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     status: Mapped[str] = mapped_column(String(40), default="PENDING", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 

@@ -173,6 +173,30 @@ class PatientVitalCreate(BaseModel):
     recorded_at: datetime | None = Field(default=None, alias="recordedAt")
 
 
+class MedicationScheduleCreate(BaseModel):
+    """Accepts the camelCase names the workspace sends."""
+
+    model_config = {"populate_by_name": True}
+
+    medicine_name: str = Field(min_length=1, max_length=160, alias="medicineName")
+    dosage: str = Field(min_length=1, max_length=120)
+    instructions: str | None = None
+    start_date: date = Field(alias="startDate")
+    end_date: date | None = Field(default=None, alias="endDate")
+
+
+class MedicationScheduleOut(BaseModel):
+    id: int
+    patient_id: int
+    medicine_name: str
+    dosage: str
+    instructions: str | None
+    start_date: date | None
+    end_date: date | None
+    status: str
+    created_at: datetime
+
+
 class DailyVitalOut(BaseModel):
     """Latest vitals. Values that were not recorded are null, never estimated."""
 
