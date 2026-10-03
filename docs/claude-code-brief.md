@@ -121,6 +121,11 @@ These are project requirements (scope limitations LI-1 and LI-5), not suggestion
 5. Once no route imports `@/lib/prisma`, remove Prisma (dependency, `prisma/`, `prisma.config.ts`, `lib/prisma.ts`) in a separate, clearly-labelled commit.
 6. Everything that worked before must still work. List what you manually verified.
 
+#### Phase 1 notes (found during Phase 0)
+
+- **Missing tables.** A database created by FastAPI's `create_all` lacks three tables that the Prisma schema defines: `medicine_reminders`, `patient_vitals`, `reminder_logs`. The Next routes `patient/vitals`, `patient/vitals/today`, `patient/vitals/trends`, `reminders/create`, `reminders/today`, `reminders/[id]/mark-taken`, `reminders/[id]/skip` and `ai/chat` use them and fail on such a database. Resolve this in the inventory (step 1) and the Alembic baseline (step 4): either add SQLAlchemy models for them or port/remove those routes.
+- **Schema drift between Prisma and SQLAlchemy.** Phase 0 found that SQLAlchemy lacked the `(doctor_id, patient_id)` unique constraint on `patient_dashboard_access` (now added to the model). Databases created before that fix need it applied once. When building the Alembic baseline, compare all Prisma `@@unique` / `@@index` declarations with the live schema.
+
 ### Phase 2: Patient-facing modules *(Momna's modules)*
 
 **2a. Symptom → specialist mapper (Module 7, FR-13.x)**
