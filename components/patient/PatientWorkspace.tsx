@@ -19,7 +19,6 @@ import {
   ClipboardList,
   Download,
   Dumbbell,
-  Ellipsis,
   FilePlus2,
   FileText,
   HeartPulse,
@@ -118,19 +117,6 @@ const NO_VITALS = {
   spo2: "Not recorded",
   temperature: "Not recorded",
 };
-
-const MOCK_RISKS = [
-  { id: 1, title: "Possible heart-related risk", reason: "Elevated LDL and Blood Pressure", level: "Moderate Risk" },
-  { id: 2, title: "Possible liver enzyme elevation", reason: "ALT levels are mildly high", level: "Low–Moderate Risk" },
-  { id: 3, title: "Blood sugar variation detected", reason: "Fasting glucose is slightly elevated", level: "Monitor" },
-];
-
-const MOCK_REPORTS_LIST = [
-  { id: 1, title: "ECG Report", date: "May 18, 2025", dept: "Cardiology", tag: "AI summarized", tagColor: "blue" as const },
-  { id: 2, title: "Liver Function Test", date: "May 16, 2025", dept: "Pathology", tag: "AI summarized", tagColor: "blue" as const },
-  { id: 3, title: "CBC Report", date: "May 17, 2025", dept: "Pathology", tag: "AI summarized", tagColor: "blue" as const },
-  { id: 4, title: "Prescription Upload", date: "May 15, 2025", dept: "General", tag: "New report", tagColor: "green" as const },
-];
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
 function cn(...classes: Array<string | false | null | undefined>) {
@@ -717,8 +703,6 @@ export function PatientWorkspace({
   }
 
   // Fallback to mock data when API returns empty
-  const riskRows = riskPredictions.length > 0 ? null : MOCK_RISKS;
-  const recentReportRows = reports.length > 0 ? null : MOCK_REPORTS_LIST;
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-violet-50">
@@ -1328,39 +1312,8 @@ export function PatientWorkspace({
                 </button>
               </div>
               <div className="space-y-2">
-                {recentReportRows
-                  ? recentReportRows.map((r) => (
-                      <div
-                        key={r.id}
-                        className="flex items-center gap-3 p-3 rounded-2xl border border-slate-100 bg-white hover:border-blue-100 hover:bg-blue-50/30 transition group"
-                      >
-                        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-100 to-indigo-100 flex items-center justify-center flex-shrink-0">
-                          <FileText className="h-4 w-4 text-blue-600" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-bold text-slate-900 truncate">{r.title}</p>
-                          <p className="text-xs text-slate-400">
-                            {r.dept} · {r.date}
-                          </p>
-                        </div>
-                        <span
-                          className={cn(
-                            "text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0",
-                            r.tagColor === "blue"
-                              ? "bg-blue-50 text-blue-600 border border-blue-100"
-                              : "bg-emerald-50 text-emerald-600 border border-emerald-100",
-                          )}
-                        >
-                          {r.tag}
-                        </span>
-                        <button className="h-7 w-7 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-blue-600 hover:border-blue-200 transition opacity-0 group-hover:opacity-100">
-                          <Download className="h-3.5 w-3.5" />
-                        </button>
-                        <button className="h-7 w-7 rounded-lg border border-slate-200 bg-white flex items-center justify-center text-slate-400 hover:text-slate-600 transition opacity-0 group-hover:opacity-100">
-                          <Ellipsis className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    ))
+                {reports.length === 0
+                  ? <p className="p-3 text-sm text-slate-500">No reports uploaded yet.</p>
                   : filteredReports.slice(0, 6).map((r) => {
                       const meta = getCategoryMeta(r.category);
                       return (
@@ -1437,15 +1390,8 @@ export function PatientWorkspace({
                 </button>
               </div>
               <div className="space-y-3">
-                {riskRows
-                  ? riskRows.map((r) => (
-                      <RiskRow
-                        key={r.id}
-                        title={r.title}
-                        reason={r.reason}
-                        level={r.level}
-                      />
-                    ))
+                {riskPredictions.length === 0
+                  ? <p className="p-3 text-sm text-slate-500">No health risk insights yet.</p>
                   : riskPredictions.slice(0, 4).map((r) => (
                       <RiskRow
                         key={r.id}
