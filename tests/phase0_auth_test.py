@@ -47,10 +47,8 @@ TEST_PREFIX = "phase0-test-"
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
 # Every route patched in Phase 0, with its HTTP method.
-ADMIN_ROUTES = [
-    ("GET", "/api/admin/overview"),
-    ("POST", "/api/admin/emergency/update"),
-]
+# Next.js admin routes were all removed in Phase 1; admin endpoints are in FASTAPI_ADMIN_ROUTES.
+ADMIN_ROUTES: list[tuple[str, str]] = []
 DOCTOR_ROUTES = [
     ("GET", "/api/doctor/overview"),
     ("POST", "/api/doctor/access/unlock"),
@@ -89,6 +87,12 @@ FASTAPI_PATIENT_ROUTES = [
 # FastAPI endpoints restricted to admins.
 FASTAPI_ADMIN_ROUTES = [
     ("PUT", "/api/backend/payments/1"),
+    ("GET", "/api/backend/api/admin/dashboard-stats"),
+    ("GET", "/api/backend/api/admin/users"),
+    ("GET", "/api/backend/api/admin/doctors/pending"),
+    ("PATCH", "/api/backend/api/admin/doctors/1/approve"),
+    ("PATCH", "/api/backend/api/admin/doctors/1/reject"),
+    ("GET", "/api/backend/api/admin/recent-activity"),
 ]
 # FastAPI endpoints open to any signed-in role.
 FASTAPI_ANY_USER_ROUTES = [
@@ -353,7 +357,7 @@ def run_tests() -> None:
     print("\n[2] Invalid tokens -> 401")
     response = call("GET", "/api/dashboard", token_for(patient_a, exp=int(time.time()) - 60))
     check("expired token -> 401", response.status_code == 401, f"got {response.status_code}")
-    response = call("GET", "/api/admin/overview", tampered_token(tok_a, admin))
+    response = call("GET", "/api/backend/api/admin/dashboard-stats", tampered_token(tok_a, admin))
     check("token with tampered subject -> 401", response.status_code == 401, f"got {response.status_code}")
     response = call("GET", "/api/dashboard", "not-a-jwt")
     check("malformed token -> 401", response.status_code == 401, f"got {response.status_code}")
@@ -362,6 +366,8 @@ def run_tests() -> None:
     for method, path in ADMIN_ROUTES + FASTAPI_ADMIN_ROUTES:
         response = call(method, path, tok_a)
         check(f"patient on {path} -> 403", response.status_code == 403, f"got {response.status_code}")
+        response = call(method, path, tok_doctor)
+        check(f"doctor on {path} -> 403", response.status_code == 403, f"got {response.status_code}")
     for method, path in DOCTOR_ROUTES:
         response = call(method, path, tok_a)
         check(f"patient on {path} -> 403", response.status_code == 403, f"got {response.status_code}")
@@ -376,7 +382,7 @@ def run_tests() -> None:
     check("inactive patient account on FastAPI -> 403", response.status_code == 403, f"got {response.status_code}")
 
     print("\n[4] Correct role -> allowed (positive controls)")
-    check("admin on admin/overview -> 200", call("GET", "/api/admin/overview", tok_admin).status_code == 200)
+    check("admin on admin dashboard-stats -> 200", call("GET", "/api/backend/api/admin/dashboard-stats", tok_admin).status_code == 200)
     check("doctor on doctor/overview -> 200", call("GET", "/api/doctor/overview", tok_doctor).status_code == 200)
     check("patient on dashboard -> 200", call("GET", "/api/dashboard", tok_a).status_code == 200)
 
