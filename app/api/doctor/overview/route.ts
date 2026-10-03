@@ -1,34 +1,17 @@
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
-function parseDoctorId(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const doctorId = Number(searchParams.get("userId"));
-
-  return Number.isInteger(doctorId) && doctorId > 0 ? doctorId : null;
-}
-
 export async function GET(request: Request) {
-  const doctorId = parseDoctorId(request);
+  const auth = await requireUser(request, ["doctor"]);
+  if (auth instanceof Response) {
+    return auth;
+  }
+
+  const doctor = { id: auth.user.id, name: auth.user.name, email: auth.user.email, role: "DOCTOR" };
+  const doctorId = doctor.id;
   const now = new Date();
-
-  if (!doctorId) {
-    return Response.json({ message: "Valid doctor user ID is required." }, { status: 400 });
-  }
-
-  const doctor = await prisma.user.findUnique({
-    where: { id: doctorId },
-    select: { id: true, name: true, email: true, role: true },
-  });
-
-  if (!doctor) {
-    return Response.json({ message: "Doctor account not found." }, { status: 404 });
-  }
-
-  if (doctor.role !== "DOCTOR") {
-    return Response.json({ message: "Doctor access is required." }, { status: 403 });
-  }
 
   const [appointments, emergencyBookings, dashboardAccesses] = await Promise.all([
     prisma.appointment.findMany({
