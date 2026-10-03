@@ -197,6 +197,30 @@ class MedicationScheduleOut(BaseModel):
     created_at: datetime
 
 
+class MedicineReminderCreate(BaseModel):
+    """Accepts the camelCase names the workspace sends."""
+
+    model_config = {"populate_by_name": True}
+
+    medication_id: int = Field(alias="medicationId", gt=0)
+    reminder_time: datetime = Field(alias="reminderTime")
+    frequency: str = Field(min_length=1, max_length=120)
+
+
+class MedicineReminderOut(BaseModel):
+    id: int
+    medication_id: int
+    patient_id: int
+    reminder_time: datetime
+    frequency: str
+    status: str
+    taken_at: datetime | None
+    skipped_at: datetime | None
+    created_at: datetime
+    updated_at: datetime
+    medication: MedicationScheduleOut | None = None
+
+
 class DailyVitalOut(BaseModel):
     """Latest vitals. Values that were not recorded are null, never estimated."""
 

@@ -1189,31 +1189,17 @@ export default function DashboardPage() {
         }
       }
 
-      const response = await fetch("/api/reminders/add", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
-        body: JSON.stringify({
-          title: `Take ${medicineReminderName.trim()}`,
-          dueAt: medicineReminderAt,
-        }),
+      await api.addReminder(session.token, {
+        title: `Take ${medicineReminderName.trim()}`,
+        due_at: medicineReminderAt,
       });
-
-      const data = (await response.json()) as { message?: string };
-
-      if (!response.ok) {
-        setStatusMessage(data.message ?? "Unable to save medicine reminder.");
-        return;
-      }
 
       setMedicineReminderName("");
       setMedicineReminderAt("");
       setStatusMessage("Medicine reminder saved. Browser notification will appear if permission is allowed.");
       await loadDashboard();
-    } catch {
-      setStatusMessage("Unable to save medicine reminder. Please try again.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Unable to save medicine reminder. Please try again.");
     } finally {
       setIsSavingMedicineReminder(false);
     }

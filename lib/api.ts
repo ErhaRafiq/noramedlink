@@ -311,6 +311,13 @@ export const api = {
       body: JSON.stringify(payload),
     });
   },
+  addReminder(token: string, payload: { title: string; due_at: string }) {
+    return apiRequest<{ id: number; title: string; due_at: string; status: string }>("/reminders", {
+      method: "POST",
+      token,
+      body: JSON.stringify(payload),
+    });
+  },
   createReminder(
     token: string,
     payload: {
@@ -319,23 +326,23 @@ export const api = {
       frequency: string;
     },
   ) {
-    return apiRequest<MedicineReminder>("/api/reminders/create", {
+    return apiRequest<MedicineReminder>("/patient/medicine-reminders", {
       method: "POST",
       token,
       body: JSON.stringify(payload),
     });
   },
   remindersToday(token: string) {
-    return apiRequest<MedicineReminder[]>("/api/reminders/today", { token });
+    return apiRequest<MedicineReminder[]>("/patient/medicine-reminders/today", { token });
   },
   markReminderTaken(token: string, reminderId: number) {
-    return apiRequest<MedicineReminder>(`/api/reminders/${reminderId}/mark-taken`, {
+    return apiRequest<MedicineReminder>(`/patient/medicine-reminders/${reminderId}/mark-taken`, {
       method: "PATCH",
       token,
     });
   },
   skipReminder(token: string, reminderId: number) {
-    return apiRequest<MedicineReminder>(`/api/reminders/${reminderId}/skip`, {
+    return apiRequest<MedicineReminder>(`/patient/medicine-reminders/${reminderId}/skip`, {
       method: "PATCH",
       token,
     });

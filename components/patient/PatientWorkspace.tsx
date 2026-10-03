@@ -119,13 +119,6 @@ const NO_VITALS = {
   temperature: "Not recorded",
 };
 
-const MOCK_MEDICINES = [
-  { id: 1, time: "08:00 AM", name: "Metformin 500mg", note: "After breakfast", status: "DUE_NOW" },
-  { id: 2, time: "01:00 PM", name: "Vitamin D3 60K", note: "After lunch", status: "UPCOMING_SOON" },
-  { id: 3, time: "08:00 PM", name: "Atorvastatin 10mg", note: "After dinner", status: "TAKEN" },
-  { id: 4, time: "10:00 PM", name: "Aspirin 75mg", note: "After dinner", status: "MISSED" },
-];
-
 const MOCK_RISKS = [
   { id: 1, title: "Possible heart-related risk", reason: "Elevated LDL and Blood Pressure", level: "Moderate Risk" },
   { id: 2, title: "Possible liver enzyme elevation", reason: "ALT levels are mildly high", level: "Low–Moderate Risk" },
@@ -724,7 +717,6 @@ export function PatientWorkspace({
   }
 
   // Fallback to mock data when API returns empty
-  const medicineRows = reminders.length > 0 ? null : MOCK_MEDICINES;
   const riskRows = riskPredictions.length > 0 ? null : MOCK_RISKS;
   const recentReportRows = reports.length > 0 ? null : MOCK_REPORTS_LIST;
 
@@ -1224,16 +1216,8 @@ export function PatientWorkspace({
                 </button>
               </div>
               <div className="mt-4 space-y-2.5">
-                {medicineRows
-                  ? medicineRows.map((med) => (
-                      <MedicineRow
-                        key={med.id}
-                        time={med.time}
-                        name={med.name}
-                        note={med.note}
-                        status={med.status}
-                      />
-                    ))
+                {reminders.length === 0
+                  ? <p className="p-3 text-sm text-slate-500">No medicine reminders scheduled for today.</p>
                   : reminders.slice(0, 6).map((r) => {
                       const d = getReminderDisplay(r);
                       return (
@@ -1822,47 +1806,6 @@ function StatusBadgeRow({
         )}
       >
         {value}
-      </span>
-    </div>
-  );
-}
-
-function MedicineRow({
-  time,
-  name,
-  note,
-  status,
-}: {
-  time: string;
-  name: string;
-  note: string;
-  status: string;
-}) {
-  const badge: Record<string, { label: string; cls: string }> = {
-    DUE_NOW: { label: "Due Now", cls: "bg-rose-50 text-rose-700 border-rose-100" },
-    UPCOMING_SOON: { label: "Upcoming in 30 min", cls: "bg-amber-50 text-amber-700 border-amber-100" },
-    TAKEN: { label: "Taken", cls: "bg-emerald-50 text-emerald-700 border-emerald-100" },
-    MISSED: { label: "Missed", cls: "bg-rose-100 text-rose-800 border-rose-200" },
-  };
-  const b = badge[status] ?? { label: status, cls: "bg-slate-50 text-slate-600 border-slate-100" };
-
-  return (
-    <div className="flex items-center gap-4 p-3 rounded-2xl bg-slate-50 border border-slate-100 hover:border-blue-100 hover:bg-blue-50/30 transition">
-      <p className="text-[11px] font-black text-slate-500 w-14 flex-shrink-0 text-center leading-tight">
-        {time}
-      </p>
-      <div className="h-7 w-px bg-slate-200 flex-shrink-0" />
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-slate-900 truncate">{name}</p>
-        <p className="text-xs text-slate-400">{note}</p>
-      </div>
-      <span
-        className={cn(
-          "text-[11px] font-black px-3 py-1 rounded-full border flex-shrink-0",
-          b.cls,
-        )}
-      >
-        {b.label}
       </span>
     </div>
   );

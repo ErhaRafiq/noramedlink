@@ -65,7 +65,6 @@ PATIENT_ROUTES = [
     ("POST", "/api/medical-records/delete"),
     ("POST", "/api/payments/create"),
     ("POST", "/api/emergency/book"),
-    ("POST", "/api/reminders/add"),
     ("POST", "/api/appointment/create"),
 ]
 ANY_USER_ROUTES = [
@@ -82,8 +81,18 @@ FASTAPI_PATIENT_ROUTES = [
     ("GET", "/api/backend/patient/vitals/latest"),
     ("GET", "/api/backend/patient/medications"),
     ("POST", "/api/backend/patient/medications"),
+    ("POST", "/api/backend/patient/medicine-reminders"),
+    ("GET", "/api/backend/patient/medicine-reminders/today"),
+    ("PATCH", "/api/backend/patient/medicine-reminders/1/mark-taken"),
+    ("PATCH", "/api/backend/patient/medicine-reminders/1/skip"),
 ]
-ALL_ROUTES = ADMIN_ROUTES + DOCTOR_ROUTES + PATIENT_ROUTES + ANY_USER_ROUTES + FASTAPI_PATIENT_ROUTES
+# FastAPI endpoints open to any signed-in role.
+FASTAPI_ANY_USER_ROUTES = [
+    ("GET", "/api/backend/reminders"),
+    ("POST", "/api/backend/reminders"),
+]
+ALL_ROUTES = (ADMIN_ROUTES + DOCTOR_ROUTES + PATIENT_ROUTES + ANY_USER_ROUTES
+              + FASTAPI_PATIENT_ROUTES + FASTAPI_ANY_USER_ROUTES)
 
 # Tables holding rows that belong to a user, children before parents.
 # (table, column) pairs; only rows whose column is a phase0-test- user id are deleted.
@@ -99,6 +108,8 @@ USER_OWNED_ROWS = [
     ("patient_dashboard_access", "patient_id"),
     ("patient_dashboard_access", "doctor_id"),
     ("patient_dashboard_otps", "patient_id"),
+    ("reminder_logs", "patient_id"),
+    ("medicine_reminders", "patient_id"),
     ("reminders", "user_id"),
     ("vitals", "user_id"),
     ("patient_vitals", "patient_id"),
@@ -288,7 +299,7 @@ def call(method: str, path: str, token: str | None = None, body: dict | None = N
     headers = {"Authorization": f"Bearer {token}"} if token else {}
     if method == "GET":
         return client.get(path, headers=headers)
-    return client.post(path, headers=headers, json=body if body is not None else {})
+    return client.request(method, path, headers=headers, json=body if body is not None else {})
 
 
 def overview_patient_ids(doctor_token: str) -> list[int]:
@@ -417,6 +428,39 @@ def run_tests() -> None:
     check("B's list is empty", call("GET", "/api/backend/patient/medications", tok_b).json() == [])
     response = call("POST", "/api/backend/patient/medications", tok_a, {**med, "endDate": "2025-01-01"})
     check("end date before start date -> 400", response.status_code == 400, f"got {response.status_code}")
+
+    print("\n[5d] Reminders are per patient")
+    due = datetime.now(timezone.utc).isoformat()
+    response = call("POST", "/api/backend/reminders", tok_a, {"title": "Take Phase0 Testamol", "due_at": due, "user_id": patient_b})
+    check("A adds a free-text reminder (body user_id=B ignored) -> 201", response.status_code == 201, f"got {response.status_code}")
+    check("free-text reminder stored under A", scalar("select count(*) from reminders where user_id = :id", id=patient_a) == 1)
+    check("B's reminder list is empty", call("GET", "/api/backend/reminders", tok_b).json() == [])
+
+    med_id = created.get("id")
+    schedule = {"medicationId": med_id, "reminderTime": due, "frequency": "Once daily"}
+    response = call("POST", "/api/backend/patient/medicine-reminders", tok_b, schedule)
+    check("B scheduling a dose of A's medication -> 404", response.status_code == 404, f"got {response.status_code}")
+    response = call("POST", "/api/backend/patient/medicine-reminders", tok_a, schedule)
+    dose = response.json() if response.status_code == 201 else {}
+    check("A schedules a dose -> 201, due now", response.status_code == 201 and dose.get("status") == "DUE_NOW",
+          f"got {response.status_code} {dose.get('status')}")
+    check("dose includes its medication", (dose.get("medication") or {}).get("medicine_name") == "Phase0 Testamol")
+    check("scheduling notification has no reminder_id (it belongs to the other reminders table)",
+          scalar("select count(*) from notifications where user_id = :id and title = 'Medicine reminder scheduled' "
+                 "and reminder_id is null", id=patient_a) == 1)
+    check("A's today list has the dose", [r["id"] for r in call("GET", "/api/backend/patient/medicine-reminders/today", tok_a).json()] == [dose.get("id")])
+    check("B's today list is empty", call("GET", "/api/backend/patient/medicine-reminders/today", tok_b).json() == [])
+    response = call("PATCH", f"/api/backend/patient/medicine-reminders/{dose.get('id')}/mark-taken", tok_b)
+    check("B marking A's dose taken -> 404", response.status_code == 404, f"got {response.status_code}")
+    response = call("PATCH", f"/api/backend/patient/medicine-reminders/{dose.get('id')}/mark-taken", tok_a)
+    taken = response.json() if response.status_code == 200 else {}
+    check("A marks the dose taken -> TAKEN with a time", taken.get("status") == "TAKEN" and bool(taken.get("taken_at")), f"got {taken}")
+    check("reminder log has the scheduled and taken entries",
+          scalar("select count(*) from reminder_logs where reminder_id = :id", id=dose.get("id", 0)) == 2)
+    response = call("PATCH", f"/api/backend/patient/medicine-reminders/{dose.get('id')}/skip", tok_a)
+    skipped = response.json() if response.status_code == 200 else {}
+    check("A skips it -> SKIPPED with a time", skipped.get("status") == "SKIPPED" and bool(skipped.get("skipped_at")),
+          f"got {response.status_code} {skipped.get('status')}")
 
     print("\n[6] Doctor grant lifecycle on doctor/overview")
     check("no grant -> patient A not listed", patient_a not in overview_patient_ids(tok_doctor))

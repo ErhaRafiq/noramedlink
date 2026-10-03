@@ -227,6 +227,49 @@ class Medication(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class MedicineReminder(Base):
+    """A scheduled dose of a medication (Prisma model MedicineReminder)."""
+
+    __tablename__ = "medicine_reminders"
+    __table_args__ = (
+        Index("medicine_reminders_patient_id_reminder_time_idx", "patient_id", "reminder_time"),
+        Index("medicine_reminders_medication_id_idx", "medication_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    medication_id: Mapped[int] = mapped_column(ForeignKey("medications.id", ondelete="CASCADE"), nullable=False)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    reminder_time: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    frequency: Mapped[str] = mapped_column(Text, nullable=False)
+    status: Mapped[str] = mapped_column(Text, default="UPCOMING", server_default="UPCOMING", nullable=False)
+    taken_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    skipped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+    medication: Mapped["Medication"] = relationship()
+
+
+class ReminderLog(Base):
+    """History of what happened to a medicine reminder (Prisma model ReminderLog)."""
+
+    __tablename__ = "reminder_logs"
+    __table_args__ = (
+        Index("reminder_logs_patient_id_scheduled_for_idx", "patient_id", "scheduled_for"),
+        Index("reminder_logs_reminder_id_idx", "reminder_id"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    reminder_id: Mapped[int] = mapped_column(ForeignKey("medicine_reminders.id", ondelete="CASCADE"), nullable=False)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    scheduled_for: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    status: Mapped[str] = mapped_column(Text, nullable=False)
+    taken_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
 class Reminder(Base):
     __tablename__ = "reminders"
     # Matches the Prisma schema's @@index declarations.
