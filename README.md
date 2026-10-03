@@ -101,12 +101,23 @@ http://localhost:3000
 
 ## Database Workflow
 
-FastAPI loads `DATABASE_URL` from `backend/.env`. Only PostgreSQL URLs are accepted. On startup, SQLAlchemy creates these tables if they do not exist:
+FastAPI loads `DATABASE_URL` from `backend/.env`. The schema is managed by Alembic migrations in `backend/migrations/`. On startup, uvicorn runs `alembic upgrade head`, which creates missing tables, columns and indexes. Migrations are additive: they never drop tables, columns or data.
 
-- `users`
-- `patient_profiles`
-- `doctor_profiles`
-- `medical_documents`
+### Upgrading an existing database
+
+If your database already has data (it was created earlier by FastAPI or by Prisma):
+
+1. Back it up first:
+
+   ```powershell
+   & "C:\Program Files\PostgreSQL\18\bin\pg_dump.exe" -U postgres -F c -f noramedlink-backup.dump noramedlink
+   ```
+
+   (Change `18` to your PostgreSQL version. Restore with `pg_restore -U postgres -d noramedlink --clean noramedlink-backup.dump` if needed.)
+
+2. Start the backend as usual (`uvicorn main:app --port 8000` from `backend/`). Startup runs the migrations; "Application startup complete" means they succeeded.
+
+To check the state manually from `backend/`: `alembic current` shows the applied revision, and `alembic check` reports any difference between the models and the database.
 
 `medical_documents` stores the uploaded file metadata, OCR status, raw OCR text, cleaned OCR text, detected keywords, structured OCR sections, safe summary, and upload date.
 
