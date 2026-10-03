@@ -91,10 +91,8 @@ def test_ocr_space_api_key():
         load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
 
         api_key = os.getenv("OCR_SPACE_API_KEY", "").strip().strip('"').strip("'")
-        if api_key:
-            print(f"  OCR Space API Key: {api_key[:8]}...{api_key[-4:]} (length={len(api_key)})")
-        else:
-            print("  OCR Space API Key: MISSING!")
+        # Never print any part of the key; only whether it is set.
+        print(f"  OCR Space API Key: {'set' if api_key else 'MISSING!'}")
     except Exception as ex:
         print(f"  API Key check FAILED: {ex}")
 
