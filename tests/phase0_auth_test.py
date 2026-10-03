@@ -50,7 +50,6 @@ LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 ADMIN_ROUTES = [
     ("GET", "/api/admin/overview"),
     ("POST", "/api/admin/emergency/update"),
-    ("POST", "/api/admin/payments/update"),
 ]
 DOCTOR_ROUTES = [
     ("GET", "/api/doctor/overview"),
@@ -63,7 +62,6 @@ PATIENT_ROUTES = [
     ("POST", "/api/medical-records/upload"),
     ("POST", "/api/medical-records/scan"),
     ("POST", "/api/medical-records/delete"),
-    ("POST", "/api/payments/create"),
     ("POST", "/api/emergency/book"),
     ("POST", "/api/appointment/create"),
 ]
@@ -86,6 +84,11 @@ FASTAPI_PATIENT_ROUTES = [
     ("PATCH", "/api/backend/patient/medicine-reminders/1/mark-taken"),
     ("PATCH", "/api/backend/patient/medicine-reminders/1/skip"),
     ("POST", "/api/backend/appointments"),
+    ("POST", "/api/backend/payments"),
+]
+# FastAPI endpoints restricted to admins.
+FASTAPI_ADMIN_ROUTES = [
+    ("PUT", "/api/backend/payments/1"),
 ]
 # FastAPI endpoints open to any signed-in role.
 FASTAPI_ANY_USER_ROUTES = [
@@ -93,9 +96,10 @@ FASTAPI_ANY_USER_ROUTES = [
     ("POST", "/api/backend/reminders"),
     ("GET", "/api/backend/appointments"),
     ("PUT", "/api/backend/appointments/1"),
+    ("GET", "/api/backend/payments"),
 ]
 ALL_ROUTES = (ADMIN_ROUTES + DOCTOR_ROUTES + PATIENT_ROUTES + ANY_USER_ROUTES
-              + FASTAPI_PATIENT_ROUTES + FASTAPI_ANY_USER_ROUTES)
+              + FASTAPI_PATIENT_ROUTES + FASTAPI_ANY_USER_ROUTES + FASTAPI_ADMIN_ROUTES)
 
 # Tables holding rows that belong to a user, children before parents.
 # (table, column) pairs; only rows whose column is a phase0-test- user id are deleted.
@@ -355,7 +359,7 @@ def run_tests() -> None:
     check("malformed token -> 401", response.status_code == 401, f"got {response.status_code}")
 
     print("\n[3] Wrong role -> 403")
-    for method, path in ADMIN_ROUTES:
+    for method, path in ADMIN_ROUTES + FASTAPI_ADMIN_ROUTES:
         response = call(method, path, tok_a)
         check(f"patient on {path} -> 403", response.status_code == 403, f"got {response.status_code}")
     for method, path in DOCTOR_ROUTES:
@@ -508,6 +512,26 @@ def run_tests() -> None:
     response = call("PUT", appt, tok_a, {"status": "CANCELLED"})
     check("patient can cancel own appointment -> 200", response.status_code == 200 and response.json().get("status") == "CANCELLED",
           f"got {response.status_code}")
+
+    print("\n[5f] Payments: payers cannot mark payments paid")
+    pay = {"amount": 1500, "method": "CASH", "purpose": "Consultation", "appointment_id": booked.get("id"), "user_id": patient_b}
+    response = call("POST", "/api/backend/payments", tok_a, pay)
+    payment = response.json() if response.status_code == 201 else {}
+    check("A records a cash payment for own appointment -> 201 PAY_ON_VISIT",
+          response.status_code == 201 and payment.get("status") == "PAY_ON_VISIT" and payment.get("user_id") == patient_a,
+          f"got {response.status_code} {payment.get('status')}")
+    response = call("POST", "/api/backend/payments", tok_b, pay)
+    check("B paying against A's appointment -> 404", response.status_code == 404, f"got {response.status_code}")
+    response = call("PUT", f"/api/backend/payments/{payment.get('id')}", tok_a, {"status": "SUCCESS"})
+    check("A marking own payment SUCCESS -> 403", response.status_code == 403, f"got {response.status_code}")
+    response = call("PUT", f"/api/backend/payments/{payment.get('id')}", tok_doctor, {"status": "SUCCESS"})
+    check("doctor marking a payment SUCCESS -> 403", response.status_code == 403, f"got {response.status_code}")
+    response = call("PUT", f"/api/backend/payments/{payment.get('id')}", tok_admin, {"status": "SUCCESS"})
+    check("admin marks it SUCCESS -> 200", response.status_code == 200 and response.json().get("status") == "SUCCESS",
+          f"got {response.status_code}")
+    check("linked appointment payment status follows",
+          scalar("select payment_status from appointments where id = :id", id=booked.get("id", 0)) == "SUCCESS")
+    check("B sees no payments", call("GET", "/api/backend/payments", tok_b).json() == [])
 
     print("\n[6] Doctor grant lifecycle on doctor/overview")
     check("no grant -> patient A not listed", patient_a not in overview_patient_ids(tok_doctor))

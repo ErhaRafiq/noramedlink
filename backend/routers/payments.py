@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from database import get_db
-from dependencies import get_current_user
+from dependencies import get_current_user, require_admin, require_patient
 from models import Appointment, Payment, User
 from schemas import PaymentCreate, PaymentOut, PaymentUpdate
 
@@ -56,7 +56,7 @@ def list_payments(current_user: User = Depends(get_current_user), db: Session = 
 
 
 @router.post("", response_model=PaymentOut, status_code=status.HTTP_201_CREATED)
-def create_payment(payload: PaymentCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_payment(payload: PaymentCreate, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     method = payload.method.strip().upper()
     if method not in PAYMENT_METHODS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported payment method.")
@@ -100,10 +100,11 @@ def create_payment(payload: PaymentCreate, current_user: User = Depends(get_curr
 def update_payment(
     payment_id: int,
     payload: PaymentUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    payment = db.query(Payment).filter(Payment.id == payment_id, Payment.user_id == current_user.id).first()
+    # Admin only: payers must not be able to mark their own payments as paid.
+    payment = db.get(Payment, payment_id)
     if not payment:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found.")
 

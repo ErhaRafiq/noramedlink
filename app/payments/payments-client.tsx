@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { FormEvent, useMemo, useState } from "react";
 
-import { authHeaders } from "@/lib/auth";
+import { api } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 
 type PaymentMethod = "EASYPAISA" | "JAZZCASH" | "NAYAPAY" | "CASH";
 
@@ -77,7 +78,8 @@ export default function PaymentsClient() {
     event.preventDefault();
     setStatusMessage("");
 
-    if (!userId) {
+    const session = getSession();
+    if (!userId || !session) {
       setStatusMessage("Please login before creating a payment.");
       return;
     }
@@ -90,36 +92,26 @@ export default function PaymentsClient() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/payments/create", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
-        body: JSON.stringify({
-          amount,
-          method,
-          phone: isCashPayment ? undefined : phone,
-          purpose: linkedAppointmentId
-            ? `Appointment payment #${linkedAppointmentId}`
-            : "Doctor consultation",
-          appointmentId: linkedAppointmentId || undefined,
-        }),
+      const payment = await api.createPayment(session.token, {
+        amount: Number(amount),
+        method,
+        phone: isCashPayment ? undefined : phone,
+        purpose: linkedAppointmentId
+          ? `Appointment payment #${linkedAppointmentId}`
+          : "Doctor consultation",
+        appointment_id: linkedAppointmentId ? Number(linkedAppointmentId) : undefined,
       });
 
-      const data = (await response.json()) as {
-        message?: string;
-        payment?: { reference: string; status: string };
-      };
-
-      if (!response.ok) {
-        setStatusMessage(data.message ?? "Unable to create payment.");
-        return;
-      }
-
-      setStatusMessage(data.message ?? `Payment request created via ${selectedPayment.title}`);
-    } catch {
-      setStatusMessage("Unable to create payment. Please try again.");
+      // Same messages as the former Next route.
+      setStatusMessage(
+        payment.status === "SUCCESS" && !isCashPayment
+          ? `Payment successful via ${selectedPayment.title}.`
+          : payment.status === "PAY_ON_VISIT"
+            ? "Cash payment will be collected on visit."
+            : `Payment request created via ${selectedPayment.title}`,
+      );
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Unable to create payment. Please try again.");
     } finally {
       setIsSubmitting(false);
     }

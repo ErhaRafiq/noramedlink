@@ -325,6 +325,16 @@ export const api = {
       body: JSON.stringify(payload),
     });
   },
+  createPayment(
+    token: string,
+    payload: { amount: number; method: string; purpose: string; phone?: string; appointment_id?: number },
+  ) {
+    return apiRequest<{ id: number; reference: string; status: string; amount: number; method: string }>("/payments", {
+      method: "POST",
+      token,
+      body: JSON.stringify(payload),
+    });
+  },
   addReminder(token: string, payload: { title: string; due_at: string }) {
     return apiRequest<{ id: number; title: string; due_at: string; status: string }>("/reminders", {
       method: "POST",
