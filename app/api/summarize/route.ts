@@ -1,10 +1,10 @@
 import { summarizeMedicalText } from "@/lib/medical-summarizer";
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
 type SummarizeBody = {
-  userId?: unknown;
   text?: unknown;
 };
 
@@ -17,12 +17,6 @@ type BackendSummary = {
 
 function isSummarizeBody(value: unknown): value is SummarizeBody {
   return Boolean(value && typeof value === "object");
-}
-
-function parseUserId(value: unknown) {
-  const userId = Number(value);
-
-  return Number.isInteger(userId) && userId > 0 ? userId : null;
 }
 
 function isUsableExtractedText(value: string | null) {
@@ -119,6 +113,11 @@ async function getSavedReportText(userId: number) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser(request);
+  if (auth instanceof Response) {
+    return auth;
+  }
+
   let body: unknown;
 
   try {
@@ -131,16 +130,15 @@ export async function POST(request: Request) {
   }
 
   if (!isSummarizeBody(body) || typeof body.text !== "string") {
-    const userId = isSummarizeBody(body) ? parseUserId(body.userId) : null;
-
-    if (!userId) {
+    // Saved-report mode summarises the signed-in patient's own reports only.
+    if (auth.user.role !== "patient") {
       return Response.json(
-        { message: "Provide report text or a valid userId for saved reports." },
-        { status: 400 },
+        { message: "Provide report text. Saved-report summaries are available to patients only." },
+        { status: 403 },
       );
     }
 
-    const savedReportText = await getSavedReportText(userId);
+    const savedReportText = await getSavedReportText(auth.user.id);
 
     if (savedReportText.length < 20) {
       return Response.json(

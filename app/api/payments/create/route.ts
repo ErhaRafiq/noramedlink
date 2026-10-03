@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
@@ -6,7 +7,6 @@ const walletMethods = ["JAZZCASH", "EASYPAISA", "NAYAPAY"] as const;
 const paymentMethods = [...walletMethods, "CARD", "RAAST", "CASH"] as const;
 
 type PaymentBody = {
-  userId: number | string;
   amount: number | string;
   method: string;
   purpose: string;
@@ -22,7 +22,6 @@ function isPaymentBody(value: unknown): value is PaymentBody {
   const body = value as Record<string, unknown>;
 
   return (
-    (typeof body.userId === "number" || typeof body.userId === "string") &&
     (typeof body.amount === "number" || typeof body.amount === "string") &&
     typeof body.method === "string" &&
     typeof body.purpose === "string" &&
@@ -39,22 +38,23 @@ function createReference() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser(request, ["patient"]);
+  if (auth instanceof Response) {
+    return auth;
+  }
+
+  const userId = auth.user.id;
   const body: unknown = await request.json().catch(() => null);
 
   if (!isPaymentBody(body)) {
     return Response.json(
-      { message: "User, amount, payment method, and purpose are required." },
+      { message: "Amount, payment method, and purpose are required." },
       { status: 400 },
     );
   }
 
-  const userId = Number(body.userId);
   const amount = Number(body.amount);
   const method = body.method.trim().toUpperCase();
-
-  if (!Number.isInteger(userId) || userId <= 0) {
-    return Response.json({ message: "Invalid user ID." }, { status: 400 });
-  }
 
   if (!Number.isInteger(amount) || amount < 1) {
     return Response.json({ message: "Invalid payment amount." }, { status: 400 });
@@ -74,15 +74,6 @@ export async function POST(request: Request) {
 
   if (appointmentId !== null && (!Number.isInteger(appointmentId) || appointmentId <= 0)) {
     return Response.json({ message: "Invalid appointment ID." }, { status: 400 });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true },
-  });
-
-  if (!user) {
-    return Response.json({ message: "User not found." }, { status: 404 });
   }
 
   const appointment =

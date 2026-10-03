@@ -2,9 +2,16 @@ import { analyzeReportWithOpenAI } from "@/lib/patient-ai";
 import { deriveReportCategory } from "@/lib/patient-reporting";
 import { normalizeReportCategory, reportTypeForCategory } from "@/lib/patient-dashboard";
 
+import { requireUser } from "@/lib/server-auth";
+
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const auth = await requireUser(request);
+  if (auth instanceof Response) {
+    return auth;
+  }
+
   const body = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body || typeof body.text !== "string") {
     return Response.json({ message: "Report text is required." }, { status: 400 });

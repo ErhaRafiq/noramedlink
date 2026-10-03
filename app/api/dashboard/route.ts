@@ -1,30 +1,15 @@
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
-function parseUserId(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const userId = Number(searchParams.get("userId"));
-
-  return Number.isInteger(userId) && userId > 0 ? userId : null;
-}
-
 export async function GET(request: Request) {
-  const userId = parseUserId(request);
-
-  if (!userId) {
-    return Response.json({ message: "Valid user ID is required." }, { status: 400 });
+  const auth = await requireUser(request, ["patient"]);
+  if (auth instanceof Response) {
+    return auth;
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true },
-  });
-
-  if (!user) {
-    return Response.json({ message: "User not found." }, { status: 404 });
-  }
-
+  const userId = auth.user.id;
   const now = new Date();
   const [
     latestVitals,

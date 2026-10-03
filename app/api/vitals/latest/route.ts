@@ -1,17 +1,16 @@
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const userId = Number(searchParams.get("userId"));
-
-  if (!Number.isInteger(userId) || userId <= 0) {
-    return Response.json({ message: "Valid user ID is required." }, { status: 400 });
+  const auth = await requireUser(request, ["patient"]);
+  if (auth instanceof Response) {
+    return auth;
   }
 
   const vitals = await prisma.vitals.findFirst({
-    where: { userId },
+    where: { userId: auth.user.id },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,

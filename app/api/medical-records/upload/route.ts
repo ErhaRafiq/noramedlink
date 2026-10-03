@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
 type UploadRecordBody = {
-  userId: number | string;
   title: string;
   fileName: string;
 };
@@ -16,7 +16,6 @@ function isUploadRecordBody(value: unknown): value is UploadRecordBody {
   const body = value as Record<string, unknown>;
 
   return (
-    (typeof body.userId === "number" || typeof body.userId === "string") &&
     typeof body.title === "string" &&
     typeof body.fileName === "string" &&
     body.title.trim().length > 0 &&
@@ -25,28 +24,19 @@ function isUploadRecordBody(value: unknown): value is UploadRecordBody {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser(request, ["patient"]);
+  if (auth instanceof Response) {
+    return auth;
+  }
+
+  const userId = auth.user.id;
   const body: unknown = await request.json().catch(() => null);
 
   if (!isUploadRecordBody(body)) {
     return Response.json(
-      { message: "User ID, title, and file name are required." },
+      { message: "Title and file name are required." },
       { status: 400 },
     );
-  }
-
-  const userId = Number(body.userId);
-
-  if (!Number.isInteger(userId) || userId <= 0) {
-    return Response.json({ message: "Invalid user ID." }, { status: 400 });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true },
-  });
-
-  if (!user) {
-    return Response.json({ message: "User not found." }, { status: 404 });
   }
 
   const record = await prisma.medicalRecord.create({

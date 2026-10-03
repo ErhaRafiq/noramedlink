@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
 type ScanBody = {
   extractedText?: string;
-  userId: number | string;
   fileName: string;
   imageData?: string;
   imageUrl?: string;
@@ -36,7 +36,6 @@ function isScanBody(value: unknown): value is ScanBody {
   const body = value as Record<string, unknown>;
 
   return (
-    (typeof body.userId === "number" || typeof body.userId === "string") &&
     typeof body.fileName === "string" &&
     body.fileName.trim().length > 0 &&
     (typeof body.extractedText === "undefined" || typeof body.extractedText === "string") &&
@@ -806,28 +805,19 @@ async function extractMedicalText(imageUrl: string) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser(request, ["patient"]);
+  if (auth instanceof Response) {
+    return auth;
+  }
+
+  const userId = auth.user.id;
   const body: unknown = await request.json().catch(() => null);
 
   if (!isScanBody(body)) {
     return Response.json(
-      { message: "User ID and a valid image are required." },
+      { message: "A file name and a valid image are required." },
       { status: 400 },
     );
-  }
-
-  const userId = Number(body.userId);
-
-  if (!Number.isInteger(userId) || userId <= 0) {
-    return Response.json({ message: "Invalid user ID." }, { status: 400 });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true },
-  });
-
-  if (!user) {
-    return Response.json({ message: "User not found." }, { status: 404 });
   }
 
   const imageUrl = body.imageData ?? body.imageUrl;

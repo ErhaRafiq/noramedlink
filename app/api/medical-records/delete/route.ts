@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
 type DeleteRecordBody = {
   recordId: number | string;
-  userId: number | string;
 };
 
 function isDeleteRecordBody(value: unknown): value is DeleteRecordBody {
@@ -14,33 +14,32 @@ function isDeleteRecordBody(value: unknown): value is DeleteRecordBody {
 
   const body = value as Record<string, unknown>;
 
-  return (
-    (typeof body.userId === "number" || typeof body.userId === "string") &&
-    (typeof body.recordId === "number" || typeof body.recordId === "string")
-  );
+  return typeof body.recordId === "number" || typeof body.recordId === "string";
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser(request, ["patient"]);
+  if (auth instanceof Response) {
+    return auth;
+  }
+
+  const userId = auth.user.id;
   const body: unknown = await request.json().catch(() => null);
 
   if (!isDeleteRecordBody(body)) {
     return Response.json(
-      { message: "User ID and report ID are required." },
+      { message: "Report ID is required." },
       { status: 400 },
     );
   }
 
-  const userId = Number(body.userId);
   const recordId = Number(body.recordId);
-
-  if (!Number.isInteger(userId) || userId <= 0) {
-    return Response.json({ message: "Invalid user ID." }, { status: 400 });
-  }
 
   if (!Number.isInteger(recordId) || recordId <= 0) {
     return Response.json({ message: "Invalid report ID." }, { status: 400 });
   }
 
+  // Scoped to the signed-in patient: another patient's record is reported as not found.
   const record = await prisma.medicalRecord.findFirst({
     where: { id: recordId, userId },
     select: { id: true, title: true },

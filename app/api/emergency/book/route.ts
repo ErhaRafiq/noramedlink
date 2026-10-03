@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
 type EmergencyBody = {
-  userId: number | string;
   patientName: string;
   phone: string;
   address: string;
@@ -27,7 +27,6 @@ function isEmergencyBody(value: unknown): value is EmergencyBody {
   const body = value as Record<string, unknown>;
 
   return (
-    (typeof body.userId === "number" || typeof body.userId === "string") &&
     typeof body.patientName === "string" &&
     typeof body.phone === "string" &&
     typeof body.address === "string" &&
@@ -40,28 +39,19 @@ function isEmergencyBody(value: unknown): value is EmergencyBody {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser(request, ["patient"]);
+  if (auth instanceof Response) {
+    return auth;
+  }
+
+  const userId = auth.user.id;
   const body: unknown = await request.json().catch(() => null);
 
   if (!isEmergencyBody(body)) {
     return Response.json(
-      { message: "Patient name, phone, address, symptoms, and user ID are required." },
+      { message: "Patient name, phone, address, and symptoms are required." },
       { status: 400 },
     );
-  }
-
-  const userId = Number(body.userId);
-
-  if (!Number.isInteger(userId) || userId <= 0) {
-    return Response.json({ message: "Invalid user ID." }, { status: 400 });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true },
-  });
-
-  if (!user) {
-    return Response.json({ message: "User not found." }, { status: 404 });
   }
 
   const latitude = body.latitude === undefined ? null : Number(body.latitude);

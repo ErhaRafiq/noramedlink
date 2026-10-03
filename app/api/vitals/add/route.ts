@@ -1,9 +1,9 @@
 import { prisma } from "@/lib/prisma";
+import { requireUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
 type AddVitalsBody = {
-  userId: number | string;
   bloodPressure: string;
   sugarLevel: string;
 };
@@ -16,7 +16,6 @@ function isAddVitalsBody(value: unknown): value is AddVitalsBody {
   const body = value as Record<string, unknown>;
 
   return (
-    (typeof body.userId === "number" || typeof body.userId === "string") &&
     typeof body.bloodPressure === "string" &&
     typeof body.sugarLevel === "string" &&
     body.bloodPressure.trim().length > 0 &&
@@ -25,28 +24,19 @@ function isAddVitalsBody(value: unknown): value is AddVitalsBody {
 }
 
 export async function POST(request: Request) {
+  const auth = await requireUser(request, ["patient"]);
+  if (auth instanceof Response) {
+    return auth;
+  }
+
+  const userId = auth.user.id;
   const body: unknown = await request.json().catch(() => null);
 
   if (!isAddVitalsBody(body)) {
     return Response.json(
-      { message: "User ID, blood pressure, and sugar level are required." },
+      { message: "Blood pressure and sugar level are required." },
       { status: 400 },
     );
-  }
-
-  const userId = Number(body.userId);
-
-  if (!Number.isInteger(userId) || userId <= 0) {
-    return Response.json({ message: "Invalid user ID." }, { status: 400 });
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { id: true },
-  });
-
-  if (!user) {
-    return Response.json({ message: "User not found." }, { status: 404 });
   }
 
   const vitals = await prisma.vitals.create({

@@ -1,8 +1,14 @@
 import { extractOcrFromBuffer, deriveReportCategory, deriveStructuredSections } from "@/lib/patient-reporting";
+import { requireUser } from "@/lib/server-auth";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
+  const auth = await requireUser(request);
+  if (auth instanceof Response) {
+    return auth;
+  }
+
   const formData = await request.formData().catch(() => null);
   const file = formData?.get("file");
 
