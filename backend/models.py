@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, JSON, String, Text, func
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, JSON, String, Text, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -460,6 +460,10 @@ class DoctorSummary(Base):
 
 class PatientDashboardAccess(Base):
     __tablename__ = "patient_dashboard_access"
+    # Same name as Prisma's @@unique([doctorId, patientId]); Prisma upserts rely on it.
+    __table_args__ = (
+        UniqueConstraint("doctor_id", "patient_id", name="patient_dashboard_access_doctor_id_patient_id_key"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     doctor_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
