@@ -1,14 +1,7 @@
-import crypto from "node:crypto";
-
 import { prisma } from "@/lib/prisma";
+import { extractBearerToken, verifyHs256Jwt, type JwtPayload } from "@/lib/server-auth";
 
-type JwtPayload = {
-  sub?: string;
-  exp?: number;
-  role?: string;
-  email?: string;
-  [key: string]: unknown;
-};
+export { extractBearerToken };
 
 type PatientSession = {
   user: {
@@ -20,59 +13,6 @@ type PatientSession = {
   };
   payload: JwtPayload;
 };
-
-function getJwtSecret() {
-  const secret = process.env.JWT_SECRET_KEY || process.env.SECRET_KEY || process.env.NORA_JWT_SECRET;
-  if (!secret) {
-    throw new Error("JWT_SECRET_KEY is required to verify patient sessions.");
-  }
-  return secret;
-}
-
-function base64UrlEncode(value: string) {
-  return Buffer.from(value, "utf8").toString("base64url");
-}
-
-function base64UrlDecode(value: string) {
-  return Buffer.from(value, "base64url").toString("utf8");
-}
-
-function verifyHs256Jwt(token: string): JwtPayload {
-  const parts = token.split(".");
-  if (parts.length !== 3) {
-    throw new Error("Invalid authentication token.");
-  }
-
-  const [headerPart, payloadPart, signaturePart] = parts;
-  const signingInput = `${headerPart}.${payloadPart}`;
-  const expectedSignature = crypto
-    .createHmac("sha256", getJwtSecret())
-    .update(signingInput)
-    .digest("base64url");
-
-  const signature = Buffer.from(signaturePart);
-  const expected = Buffer.from(expectedSignature);
-  if (signature.length !== expected.length || !crypto.timingSafeEqual(signature, expected)) {
-    throw new Error("Invalid authentication token.");
-  }
-
-  const payload = JSON.parse(base64UrlDecode(payloadPart)) as JwtPayload;
-  if (typeof payload.exp === "number" && payload.exp * 1000 <= Date.now()) {
-    throw new Error("Session has expired.");
-  }
-
-  return payload;
-}
-
-export function extractBearerToken(request: Request) {
-  const authorization = request.headers.get("authorization") ?? "";
-  if (!authorization.toLowerCase().startsWith("bearer ")) {
-    return null;
-  }
-
-  const token = authorization.slice(7).trim();
-  return token.length > 0 ? token : null;
-}
 
 export async function requirePatientSession(request: Request): Promise<PatientSession> {
   const token = extractBearerToken(request);
