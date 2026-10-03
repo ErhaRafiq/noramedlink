@@ -3,17 +3,19 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 
-import { authHeaders } from "@/lib/auth";
+import { api } from "@/lib/api";
+import { getSession } from "@/lib/auth";
 
-type BookingResponse = {
-  message?: string;
-  booking?: {
-    id: number;
-    doctorName: string;
-    status: string;
-    estimatedMinutes: number;
-  };
+// No dispatch exists yet: a request is recorded with no doctor and no ETA (null).
+type Booking = {
+  id: number;
+  doctorName: string | null;
+  status: string;
+  estimatedMinutes: number | null;
 };
+
+const EMERGENCY_NOTICE =
+  "This is not an ambulance or emergency service. If this is an emergency, call 1122 or go to the nearest emergency department now.";
 
 function getStoredValue(key: string) {
   if (typeof window === "undefined") {
@@ -32,7 +34,7 @@ export default function EmergencyPage() {
   const [latitude, setLatitude] = useState("");
   const [longitude, setLongitude] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
-  const [booking, setBooking] = useState<BookingResponse["booking"]>(undefined);
+  const [booking, setBooking] = useState<Booking | undefined>(undefined);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const useCurrentLocation = () => {
@@ -58,41 +60,27 @@ export default function EmergencyPage() {
     event.preventDefault();
     setStatusMessage("");
 
-    if (!userId) {
-      setStatusMessage("Please login before booking an emergency doctor.");
+    const session = getSession();
+    if (!userId || !session) {
+      setStatusMessage("Please login before sending a home-visit request.");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/emergency/book", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
-        body: JSON.stringify({
-          patientName,
-          phone,
-          address,
-          symptoms,
-          latitude,
-          longitude,
-        }),
+      const data = await api.createEmergencyRequest(session.token, {
+        patientName,
+        phone,
+        address,
+        symptoms,
+        latitude,
+        longitude,
       });
-
-      const data = (await response.json()) as BookingResponse;
-
-      if (!response.ok) {
-        setStatusMessage(data.message ?? "Unable to book emergency doctor.");
-        return;
-      }
-
       setBooking(data.booking);
-      setStatusMessage(data.message ?? "Doctor assigned for your home visit.");
-    } catch {
-      setStatusMessage("Unable to book emergency doctor. Please try again.");
+      setStatusMessage(data.message);
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Unable to send the request. Please try again.");
     } finally {
       setIsSubmitting(false);
     }
@@ -110,8 +98,11 @@ export default function EmergencyPage() {
               Book a doctor at home
             </h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300 sm:text-base">
-              Request urgent home care, share your location, and track the
-              assigned doctor like a ride coming to you.
+              Request a home visit and share your location. Requests are recorded for follow-up;
+              doctors are not dispatched automatically.
+            </p>
+            <p role="alert" className="mt-4 max-w-2xl rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-bold leading-6 text-rose-800">
+              {EMERGENCY_NOTICE}
             </p>
           </div>
           <Link href="/payments" className="gradient-button">
@@ -199,7 +190,7 @@ export default function EmergencyPage() {
                 disabled={isSubmitting}
                 className="gradient-button w-full"
               >
-                {isSubmitting ? "Finding Doctor..." : "Find Emergency Doctor"}
+                {isSubmitting ? "Sending request..." : "Send Home-Visit Request"}
               </button>
             </div>
           </form>
@@ -213,42 +204,19 @@ export default function EmergencyPage() {
               <div className="absolute left-[13%] top-[28%] h-[3px] w-[68%] rotate-[-7deg] rounded-full bg-gradient-to-r from-emerald-300 via-blue-300 to-white" />
               <div className="absolute bottom-6 left-6 right-6 rounded-2xl bg-white/95 p-5 shadow-xl">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-blue-700">
-                  Live tracking preview
+                  Request status
                 </p>
                 <h2 className="mt-2 text-2xl font-black text-slate-950">
-                  {booking ? booking.doctorName : "Doctor route will appear here"}
+                  {booking ? (booking.doctorName ?? "No doctor assigned yet") : "No request sent"}
                 </h2>
                 <p className="mt-2 text-sm leading-6 text-slate-600">
                   {booking
-                    ? `${booking.estimatedMinutes} minutes away. Status: ${booking.status.replaceAll("_", " ")}.`
-                    : "Use current location and submit the request to assign a nearby doctor."}
+                    ? `Request #${booking.id} recorded. Status: ${booking.status.replaceAll("_", " ")}. There is no live tracking or ETA.`
+                    : "Your request will be recorded for follow-up. For an emergency, call 1122."}
                 </p>
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-3">
-              {["Searching nearby doctors", "Doctor assigned", "Arriving at home"].map(
-                (step, index) => (
-                  <div
-                    key={step}
-                    className={`rounded-2xl border p-4 ${
-                      booking && index < 2
-                        ? "border-emerald-200 bg-emerald-50"
-                        : "border-slate-200 bg-white"
-                    }`}
-                  >
-                    <p className="text-sm font-bold text-slate-950">{step}</p>
-                    <p className="mt-2 text-xs leading-5 text-slate-500">
-                      {index === 0
-                        ? "Matching by location and urgency."
-                        : index === 1
-                          ? "Doctor details and ETA are shown."
-                          : "Track arrival until the visit starts."}
-                    </p>
-                  </div>
-                ),
-              )}
-            </div>
           </section>
         </div>
       </section>

@@ -58,7 +58,6 @@ PATIENT_ROUTES = [
     ("POST", "/api/medical-records/upload"),
     ("POST", "/api/medical-records/scan"),
     ("POST", "/api/medical-records/delete"),
-    ("POST", "/api/emergency/book"),
 ]
 ANY_USER_ROUTES = [
     ("POST", "/api/summarize"),
@@ -82,6 +81,7 @@ FASTAPI_PATIENT_ROUTES = [
     ("POST", "/api/backend/payments"),
     ("GET", "/api/backend/patient/overview"),
     ("POST", "/api/backend/patient/dashboard-otp"),
+    ("POST", "/api/backend/emergency/requests"),
 ]
 # FastAPI endpoints restricted to admins.
 FASTAPI_ADMIN_ROUTES = [
@@ -537,6 +537,22 @@ def run_tests() -> None:
     check("linked appointment payment status follows",
           scalar("select payment_status from appointments where id = :id", id=booked.get("id", 0)) == "SUCCESS")
     check("B sees no payments", call("GET", "/api/backend/payments", tok_b).json() == [])
+
+    print("\n[5g] Home-visit requests: no invented dispatch")
+    request = {"patientName": "Phase0 A", "phone": "03000000000", "address": "Test street", "symptoms": "fever",
+               "userId": patient_b, "user_id": patient_b}
+    response = call("POST", "/api/backend/emergency/requests", tok_a, request)
+    body = response.json() if response.status_code == 201 else {}
+    booking_out = body.get("booking") or {}
+    check("A sends a request -> 201 REQUESTED", response.status_code == 201 and booking_out.get("status") == "REQUESTED",
+          f"got {response.status_code} {booking_out.get('status')}")
+    check("no doctor and no ETA are claimed", booking_out.get("doctorName") is None and booking_out.get("estimatedMinutes") is None,
+          f"got {booking_out}")
+    check("response directs emergencies to 1122", "1122" in body.get("message", "") and "1122" in body.get("emergencyNotice", ""))
+    check("request stored under A (body user id ignored), no doctor",
+          scalar("select count(*) from emergency_bookings where user_id = :a and doctor_id is null and status = 'REQUESTED'",
+                 a=patient_a) == 1
+          and scalar("select count(*) from emergency_bookings where user_id = :b", b=patient_b) == 0)
 
     print("\n[6] Doctor grant lifecycle on doctor/overview")
     check("no grant -> patient A not listed", patient_a not in overview_patient_ids(tok_doctor))

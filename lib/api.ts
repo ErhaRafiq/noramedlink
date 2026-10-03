@@ -350,6 +350,25 @@ export const api = {
       body: JSON.stringify({ patientId }),
     });
   },
+  createEmergencyRequest(
+    token: string,
+    payload: { patientName: string; phone: string; address: string; symptoms: string; latitude?: string; longitude?: string },
+  ) {
+    const coordinate = (value?: string) => (value && Number.isFinite(Number(value)) ? Number(value) : null);
+    return apiRequest<{
+      message: string;
+      emergencyNotice: string;
+      booking: { id: number; doctorName: string | null; status: string; estimatedMinutes: number | null };
+    }>("/emergency/requests", {
+      method: "POST",
+      token,
+      body: JSON.stringify({
+        ...payload,
+        latitude: coordinate(payload.latitude),
+        longitude: coordinate(payload.longitude),
+      }),
+    });
+  },
   createPayment(
     token: string,
     payload: { amount: number; method: string; purpose: string; phone?: string; appointment_id?: number },
