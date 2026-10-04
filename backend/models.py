@@ -411,6 +411,7 @@ class PatientReport(Base):
     # Matches the Prisma schema's @@index declarations.
     __table_args__ = (
         Index("patient_reports_patient_id_upload_date_idx", "patient_id", "upload_date"),
+        Index("patient_reports_legacy_medical_document_id_key", "legacy_medical_document_id", unique=True),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -421,8 +422,13 @@ class PatientReport(Base):
         index=True,
     )
     title: Mapped[str] = mapped_column(String(180), nullable=False)
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     original_file_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    file_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    # TEXT: legacy reports copied from medical_documents may hold an embedded data: image.
+    file_url: Mapped[str] = mapped_column(Text, nullable=False)
+    # The medical_documents row this report was copied from (migration 0008); no FK so the
+    # legacy table can be retired independently.
+    legacy_medical_document_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     file_type: Mapped[str] = mapped_column(String(30), nullable=False)
     extracted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
     formatted_text: Mapped[str | None] = mapped_column(Text, nullable=True)
