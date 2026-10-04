@@ -58,14 +58,9 @@ DOCTOR_ROUTES = [
     ("POST", "/api/backend/doctor/access/end"),
 ]
 PATIENT_ROUTES = [
-    ("POST", "/api/medical-records/upload"),
-    ("POST", "/api/medical-records/scan"),
-    ("POST", "/api/medical-records/delete"),
 ]
 ANY_USER_ROUTES = [
     ("POST", "/api/summarize"),
-    ("POST", "/api/ocr/extract"),
-    ("POST", "/api/ai/analyze-report"),
 ]
 # FastAPI endpoints (through the proxy) that replaced Next routes in Phase 1.
 FASTAPI_PATIENT_ROUTES = [
@@ -85,6 +80,9 @@ FASTAPI_PATIENT_ROUTES = [
     ("GET", "/api/backend/patient/overview"),
     ("POST", "/api/backend/patient/dashboard-otp"),
     ("POST", "/api/backend/emergency/requests"),
+    ("GET", "/api/backend/patient/reports"),
+    ("POST", "/api/backend/patient/reports/upload"),
+    ("DELETE", "/api/backend/patient/reports/1"),
 ]
 # FastAPI endpoints restricted to admins.
 FASTAPI_ADMIN_ROUTES = [
@@ -575,6 +573,9 @@ def run_tests() -> None:
                  a=patient_a) == 1
           and scalar("select count(*) from emergency_bookings where user_id = :b", b=patient_b) == 0)
 
+    response = call("GET", "/api/backend/patient/documents", tok_a)
+    check("removed /patient/documents endpoint -> 404", response.status_code == 404, f"got {response.status_code}")
+
     print("\n[5h] Report upload (browser-extracted text, no OCR.space)")
     paid_keys = [k for k in ("OCR_SPACE_API_KEY", "OPENAI_API_KEY", "GROQ_API_KEY")
                  if (os.environ.get(k) or "").strip().strip('"').strip("'")]
@@ -598,6 +599,11 @@ def run_tests() -> None:
         check("upload appears on A's /dashboard data", uploaded.get("id") in [r["id"] for r in overview_records])
         response = call("DELETE", f"/api/backend/patient/reports/{uploaded.get('id')}", tok_b)
         check("B deleting A's upload -> 404", response.status_code == 404, f"got {response.status_code}")
+        response = call("POST", "/api/backend/patient/doctor-summaries/generate", tok_a)
+        summary_text = (response.json() or {}).get("summary_text", "") if response.status_code == 200 else ""
+        check("doctor-summary generator reads reports from patient_reports",
+              response.status_code == 200 and f"{TEST_PREFIX}record A" in summary_text,
+              f"got {response.status_code} {summary_text[:120]!r}")
 
     print("\n[6] Doctor grant lifecycle on doctor/overview")
     check("no grant -> patient A not listed", patient_a not in overview_patient_ids(tok_doctor))

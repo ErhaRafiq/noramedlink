@@ -1,6 +1,5 @@
 import type {
   AIChatResponse,
-  AIReportAnalysis,
   AppointmentBookingPayload,
   AppointmentBookingResponseV2,
   Appointment,
@@ -284,26 +283,6 @@ export const api = {
       token,
       body: formData,
       baseUrl: API_BASE_URL,
-    });
-  },
-  extractOcr(
-    token: string,
-    formData: FormData,
-  ) {
-    return apiRequest<{ rawText: string; cleanedText: string; possibleReportType: string; detectedKeywords: string[]; structuredSections: Record<string, string> }>(
-      "/api/ocr/extract",
-      {
-        method: "POST",
-        token,
-        body: formData,
-      },
-    );
-  },
-  analyzeReport(token: string, payload: { text: string; category?: string; fileName?: string; reportType?: string }) {
-    return apiRequest<AIReportAnalysis>("/api/ai/analyze-report", {
-      method: "POST",
-      token,
-      body: JSON.stringify(payload),
     });
   },
   medicines(token: string) {

@@ -1,7 +1,6 @@
-import json
-from datetime import datetime, timezone
+from types import SimpleNamespace
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -11,8 +10,6 @@ from models import (
     DoctorSummary,
     HealthRiskPrediction,
     HealthTip,
-    MedicalAiAnalysis,
-    MedicalDocument,
     MedicineHistory,
     PatientReport,
     PatientProfile,
@@ -26,20 +23,16 @@ from schemas import (
     DoctorSummaryOut,
     HealthRiskPredictionOut,
     HealthTipOut,
-    MedicalDocumentOut,
     MedicineHistoryCreate,
     MedicineHistoryOut,
     MedicineHistoryUpdate,
     MedicineSafetyCheckRequest,
     MedicineSafetyCheckResponse,
-    OcrTextUpdateRequest,
     PatientDashboardOut,
     VitalsOut,
 )
-from services.file_service import save_upload_file, stored_path_to_disk_path
-from services.nlp_service import DISCLAIMER, summarize_with_optional_llm
+from services.nlp_service import DISCLAIMER
 from services.openai_service import fallback_notice, generate_openai_json, generate_openai_text
-from services.ocr_space_service import OcrSpaceError, build_ocr_result, extract_report_with_ocr_space
 
 
 router = APIRouter(prefix="/patient", tags=["patient"])
@@ -63,38 +56,6 @@ TIP_CATEGORIES = [
     "Lifestyle advice",
     "When to consult a doctor",
 ]
-
-
-def parse_json_field(value: str | None, fallback):
-    if not value:
-        return fallback
-    if isinstance(value, (list, dict)):
-        return value
-    try:
-        return json.loads(value)
-    except (TypeError, json.JSONDecodeError):
-        return fallback
-
-
-def document_to_out(document: MedicalDocument) -> MedicalDocumentOut:
-    return MedicalDocumentOut(
-        id=document.id,
-        patient_id=document.patient_id,
-        category=document.category,
-        title=document.title,
-        notes=document.notes,
-        original_filename=document.original_filename,
-        stored_file_path=document.stored_file_path.replace("\\", "/"),
-        file_type=document.file_type,
-        upload_date=document.upload_date,
-        ocr_status=document.ocr_status,
-        ocr_raw_text=document.ocr_raw_text,
-        ocr_cleaned_text=document.ocr_cleaned_text,
-        possible_report_type=document.possible_report_type,
-        detected_keywords=parse_json_field(document.detected_keywords, []),
-        structured_sections=parse_json_field(document.structured_sections, {}),
-        ai_summary=document.ai_summary,
-    )
 
 
 def medicine_to_out(medicine: MedicineHistory) -> MedicineHistoryOut:
@@ -146,63 +107,36 @@ def summary_to_out(summary: DoctorSummary) -> DoctorSummaryOut:
     )
 
 
-def normalize_category(category: str) -> str:
-    normalized = category.strip().lower()
-    if normalized not in VALID_CATEGORIES:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid health department category.")
-    return normalized
-
-
-def patient_document_query(db: Session, profile: PatientProfile):
-    return db.query(MedicalDocument).filter(MedicalDocument.user_id == profile.user_id)
+def report_context(db: Session, profile: PatientProfile) -> list[SimpleNamespace]:
+    """The patient's reports (newest first) for the risk, tips and doctor-summary generators,
+    with the attribute names those helpers use. patient_reports is the single report table."""
+    reports = (
+        db.query(PatientReport)
+        .filter(PatientReport.patient_id == profile.user_id)
+        .order_by(PatientReport.upload_date.desc())
+        .all()
+    )
+    rows = []
+    for report in reports:
+        department = report.department.name if report.department else "General"
+        rows.append(
+            SimpleNamespace(
+                title=report.title,
+                category=department,
+                notes=report.notes,
+                ocr_cleaned_text=report.formatted_text or report.extracted_text,
+                ai_summary=report.summary,
+                possible_report_type=f"{department} report",
+            )
+        )
+    return rows
 
 
 def patient_medicine_query(db: Session, profile: PatientProfile):
     return db.query(MedicineHistory).filter(MedicineHistory.patient_id == profile.user_id)
 
 
-def build_analysis_entities(ocr_output: dict) -> list[dict[str, object]]:
-    keywords = ocr_output.get("detected_keywords") or []
-    if not isinstance(keywords, list):
-        return []
-    return [
-        {"text": str(keyword), "label": "medical_keyword", "confidence": 0.72}
-        for keyword in keywords
-        if str(keyword).strip()
-    ]
-
-
-def build_rule_warnings(cleaned_text: str) -> list[str]:
-    lowered = cleaned_text.lower()
-    warnings: list[str] = []
-    if any(term in lowered for term in ["critical", "positive", "abnormal", "high", "low"]):
-        warnings.append("Report contains terms that may require doctor review.")
-    if any(term in lowered for term in ["glucose", "hba1c", "creatinine", "cholesterol", "platelet"]):
-        warnings.append("Report contains measurable clinical markers; values should be validated against the original file.")
-    return warnings
-
-
-def create_ai_analysis(document: MedicalDocument, source: str = "rule_based") -> MedicalAiAnalysis:
-    entities = document.extracted_entities or []
-    cleaned_text = document.ocr_cleaned_text or ""
-    return MedicalAiAnalysis(
-        user_id=document.user_id,
-        medical_record_id=document.id,
-        source=source,
-        extracted_entities=entities,
-        confidence_score=document.confidence_score,
-        rule_warnings=build_rule_warnings(cleaned_text),
-        validation_results={
-            "ocr_status": document.ocr_status,
-            "has_ocr_text": bool(cleaned_text.strip()),
-            "has_ai_summary": bool(document.ai_summary),
-            "possible_report_type": document.possible_report_type,
-        },
-        doctor_summary=document.ai_summary,
-    )
-
-
-def collect_patient_context(documents: list[MedicalDocument], medicines: list[MedicineHistory]) -> str:
+def collect_patient_context(documents: list[SimpleNamespace], medicines: list[MedicineHistory]) -> str:
     report_text = "\n".join(
         " ".join(
             value
@@ -228,7 +162,7 @@ def context_has(context: str, terms: list[str]) -> bool:
     return any(term in context for term in terms)
 
 
-def build_risk_predictions(profile: PatientProfile, documents: list[MedicalDocument], medicines: list[MedicineHistory]):
+def build_risk_predictions(profile: PatientProfile, documents: list[SimpleNamespace], medicines: list[MedicineHistory]):
     context = collect_patient_context(documents, medicines)
     predictions: list[dict[str, str]] = []
 
@@ -285,7 +219,7 @@ def build_risk_predictions(profile: PatientProfile, documents: list[MedicalDocum
     return predictions[:3]
 
 
-def build_health_tips(documents: list[MedicalDocument], medicines: list[MedicineHistory]):
+def build_health_tips(documents: list[SimpleNamespace], medicines: list[MedicineHistory]):
     context = collect_patient_context(documents, medicines)
     base = "Based on saved reports, OCR text, and medicine history."
     sugar = context_has(context, ["hba1c", "glucose", "blood sugar", "diabetes", "metformin", "insulin"])
@@ -316,7 +250,7 @@ def build_health_tips(documents: list[MedicalDocument], medicines: list[Medicine
     ]
 
 
-def build_doctor_summary(current_user: User, documents: list[MedicalDocument], medicines: list[MedicineHistory], risks: list[HealthRiskPrediction]):
+def build_doctor_summary(current_user: User, documents: list[SimpleNamespace], medicines: list[MedicineHistory], risks: list[HealthRiskPrediction]):
     latest_reports = documents[:5]
     report_findings = [
         f"- {document.title}: {document.possible_report_type or 'Medical report'}; summary: {document.ai_summary or 'No AI summary yet'}"
@@ -421,7 +355,7 @@ def check_medicine_safety(medicine_name: str, dosage: str | None, known_allergie
 
 def patient_context_for_ai(
     current_user: User,
-    documents: list[MedicalDocument],
+    documents: list[SimpleNamespace],
     medicines: list[MedicineHistory],
     risks: list[HealthRiskPrediction] | None = None,
 ) -> str:
@@ -609,117 +543,6 @@ def latest_vitals(current_user: User = Depends(require_patient), db: Session = D
     )
 
 
-@router.get("/documents", response_model=list[MedicalDocumentOut])
-def list_documents(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
-    profile = get_patient_profile(db, current_user)
-    documents = patient_document_query(db, profile).order_by(MedicalDocument.created_at.desc()).all()
-    return [document_to_out(document) for document in documents]
-
-
-@router.get("/documents/{document_id}", response_model=MedicalDocumentOut)
-def get_document(document_id: int, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
-    profile = get_patient_profile(db, current_user)
-    document = patient_document_query(db, profile).filter(MedicalDocument.id == document_id).first()
-    if not document:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
-    return document_to_out(document)
-
-
-@router.post("/documents/upload", response_model=MedicalDocumentOut, status_code=status.HTTP_201_CREATED)
-async def upload_document(
-    category: str = Form(...),
-    title: str | None = Form(default=None),
-    notes: str | None = Form(default=None),
-    file: UploadFile = File(...),
-    current_user: User = Depends(require_patient),
-    db: Session = Depends(get_db),
-):
-    profile = get_patient_profile(db, current_user)
-    normalized_category = normalize_category(category)
-    stored_path, file_type = await save_upload_file(file, normalized_category, patient_id=profile.user_id)
-
-    try:
-        ocr_output = await extract_report_with_ocr_space(str(stored_path_to_disk_path(stored_path)), file.filename or "", normalized_category)
-    except OcrSpaceError as exc:
-        ocr_output = build_ocr_result("", file.filename or "", normalized_category)
-        ocr_output["raw_text"] = ""
-        ocr_output["cleaned_text"] = ""
-        ocr_output["summary"] = str(exc)
-
-    fields = ocr_output.get("structured_data_json", {}).get("fields", {})
-    cleaned_text = str(ocr_output["cleaned_text"])
-    summary, _, _ = await summarize_with_optional_llm(cleaned_text, normalized_category)
-    safe_title = ((title or "").strip() or (file.filename or "Medical document"))[:180]
-
-    document = MedicalDocument(
-        user_id=profile.user_id,
-        category=normalized_category,
-        title=safe_title,
-        notes=notes.strip() if notes else None,
-        file_name=file.filename or "uploaded-document",
-        file_url=stored_path,
-        file_type=file_type,
-        upload_date=datetime.now(timezone.utc),
-        ocr_status="processed" if cleaned_text else "needs_review",
-        ocr_raw_text=str(ocr_output["raw_text"]),
-        ocr_cleaned_text=cleaned_text,
-        possible_report_type=f"{ocr_output.get('department_name') or normalized_category} report",
-        detected_keywords=ocr_output["detected_keywords"],
-        structured_sections={key: str(value) for key, value in fields.items()} if isinstance(fields, dict) else {},
-        ai_summary=summary,
-        extracted_entities=build_analysis_entities(ocr_output),
-        confidence_score=0.82 if cleaned_text else 0.35,
-    )
-    db.add(document)
-    db.flush()
-    db.add(create_ai_analysis(document))
-    db.commit()
-    db.refresh(document)
-    return document_to_out(document)
-
-
-@router.put("/documents/{document_id}/ocr-text", response_model=MedicalDocumentOut)
-async def update_ocr_text(
-    document_id: int,
-    payload: OcrTextUpdateRequest,
-    current_user: User = Depends(require_patient),
-    db: Session = Depends(get_db),
-):
-    profile = get_patient_profile(db, current_user)
-    document = patient_document_query(db, profile).filter(MedicalDocument.id == document_id).first()
-    if not document:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
-
-    ocr_output = build_ocr_result(payload.cleaned_text, document.original_filename, document.category)
-    fields = ocr_output.get("structured_data_json", {}).get("fields", {})
-    summary, _, _ = await summarize_with_optional_llm(str(ocr_output["cleaned_text"]), document.category)
-
-    document.ocr_raw_text = document.ocr_raw_text or payload.cleaned_text
-    document.ocr_cleaned_text = str(ocr_output["cleaned_text"])
-    document.possible_report_type = f"{ocr_output.get('department_name') or document.category} report"
-    document.detected_keywords = ocr_output["detected_keywords"]
-    document.structured_sections = {key: str(value) for key, value in fields.items()} if isinstance(fields, dict) else {}
-    document.extracted_entities = build_analysis_entities(ocr_output)
-    document.confidence_score = 0.9
-    document.ai_summary = summary
-    document.ocr_status = "reviewed"
-    db.add(create_ai_analysis(document))
-    db.commit()
-    db.refresh(document)
-    return document_to_out(document)
-
-
-@router.delete("/documents/{document_id}")
-def delete_document(document_id: int, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
-    profile = get_patient_profile(db, current_user)
-    document = patient_document_query(db, profile).filter(MedicalDocument.id == document_id).first()
-    if not document:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
-    db.delete(document)
-    db.commit()
-    return {"message": "Document deleted successfully."}
-
-
 @router.get("/medicines", response_model=list[MedicineHistoryOut])
 def list_medicines(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     profile = get_patient_profile(db, current_user)
@@ -805,7 +628,7 @@ def list_risk_predictions(current_user: User = Depends(require_patient), db: Ses
 @router.post("/risk-predictions/generate", response_model=list[HealthRiskPredictionOut])
 async def generate_risk_predictions(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     profile = get_patient_profile(db, current_user)
-    documents = patient_document_query(db, profile).order_by(MedicalDocument.created_at.desc()).all()
+    documents = report_context(db, profile)
     medicines = patient_medicine_query(db, profile).order_by(MedicineHistory.created_at.desc()).all()
     ai_result = await generate_openai_json(
         instructions=(
@@ -848,7 +671,7 @@ def list_health_tips(current_user: User = Depends(require_patient), db: Session 
 @router.post("/health-tips/generate", response_model=list[HealthTipOut])
 async def generate_health_tips(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     profile = get_patient_profile(db, current_user)
-    documents = patient_document_query(db, profile).order_by(MedicalDocument.created_at.desc()).all()
+    documents = report_context(db, profile)
     medicines = patient_medicine_query(db, profile).order_by(MedicineHistory.created_at.desc()).all()
     ai_result = await generate_openai_json(
         instructions=(
@@ -889,7 +712,7 @@ def list_doctor_summaries(current_user: User = Depends(require_patient), db: Ses
 @router.post("/doctor-summaries/generate", response_model=DoctorSummaryOut)
 async def generate_doctor_summary(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     profile = get_patient_profile(db, current_user)
-    documents = patient_document_query(db, profile).order_by(MedicalDocument.created_at.desc()).all()
+    documents = report_context(db, profile)
     medicines = patient_medicine_query(db, profile).order_by(MedicineHistory.created_at.desc()).all()
     risks = (
         db.query(HealthRiskPrediction)
