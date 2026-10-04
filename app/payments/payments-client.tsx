@@ -102,13 +102,11 @@ export default function PaymentsClient() {
         appointment_id: linkedAppointmentId ? Number(linkedAppointmentId) : undefined,
       });
 
-      // Same messages as the former Next route.
+      // No gateway is connected: wallet payments are recorded and await confirmation.
       setStatusMessage(
-        payment.status === "SUCCESS" && !isCashPayment
-          ? `Payment successful via ${selectedPayment.title}.`
-          : payment.status === "PAY_ON_VISIT"
-            ? "Cash payment will be collected on visit."
-            : `Payment request created via ${selectedPayment.title}`,
+        payment.status === "PAY_ON_VISIT"
+          ? "Cash payment will be collected on visit."
+          : `Payment via ${selectedPayment.title} recorded (reference ${payment.reference}). It awaits confirmation by the clinic.`,
       );
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Unable to create payment. Please try again.");

@@ -527,6 +527,12 @@ def run_tests() -> None:
           f"got {response.status_code} {payment.get('status')}")
     response = call("POST", "/api/backend/payments", tok_b, pay)
     check("B paying against A's appointment -> 404", response.status_code == 404, f"got {response.status_code}")
+    for wallet in ("EASYPAISA", "JAZZCASH", "NAYAPAY"):
+        response = call("POST", "/api/backend/payments", tok_a,
+                        {"amount": 500, "method": wallet, "purpose": "Consultation", "phone": "03000000000"})
+        check(f"{wallet} payment is recorded as PENDING, not SUCCESS (no gateway)",
+              response.status_code == 201 and response.json().get("status") == "PENDING",
+              f"got {response.status_code} {response.json().get('status') if response.status_code == 201 else ''}")
     response = call("PUT", f"/api/backend/payments/{payment.get('id')}", tok_a, {"status": "SUCCESS"})
     check("A marking own payment SUCCESS -> 403", response.status_code == 403, f"got {response.status_code}")
     response = call("PUT", f"/api/backend/payments/{payment.get('id')}", tok_doctor, {"status": "SUCCESS"})

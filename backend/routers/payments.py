@@ -75,7 +75,9 @@ def create_payment(payload: PaymentCreate, current_user: User = Depends(require_
         if not appointment:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found for this user.")
 
-    payment_status = "SUCCESS" if method in WALLET_METHODS else "PAY_ON_VISIT" if method == "CASH" else "PENDING"
+    # No payment gateway is connected, so a wallet payment is only recorded: it stays
+    # PENDING until an admin confirms it (PUT /payments/{id}). Cash is paid on visit.
+    payment_status = "PAY_ON_VISIT" if method == "CASH" else "PENDING"
     payment = Payment(
         user_id=current_user.id,
         appointment_id=appointment.id if appointment else None,
@@ -87,8 +89,6 @@ def create_payment(payload: PaymentCreate, current_user: User = Depends(require_
         invoice_number=create_invoice_number(),
         status=payment_status,
     )
-    if appointment and payment_status == "SUCCESS":
-        appointment.payment_status = "SUCCESS"
 
     db.add(payment)
     db.commit()
