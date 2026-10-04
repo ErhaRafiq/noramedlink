@@ -673,7 +673,8 @@ export function PatientWorkspace({
 
   function downloadReport(report: MedicalDocument) {
     const link = document.createElement("a");
-    link.href = api.uploadUrl(report.file_url || report.stored_file_path);
+    if (!report.file_access_url) return;
+    link.href = api.uploadUrl(report.file_access_url);
     link.download = report.original_filename;
     link.click();
   }

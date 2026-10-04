@@ -128,6 +128,8 @@ export type MedicalDocument = {
   original_filename: string;
   file_url?: string;
   stored_file_path: string;
+  // Short-lived signed link to the file (or an embedded data: image); null if no file.
+  file_access_url?: string | null;
   file_type: string;
   upload_date: string;
   updated_at?: string;

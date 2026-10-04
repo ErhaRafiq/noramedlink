@@ -44,6 +44,7 @@ sys.path.insert(0, str(ROOT / "backend"))
 
 from database import DATABASE_URL, get_upload_root_path  # noqa: E402  (backend/database.py; loads .env files first)
 from auth import create_access_token  # noqa: E402  (backend/auth.py; reads JWT secret from env)
+from services.file_access import _signature  # noqa: E402  (to forge expired links in tests)
 
 BASE_URL = os.environ.get("PHASE0_BASE_URL", "http://localhost:3000").rstrip("/")
 TEST_PREFIX = "phase0-test-"
@@ -695,6 +696,56 @@ def run_tests() -> None:
           scalar("select count(*) from appointments where user_id = :id", id=patient_b) == appointments_before + 5)
     response = call("POST", "/api/backend/appointments", tok_b, {"doctor_id": doctor, "date": future})
     check("booking without an OTP still works while blocked -> 201", response.status_code == 201, f"got {response.status_code}")
+
+    print("\n[9] Uploaded files: auth and ownership or an active grant")
+    file_bytes = b"\x89PNG\r\n\x1a\n phase0-test file " + secrets.token_bytes(8)
+    relative = f"{patient_a}/general/phase0-{secrets.token_hex(8)}.png"
+    disk_file = get_upload_root_path() / relative
+    disk_file.parent.mkdir(parents=True, exist_ok=True)
+    disk_file.write_bytes(file_bytes)
+    file_report = create_record(patient_a, f"{TEST_PREFIX}file report", file_url=f"uploads/{relative}")
+    orphan = f"{patient_a}/general/phase0-orphan-{secrets.token_hex(8)}.png"
+    (get_upload_root_path() / orphan).write_bytes(b"orphan")
+    files_path = f"/api/backend/files/{relative}"
+
+    response = call("GET", f"/api/backend/uploads/{relative}")
+    check("old public /uploads URL is gone -> 404", response.status_code == 404, f"got {response.status_code}")
+    check("no auth -> 401", call("GET", files_path).status_code == 401)
+    response = call("GET", files_path, tok_b)
+    check("another patient -> 403", response.status_code == 403, f"got {response.status_code}")
+    response = call("GET", files_path, tok_a)
+    check("owner -> 200 with the exact file", response.status_code == 200 and response.content == file_bytes,
+          f"got {response.status_code}")
+    response = call("GET", files_path, tok_doctor)
+    check("doctor without a grant -> 403", response.status_code == 403, f"got {response.status_code}")
+    create_grant(doctor, patient_a, expires_in=timedelta(hours=1))
+    response = call("GET", files_path, tok_doctor)
+    check("doctor with an active grant -> 200", response.status_code == 200, f"got {response.status_code}")
+    doctor_expiry = int(time.time()) + 300
+    doctor_link = (f"{files_path}?exp={doctor_expiry}&uid={doctor}"
+                   f"&sig={_signature(relative, doctor_expiry, doctor)}")
+    check("doctor's signed link works during the grant", call("GET", doctor_link).status_code == 200)
+    call("POST", "/api/backend/doctor/access/end", tok_doctor, {"patientId": patient_a})
+    check("after access/end -> doctor gets 403 by token", call("GET", files_path, tok_doctor).status_code == 403)
+    check("after access/end -> doctor's unexpired signed link also stops (403)", call("GET", doctor_link).status_code == 403)
+
+    records = call("GET", "/api/backend/patient/overview", tok_a).json()["medicalRecords"]
+    link = next((r["imageUrl"] for r in records if r["id"] == file_report), None) or ""
+    check("overview gives the owner a signed link, not the raw path",
+          link.startswith(f"files/{relative}?") and "sig=" in link and "uploads/" not in link, f"got {link[:80]!r}")
+    response = call("GET", f"/api/backend/{link}")
+    check("signed link works without a token -> 200", response.status_code == 200 and response.content == file_bytes,
+          f"got {response.status_code}")
+    check("tampered signature -> 403", call("GET", f"/api/backend/{link[:-4]}0000").status_code == 403)
+    check("same signature for another viewer (uid=B) -> 403",
+          call("GET", f"/api/backend/{link.replace(f'uid={patient_a}', f'uid={patient_b}')}").status_code == 403)
+    past = int(time.time()) - 5
+    expired = f"{files_path}?exp={past}&uid={patient_a}&sig={_signature(relative, past, patient_a)}"
+    check("expired link -> 403", call("GET", expired).status_code == 403)
+    response = call("GET", f"/api/backend/files/{orphan}", tok_a)
+    check("file no report refers to -> 404 even for its owner", response.status_code == 404, f"got {response.status_code}")
+    response = call("GET", f"/api/backend/files/{patient_a}/%2E%2E/%2E%2E/main.py", tok_a)
+    check("path traversal is not served", response.status_code in (400, 404), f"got {response.status_code}")
 
 
 def main() -> int:

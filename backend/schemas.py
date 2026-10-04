@@ -260,6 +260,8 @@ class PatientReportOut(BaseModel):
     original_filename: str
     file_url: str
     stored_file_path: str
+    # Short-lived signed link for the owning patient (or the embedded data: image).
+    file_access_url: str | None = None
     file_type: str
     extracted_text: str | None
     formatted_text: str | None

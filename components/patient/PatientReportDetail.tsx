@@ -99,7 +99,7 @@ export function PatientReportDetail({ reportId }: { reportId: number }) {
   const summary = clinicalSummary(report);
   const entities = detectedEntities(report);
   const warnings = ruleWarnings(report);
-  const fileUrl = report ? api.uploadUrl(report.stored_file_path) : "";
+  const fileUrl = report?.file_access_url ? api.uploadUrl(report.file_access_url) : "";
   const isPdf = report?.file_type.toLowerCase().includes("pdf");
 
   function notify(type: "success" | "error" | "info", message: string) {

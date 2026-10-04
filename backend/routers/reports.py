@@ -8,6 +8,7 @@ from database import get_db
 from dependencies import require_patient
 from models import MedicalAiAnalysis, MedicalDepartment, PatientReport, User
 from schemas import DepartmentTileOut, PatientReportOut, PatientReportUpdateRequest
+from services.file_access import file_access_url
 from services.file_service import save_upload_file, stored_path_to_disk_path
 from services.ocr_space_service import (
     DEPARTMENTS,
@@ -130,6 +131,7 @@ def report_to_out(report: PatientReport) -> PatientReportOut:
         original_filename=report.original_file_name,
         file_url=report.file_url.replace("\\", "/"),
         stored_file_path=report.file_url.replace("\\", "/"),
+        file_access_url=file_access_url(report.file_url, report.patient_id),
         file_type=report.file_type,
         extracted_text=report.extracted_text,
         formatted_text=report.formatted_text,

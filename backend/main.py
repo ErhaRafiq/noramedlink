@@ -10,11 +10,10 @@ load_dotenv(BACKEND_DIR / ".env")
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
-from database import check_database_connection, ensure_runtime_dirs, get_upload_root_path, run_migrations
-from routers import admin, appointments, auth, doctor, medical_ai, nlp, ocr, patient, payments, reminders, reports, vitals, medications, medicine_reminders, dashboard_access, emergency
+from database import check_database_connection, ensure_runtime_dirs, run_migrations
+from routers import admin, appointments, auth, doctor, medical_ai, nlp, ocr, patient, payments, reminders, reports, vitals, medications, medicine_reminders, dashboard_access, emergency, files
 
 
 @asynccontextmanager
@@ -46,8 +45,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-ensure_runtime_dirs()
-app.mount("/uploads", StaticFiles(directory=get_upload_root_path()), name="uploads")
+# Uploaded files are not served publicly; see routers/files.py (GET /files/...).
 
 app.include_router(auth.router)
 app.include_router(auth.router, prefix="/api")
@@ -66,6 +64,7 @@ app.include_router(medications.router)
 app.include_router(medicine_reminders.router)
 app.include_router(dashboard_access.router)
 app.include_router(emergency.router)
+app.include_router(files.router)
 
 
 @app.exception_handler(SQLAlchemyError)

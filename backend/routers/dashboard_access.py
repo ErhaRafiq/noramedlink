@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import require_doctor, require_patient
 from models import Appointment, EmergencyBooking, Medication, PatientReport, Reminder, User, Vitals
+from services.file_access import file_access_url
 from services.dashboard_access import (
     active_grants,
     create_dashboard_otp,
@@ -83,7 +84,8 @@ def patient_overview(current_user: User = Depends(require_patient), db: Session 
                 "id": d.id,
                 "title": d.title,
                 "fileName": d.original_file_name,
-                "imageUrl": d.file_url,
+                # Signed short-lived link (or the legacy embedded data: image).
+                "imageUrl": file_access_url(d.file_url, user_id),
                 "extractedText": d.formatted_text or d.extracted_text,
                 "scanStatus": d.ocr_status,
                 "createdAt": d.upload_date,
