@@ -30,7 +30,6 @@ import {
   Pill,
   Plus,
   Search,
-  Send,
   Settings,
   Shield,
   Sparkles,
@@ -48,7 +47,6 @@ import {
   useDeferredValue,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from "react";
 import type { ReactNode } from "react";
@@ -69,7 +67,6 @@ import type {
   DoctorOption,
   DoctorSummary,
   HealthRiskPrediction,
-  HealthTip,
   MedicalDocument,
   MedicationSchedule,
   MedicineReminder,
@@ -80,7 +77,6 @@ import type {
 type PatientView = "dashboard" | "upload" | "records" | "ocr" | "summary" | "profile";
 type ToastType = "success" | "error" | "info";
 type ToastState = { type: ToastType; message: string } | null;
-type AssistantMessage = { role: "assistant" | "user"; content: string };
 type UploadStep = "idle" | "uploading" | "ocr" | "ai" | "saving" | "done" | "error";
 type FileQueueItem = {
   id: string;
@@ -103,12 +99,6 @@ const NAV_ITEMS: Array<{ id: string; label: string; icon: LucideIcon }> = [
   { id: "care-team", label: "Care Team", icon: Stethoscope },
   { id: "documents", label: "Documents", icon: BookOpen },
   { id: "settings", label: "Settings", icon: Settings },
-];
-
-const QUICK_ACTIONS = [
-  "Explain my recent reports",
-  "What should I do for better heart health?",
-  "Show tips to manage cholesterol",
 ];
 
 // Shown when nothing has been recorded. Never fill in typical values as if they were the patient's.
@@ -231,66 +221,6 @@ function summarizeReports(reports: MedicalDocument[]) {
   }));
 }
 
-function joinContext({
-  userName,
-  reports,
-  vitals,
-  appointments,
-  medications,
-  reminders,
-  risks,
-  tips,
-  summaries,
-}: {
-  userName: string;
-  reports: MedicalDocument[];
-  vitals: DailyVital | null;
-  appointments: Appointment[];
-  medications: MedicationSchedule[];
-  reminders: MedicineReminder[];
-  risks: HealthRiskPrediction[];
-  tips: HealthTip[];
-  summaries: DoctorSummary[];
-}) {
-  const recentReports = reports
-    .slice(0, 4)
-    .map((r) => `${r.title}: ${r.summary ?? r.ai_summary ?? r.extracted_text ?? ""}`)
-    .join("\n");
-  const reminderCtx = reminders
-    .slice(0, 4)
-    .map((r) => `${r.frequency} at ${new Date(r.reminder_time).toLocaleString()}: ${r.status}`)
-    .join("\n");
-  const appointmentCtx = appointments
-    .slice(0, 4)
-    .map((a) => `${a.doctor_name} on ${formatDateTime(a.date)} (${a.status})`)
-    .join("\n");
-  const medicationCtx = medications
-    .slice(0, 4)
-    .map((m) => `${m.medicine_name}: ${m.dosage}`)
-    .join("\n");
-  const riskCtx = risks
-    .slice(0, 4)
-    .map((r) => `${r.risk_title}: ${r.risk_level} - ${r.reason}`)
-    .join("\n");
-  const tipCtx = tips
-    .slice(0, 4)
-    .map((t) => `${t.category}: ${t.tip_text}`)
-    .join("\n");
-  return [
-    `Patient: ${userName}`,
-    vitals
-      ? `Today vitals: BP ${vitals.blood_pressure_systolic}/${vitals.blood_pressure_diastolic}, HR ${vitals.heart_rate}, SpO2 ${vitals.spo2}, Temp ${vitals.temperature}`
-      : "Today vitals: not recorded yet",
-    `Recent reports:\n${recentReports || "None"}`,
-    `Appointments:\n${appointmentCtx || "None"}`,
-    `Medicines:\n${medicationCtx || "None"}`,
-    `Reminders:\n${reminderCtx || "None"}`,
-    `Risks:\n${riskCtx || "None"}`,
-    `Tips:\n${tipCtx || "None"}`,
-    `Doctor summary: ${summaries[0]?.summary_text ?? "None"}`,
-  ].join("\n\n");
-}
-
 // ─── Main Component ───────────────────────────────────────────────────────────
 export function PatientWorkspace({
   initialView,
@@ -301,7 +231,8 @@ export function PatientWorkspace({
 }) {
   const router = useRouter();
 
-  const [token, setToken] = useState("");
+  // Read only in event handlers (never during render), so no hydration mismatch.
+  const [token] = useState(() => getSession()?.token ?? "");
   const [user, setUser] = useState(getSession()?.user ?? null);
   const [reports, setReports] = useState<MedicalDocument[]>([]);
   const [vitalsToday, setVitalsToday] = useState<DailyVital | null>(null);
@@ -311,16 +242,7 @@ export function PatientWorkspace({
   const [medications, setMedications] = useState<MedicationSchedule[]>([]);
   const [reminders, setReminders] = useState<MedicineReminder[]>([]);
   const [riskPredictions, setRiskPredictions] = useState<HealthRiskPrediction[]>([]);
-  const [healthTips, setHealthTips] = useState<HealthTip[]>([]);
   const [doctorSummaries, setDoctorSummaries] = useState<DoctorSummary[]>([]);
-  const [assistantMessages, setAssistantMessages] = useState<AssistantMessage[]>([
-    {
-      role: "assistant",
-      content:
-        "Hi! I'm here to help you understand your health better and stay on track.",
-    },
-  ]);
-  const [assistantInput, setAssistantInput] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const [activeCategory, setActiveCategory] = useState<ReportCategoryId | "all">(
@@ -331,7 +253,6 @@ export function PatientWorkspace({
   const [isBooking, setIsBooking] = useState(false);
   const [isSavingMedication, setIsSavingMedication] = useState(false);
   const [isCreatingReminder, setIsCreatingReminder] = useState(false);
-  const [isSendingAssistant, setIsSendingAssistant] = useState(false);
   const [toast, setToast] = useState<ToastState>(null);
   const [uploadQueue, setUploadQueue] = useState<FileQueueItem[]>([]);
   const [uploadTitle, setUploadTitle] = useState("");
@@ -358,7 +279,6 @@ export function PatientWorkspace({
   });
   const [dragActive, setDragActive] = useState(false);
   const [activeNav, setActiveNav] = useState("dashboard");
-  const chatEndRef = useRef<HTMLDivElement>(null);
 
   const notify = (type: ToastType, message: string) => {
     setToast({ type, message });
@@ -371,7 +291,6 @@ export function PatientWorkspace({
       router.replace("/login");
       return;
     }
-    setToken(session.token);
     void loadWorkspace(session.token)
       .catch((err) => {
         notify("error", err instanceof Error ? err.message : "Unable to load patient dashboard.");
@@ -380,10 +299,6 @@ export function PatientWorkspace({
       })
       .finally(() => setIsLoading(false));
   }, [router]);
-
-  useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [assistantMessages]);
 
   const filteredReports = useMemo(() => {
     const query = deferredSearchQuery.trim().toLowerCase();
@@ -421,22 +336,7 @@ export function PatientWorkspace({
   }, [reports, riskPredictions]);
 
   const todayVitalsView = formatVitalCardValue(vitalsToday);
-  const totalUnread = Math.max(3, upcomingReminderCount + criticalFlags.length);
-  const assistantContext = useMemo(
-    () =>
-      joinContext({
-        userName: user?.full_name ?? "Patient",
-        reports,
-        vitals: vitalsToday,
-        appointments,
-        medications,
-        reminders,
-        risks: riskPredictions,
-        tips: healthTips,
-        summaries: doctorSummaries,
-      }),
-    [appointments, doctorSummaries, healthTips, medications, reminders, reports, riskPredictions, user?.full_name, vitalsToday],
-  );
+  const totalUnread = upcomingReminderCount + criticalFlags.length;
 
   async function loadWorkspace(activeToken: string) {
     const [
@@ -449,7 +349,6 @@ export function PatientWorkspace({
       medicationData,
       reminderData,
       riskData,
-      tipData,
       summaryData,
     ] = await Promise.all([
       api.me(activeToken).catch(() => null),
@@ -461,7 +360,6 @@ export function PatientWorkspace({
       api.medicines(activeToken).catch(() => []),
       api.remindersToday(activeToken).catch(() => []),
       api.riskPredictions(activeToken).catch(() => []),
-      api.healthTips(activeToken).catch(() => []),
       api.doctorSummaries(activeToken).catch(() => []),
     ]);
 
@@ -481,7 +379,6 @@ export function PatientWorkspace({
     setMedications(medicationData);
     setReminders(reminderData);
     setRiskPredictions(riskData);
-    setHealthTips(tipData);
     setDoctorSummaries(summaryData);
   }
 
@@ -645,29 +542,6 @@ export function PatientWorkspace({
       await refreshWorkspace();
     } catch (err) {
       notify("error", err instanceof Error ? err.message : "Unable to update reminder.");
-    }
-  }
-
-  async function handleAssistantSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!token || !assistantInput.trim()) return;
-    const nextMessage = assistantInput.trim();
-    setAssistantMessages((c) => [...c, { role: "user", content: nextMessage }]);
-    setAssistantInput("");
-    setIsSendingAssistant(true);
-    try {
-      const response = await api.aiChat(token, { message: nextMessage, context: assistantContext });
-      setAssistantMessages((c) => [
-        ...c,
-        { role: "assistant", content: response.answer || "I could not generate a response right now." },
-      ]);
-    } catch (err) {
-      setAssistantMessages((c) => [
-        ...c,
-        { role: "assistant", content: err instanceof Error ? err.message : "Assistant request failed." },
-      ]);
-    } finally {
-      setIsSendingAssistant(false);
     }
   }
 
@@ -1413,81 +1287,6 @@ export function PatientWorkspace({
                 <p className="text-xs leading-5 text-emerald-700 font-medium">
                   Please consult your doctor. These insights are not a diagnosis.
                 </p>
-              </div>
-            </DashCard>
-          </section>
-
-          {/* ── Nora AI Assistant ─────────────────────────────────────────── */}
-          <section>
-            <DashCard className="relative overflow-hidden">
-              <div className="absolute bottom-0 right-0 w-64 h-64 rounded-full bg-gradient-to-br from-violet-300/15 to-blue-300/15 blur-3xl pointer-events-none" />
-              <div className="relative">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h2 className="text-sm font-black text-slate-900">Nora AI Assistant</h2>
-                    <p className="text-xs text-slate-500 mt-0.5">
-                      Hi {firstName}! 👋 I&apos;m here to help you understand your health better and
-                      stay on track.
-                    </p>
-                  </div>
-                  <div className="h-11 w-11 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-md shadow-blue-200/50 flex-shrink-0">
-                    <Sparkles className="h-5 w-5 text-white" />
-                  </div>
-                </div>
-
-                {/* Chat window */}
-                <div className="bg-slate-50 rounded-2xl border border-slate-100 p-4 max-h-56 overflow-y-auto space-y-3 mb-4">
-                  {assistantMessages.map((msg, i) => (
-                    <div
-                      key={i}
-                      className={cn(
-                        "max-w-[85%] rounded-2xl px-4 py-2.5 text-sm leading-6",
-                        msg.role === "assistant"
-                          ? "bg-white border border-slate-100 text-slate-700 shadow-sm"
-                          : "ml-auto bg-gradient-to-r from-blue-600 to-violet-600 text-white",
-                      )}
-                    >
-                      {msg.content}
-                    </div>
-                  ))}
-                  <div ref={chatEndRef} />
-                </div>
-
-                {/* Quick action pills */}
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {QUICK_ACTIONS.map((action) => (
-                    <button
-                      key={action}
-                      type="button"
-                      onClick={() => setAssistantInput(action)}
-                      className="px-3 py-1.5 rounded-xl bg-blue-50 border border-blue-100 text-xs font-semibold text-blue-700 hover:bg-blue-100 hover:border-blue-200 transition"
-                    >
-                      {action}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Input */}
-                <form onSubmit={handleAssistantSubmit} className="flex gap-2">
-                  <input
-                    value={assistantInput}
-                    onChange={(e) => setAssistantInput(e.target.value)}
-                    placeholder="Ask me anything about your health..."
-                    className="flex-1 h-11 px-4 rounded-xl border border-blue-100 bg-white text-sm text-slate-900 outline-none focus:border-blue-300 focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400 transition"
-                  />
-                  <button
-                    type="submit"
-                    disabled={isSendingAssistant}
-                    className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-600 to-violet-600 flex items-center justify-center text-white shadow-md shadow-blue-200/50 hover:opacity-90 transition flex-shrink-0"
-                  >
-                    {isSendingAssistant ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </button>
-                </form>
-                <p className="mt-3 text-[11px] text-slate-400 leading-5">{DISCLAIMER}</p>
               </div>
             </DashCard>
           </section>

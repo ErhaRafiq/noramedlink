@@ -1,5 +1,4 @@
 import type {
-  AIChatResponse,
   AppointmentBookingPayload,
   AppointmentBookingResponseV2,
   Appointment,
@@ -407,13 +406,7 @@ export const api = {
       token,
     });
   },
-  aiChat(token: string, payload: { message: string; context?: string }) {
-    return apiRequest<AIChatResponse>("/api/ai/chat", {
-      method: "POST",
-      token,
-      body: JSON.stringify(payload),
-    });
-  },
+
   uploadDocument(token: string, formData: FormData) {
     return apiRequest<MedicalDocument>("/patient/reports/upload", {
       method: "POST",

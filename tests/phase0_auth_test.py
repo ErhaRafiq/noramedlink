@@ -579,6 +579,8 @@ def run_tests() -> None:
     check("summarize text under 20 characters -> 400", response.status_code == 400, f"got {response.status_code}")
     response = call("POST", "/api/backend/nlp/summarize", tok_a, {"text": "x" * 20001})
     check("summarize text over 20,000 characters -> 413", response.status_code == 413, f"got {response.status_code}")
+    response = call("POST", "/api/ai/chat", tok_a, {"message": "hello"})
+    check("AI chat route removed (rebuilt in Phase 2a) -> 404", response.status_code == 404, f"got {response.status_code}")
     response = call("GET", "/api/backend/patient/documents", tok_a)
     check("removed /patient/documents endpoint -> 404", response.status_code == 404, f"got {response.status_code}")
 
