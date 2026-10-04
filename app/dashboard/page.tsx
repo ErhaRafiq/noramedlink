@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { api } from "@/lib/api";
-import { authHeaders, getSession } from "@/lib/auth";
+import { getSession } from "@/lib/auth";
 
 type Vitals = {
   id: number;
@@ -580,8 +580,9 @@ function getRecordImageStyle(record: MedicalRecord) {
     return undefined;
   }
 
+  // Legacy records hold an embedded data: image; new uploads hold a file path.
   return {
-    backgroundImage: `url("${record.imageUrl}")`,
+    backgroundImage: `url("${api.uploadUrl(record.imageUrl)}")`,
   };
 }
 
@@ -937,21 +938,7 @@ export default function DashboardPage() {
     setStatusMessage("");
 
     try {
-      const response = await fetch("/api/medical-records/delete", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
-        body: JSON.stringify({ recordId }),
-      });
-      const data = (await response.json()) as { message?: string };
-
-      if (!response.ok) {
-        setStatusMessage(data.message ?? "Unable to remove this report.");
-        return;
-      }
-
+      const data = await api.deleteDocument(session.token, recordId);
       setDashboard((currentDashboard) => ({
         ...currentDashboard,
         medicalRecords: currentDashboard.medicalRecords.filter(
@@ -963,8 +950,8 @@ export default function DashboardPage() {
       );
       setStatusMessage(data.message ?? "Report removed from medical tiles.");
       await loadDashboard();
-    } catch {
-      setStatusMessage("Unable to remove this report. Please try again.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Unable to remove this report. Please try again.");
     } finally {
       setDeletingRecordId(null);
     }
@@ -1186,33 +1173,27 @@ export default function DashboardPage() {
     setIsUploadingRecord(true);
 
     try {
+      // Upload the image as a real file (stored under uploads/, not as base64 in the
+      // database). Text already read in the browser is sent along, so the server does
+      // not need OCR.space for it.
+      const blob = await (await fetch(imageData)).blob();
+      const extension = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
+      const baseName = fileName.replace(/\.[^.]+$/, "") || "scanned-report";
+      const formData = new FormData();
+      formData.append("file", new File([blob], `${baseName}.${extension}`, { type: blob.type || "image/jpeg" }));
+      formData.append("title", baseName.replace(/[-_]+/g, " "));
       const trimmedExtractedText = extractedText?.trim();
-      const response = await fetch("/api/medical-records/scan", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
-        body: JSON.stringify({
-          fileName,
-          imageData,
-          ...(trimmedExtractedText ? { extractedText: trimmedExtractedText } : {}),
-        }),
-      });
-
-      const data = (await response.json()) as { message?: string };
-
-      if (!response.ok) {
-        setStatusMessage(data.message ?? "Unable to scan this record.");
-        return;
+      if (trimmedExtractedText) {
+        formData.append("extracted_text", trimmedExtractedText);
       }
+      await api.uploadReport(session.token, formData);
 
       setRecordFileName("");
       setRecordImageData("");
-      setStatusMessage(data.message ?? "Report scanned and dashboard updated.");
+      setStatusMessage("Report scanned and dashboard updated.");
       await loadDashboard();
-    } catch {
-      setStatusMessage("Unable to scan this record. Please try again.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Unable to scan this record. Please try again.");
     } finally {
       setIsUploadingRecord(false);
     }

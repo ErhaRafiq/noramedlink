@@ -73,6 +73,14 @@ export function specialistForCategory(category: ReportCategoryId) {
   return SPECIALIST_BY_CATEGORY[category] ?? SPECIALIST_BY_CATEGORY.general;
 }
 
+/** Display label for a report's rule-validation status. Legacy reports copied from
+ * medical_documents were never validated and say so. */
+export function validationLabel(status: string | null | undefined) {
+  const value = (status ?? "").toUpperCase();
+  if (value === "NOT_VALIDATED" || !value) return "Not validated";
+  return value.replaceAll("_", " ");
+}
+
 export function categoryStatusForCount(count: number, latestStatus?: string | null) {
   if (count === 0) {
     return "No documents";

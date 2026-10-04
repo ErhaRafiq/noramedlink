@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from dependencies import require_admin
-from models import Appointment, DoctorProfile, MedicalDocument, PatientReport, User
+from models import Appointment, DoctorProfile, PatientReport, User
 
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -58,7 +58,8 @@ def dashboard_stats(
     db: Session = Depends(get_db),
 ):
     today_start, today_end = today_bounds()
-    reports_uploaded = db.query(PatientReport.id).count() + db.query(MedicalDocument.id).count()
+    # patient_reports is the single report table (migration 0008 copied medical_documents into it).
+    reports_uploaded = db.query(PatientReport.id).count()
 
     return {
         "totalUsers": db.query(User.id).count(),

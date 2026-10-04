@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from dependencies import require_doctor, require_patient
-from models import Appointment, EmergencyBooking, Medication, MedicalDocument, Reminder, User, Vitals
+from models import Appointment, EmergencyBooking, Medication, PatientReport, Reminder, User, Vitals
 from services.dashboard_access import (
     active_grants,
     create_dashboard_otp,
@@ -62,9 +62,9 @@ def patient_overview(current_user: User = Depends(require_patient), db: Session 
         .all()
     )
     records = (
-        db.query(MedicalDocument)
-        .filter(MedicalDocument.user_id == user_id)
-        .order_by(MedicalDocument.created_at.desc())
+        db.query(PatientReport)
+        .filter(PatientReport.patient_id == user_id)
+        .order_by(PatientReport.upload_date.desc())
         .all()
     )
     return {
@@ -82,11 +82,11 @@ def patient_overview(current_user: User = Depends(require_patient), db: Session 
             {
                 "id": d.id,
                 "title": d.title,
-                "fileName": d.file_name,
+                "fileName": d.original_file_name,
                 "imageUrl": d.file_url,
-                "extractedText": d.extracted_text,
-                "scanStatus": d.scan_status,
-                "createdAt": d.created_at,
+                "extractedText": d.formatted_text or d.extracted_text,
+                "scanStatus": d.ocr_status,
+                "createdAt": d.upload_date,
             }
             for d in records
         ],
@@ -165,9 +165,9 @@ def doctor_overview(current_user: User = Depends(require_doctor), db: Session = 
     records, medications, latest_vitals = [], [], {}
     if access_ids:
         records = (
-            db.query(MedicalDocument)
-            .filter(MedicalDocument.user_id.in_(access_ids))
-            .order_by(MedicalDocument.created_at.desc())
+            db.query(PatientReport)
+            .filter(PatientReport.patient_id.in_(access_ids))
+            .order_by(PatientReport.upload_date.desc())
             .limit(40)
             .all()
         )
@@ -185,7 +185,7 @@ def doctor_overview(current_user: User = Depends(require_doctor), db: Session = 
 
     record_counts: dict[int, int] = {}
     for record in records:
-        record_counts[record.user_id] = record_counts.get(record.user_id, 0) + 1
+        record_counts[record.patient_id] = record_counts.get(record.patient_id, 0) + 1
 
     return {
         "doctor": {"id": current_user.id, "name": current_user.full_name, "email": current_user.email, "role": "DOCTOR"},
@@ -249,13 +249,16 @@ def doctor_overview(current_user: User = Depends(require_doctor), db: Session = 
         "medicalRecords": [
             {
                 "id": r.id,
-                "userId": r.user_id,
+                "userId": r.patient_id,
                 "title": r.title,
-                "fileName": r.file_name,
-                "scanStatus": r.scan_status,
-                "extractedText": r.extracted_text,
-                "createdAt": r.created_at,
-                "patientName": name_of(r.user_id),
+                "fileName": r.original_file_name,
+                "scanStatus": r.ocr_status,
+                "extractedText": r.formatted_text or r.extracted_text,
+                "department": r.department.name if r.department else "General",
+                "summary": r.summary,
+                "validationStatus": r.validation_status,
+                "createdAt": r.upload_date,
+                "patientName": name_of(r.patient_id),
             }
             for r in records
         ],

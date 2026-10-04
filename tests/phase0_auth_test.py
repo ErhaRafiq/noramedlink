@@ -23,15 +23,18 @@ Optional: PHASE0_BASE_URL=http://localhost:3001
 from __future__ import annotations
 
 import base64
+import io
 import json
 import os
 import secrets
+import shutil
 import sys
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
+from PIL import Image
 from dotenv import dotenv_values
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
@@ -39,7 +42,7 @@ from sqlalchemy.engine import make_url
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from database import DATABASE_URL  # noqa: E402  (backend/database.py; loads .env files first)
+from database import DATABASE_URL, get_upload_root_path  # noqa: E402  (backend/database.py; loads .env files first)
 from auth import create_access_token  # noqa: E402  (backend/auth.py; reads JWT secret from env)
 
 BASE_URL = os.environ.get("PHASE0_BASE_URL", "http://localhost:3000").rstrip("/")
@@ -217,20 +220,23 @@ def create_user(label: str, role: str, *, active: bool = True, doctor_status: st
         return user_id
 
 
-def create_record(user_id: int, title: str) -> int:
+def create_record(user_id: int, title: str, file_url: str = "") -> int:
+    """Seed a report (patient_reports is the single report table since migration 0008)."""
     with engine.begin() as conn:
         return conn.execute(
             text(
                 """
-                insert into medical_documents (user_id, title, category, file_name, file_url, file_type,
-                                               extracted_entities, detected_keywords, structured_sections,
-                                               scan_status)
-                values (:uid, :title, 'general-medicine', 'phase0-test.txt', '', 'unknown',
-                        '[]', '[]', '{}', 'UPLOADED')
+                insert into patient_reports (patient_id, title, original_file_name, file_url, file_type,
+                                             extracted_text, formatted_text, structured_data_json, summary,
+                                             extracted_entities, rule_warnings, validation_status,
+                                             validation_results, clinical_summary_json, llm_self_check,
+                                             summary_source, ocr_status)
+                values (:uid, :title, 'phase0-test.png', :url, 'png', 'Hemoglobin 10.2', 'Hemoglobin 10.2',
+                        '{}', 'Advisory summary', '[]', '[]', 'SAFE', '{}', '{}', '{}', 'rule_based', 'COMPLETED')
                 returning id
                 """
             ),
-            {"uid": user_id, "title": title},
+            {"uid": user_id, "title": title, "url": file_url},
         ).scalar_one()
 
 
@@ -285,7 +291,14 @@ def cleanup_test_users() -> None:
             if table in existing:
                 deleted += conn.execute(text(f"delete from {table} where {column} = any(:ids)"), {"ids": ids}).rowcount
         users = conn.execute(text("delete from users where id = any(:ids)"), {"ids": ids}).rowcount
-    print(f"Cleanup: removed {users} phase0-test- user(s) and {deleted} related row(s).")
+    upload_root = get_upload_root_path()
+    folders = 0
+    for user_id in ids:
+        folder = upload_root / str(user_id)
+        if folder.is_dir() and folder.parent == upload_root:
+            shutil.rmtree(folder)
+            folders += 1
+    print(f"Cleanup: removed {users} phase0-test- user(s), {deleted} related row(s) and {folders} upload folder(s).")
 
 
 # --------------------------------------------------------------------------- tokens / http
@@ -396,15 +409,15 @@ def run_tests() -> None:
     check("A's dashboard lists A's record", record_a in record_ids, f"ids={record_ids}")
     check("A's dashboard (with ?userId=B) does not list B's record", record_b not in record_ids, f"ids={record_ids}")
 
-    response = call("POST", "/api/medical-records/delete", tok_a, {"recordId": record_b, "userId": patient_b})
-    check("A deleting B's record -> 404", response.status_code == 404, f"got {response.status_code}")
-    check(
-        "B's record still exists after A's attempt",
-        scalar("select count(*) from medical_documents where id = :id", id=record_b) == 1,
-    )
-    response = call("POST", "/api/medical-records/delete", tok_b, {"recordId": record_b})
-    check("B deleting own record -> 200", response.status_code == 200, f"got {response.status_code}")
-    check("B's record is gone", scalar("select count(*) from medical_documents where id = :id", id=record_b) == 0)
+    response = call("DELETE", f"/api/backend/patient/reports/{record_b}?user_id={patient_b}", tok_a)
+    check("A deleting B's report -> 404", response.status_code == 404, f"got {response.status_code}")
+    check("B's report still exists after A's attempt",
+          scalar("select count(*) from patient_reports where id = :id", id=record_b) == 1)
+    response = call("GET", f"/api/backend/patient/reports/{record_b}", tok_a)
+    check("A reading B's report -> 404", response.status_code == 404, f"got {response.status_code}")
+    response = call("DELETE", f"/api/backend/patient/reports/{record_b}", tok_b)
+    check("B deleting own report -> 200", response.status_code == 200, f"got {response.status_code}")
+    check("B's report is gone", scalar("select count(*) from patient_reports where id = :id", id=record_b) == 0)
 
     response = call("POST", "/api/backend/patient/vitals/basic", tok_a,
                     {"user_id": patient_b, "userId": patient_b, "blood_pressure": "120/80", "sugar_level": "95"})
@@ -562,6 +575,30 @@ def run_tests() -> None:
                  a=patient_a) == 1
           and scalar("select count(*) from emergency_bookings where user_id = :b", b=patient_b) == 0)
 
+    print("\n[5h] Report upload (browser-extracted text, no OCR.space)")
+    paid_keys = [k for k in ("OCR_SPACE_API_KEY", "OPENAI_API_KEY", "GROQ_API_KEY")
+                 if (os.environ.get(k) or "").strip().strip('"').strip("'")]
+    if paid_keys:
+        print("  SKIP  upload pipeline test: an AI/OCR key is configured, and tests never call paid services")
+    else:
+        png = io.BytesIO()
+        Image.new("RGB", (8, 8), "white").save(png, format="PNG")
+        response = client.post(
+            "/api/backend/patient/reports/upload",
+            headers={"Authorization": f"Bearer {tok_a}"},
+            data={"title": "Phase0 CBC", "extracted_text": "Hemoglobin: 10.2 g/dL\nGlucose: 250 mg/dL"},
+            files={"file": ("phase0-cbc.png", png.getvalue(), "image/png")},
+        )
+        uploaded = response.json() if response.status_code == 201 else {}
+        check("A uploads a report with browser-extracted text -> 201 COMPLETED",
+              response.status_code == 201 and uploaded.get("ocr_status") == "COMPLETED", f"got {response.status_code}")
+        check("file stored under A's upload folder, not as base64",
+              str(uploaded.get("file_url", "")).startswith(f"uploads/{patient_a}/"), f"got {uploaded.get('file_url')}")
+        overview_records = call("GET", "/api/backend/patient/overview", tok_a).json()["medicalRecords"]
+        check("upload appears on A's /dashboard data", uploaded.get("id") in [r["id"] for r in overview_records])
+        response = call("DELETE", f"/api/backend/patient/reports/{uploaded.get('id')}", tok_b)
+        check("B deleting A's upload -> 404", response.status_code == 404, f"got {response.status_code}")
+
     print("\n[6] Doctor grant lifecycle on doctor/overview")
     check("no grant -> patient A not listed", patient_a not in overview_patient_ids(tok_doctor))
 
@@ -574,6 +611,10 @@ def run_tests() -> None:
     create_grant(doctor, patient_a, expires_in=timedelta(hours=1))
     check("active grant -> patient A listed", patient_a in overview_patient_ids(tok_doctor))
     overview = call("GET", "/api/backend/doctor/overview", tok_doctor).json()
+    granted_record = next((r for r in overview["medicalRecords"] if r["id"] == record_a), {})
+    check("doctor view reads the report table (department, summary, status)",
+          granted_record.get("summary") == "Advisory summary" and granted_record.get("scanStatus") == "COMPLETED"
+          and "department" in granted_record, f"got {granted_record}")
     check("active grant -> A's record and latest vitals visible",
           record_a in [r["id"] for r in overview["medicalRecords"]]
           and next(p for p in overview["patients"] if p["id"] == patient_a)["latestVitals"] is not None)

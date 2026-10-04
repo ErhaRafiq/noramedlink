@@ -359,10 +359,14 @@ async def upload_report(
     title: str | None = Form(default=None),
     department: str | None = Form(default=None),
     category: str | None = Form(default=None),
+    extracted_text: str | None = Form(default=None),
     file: UploadFile = File(...),
     current_user: User = Depends(require_patient),
     db: Session = Depends(get_db),
 ):
+    """Store a report file and process its text. If the browser already read the text
+    locally (extracted_text, e.g. tesseract.js on /dashboard), that text is processed
+    instead of sending the file to OCR.space."""
     manual_department = requested_department(department or category)
     storage_department = department_slug(manual_department or "general")
     stored_path, file_type = await save_upload_file(file, storage_department, patient_id=current_user.id)
@@ -380,11 +384,16 @@ async def upload_report(
     )
 
     try:
-        ocr_result = await extract_report_with_ocr_space(
-            str(stored_path_to_disk_path(stored_path)),
-            original_name,
-            manual_department,
-        )
+        local_text = (extracted_text or "").strip()
+        if local_text:
+            ocr_result = build_ocr_result(local_text, original_name, manual_department)
+            ocr_result.setdefault("structured_data_json", {})["source"] = "client_local_ocr"
+        else:
+            ocr_result = await extract_report_with_ocr_space(
+                str(stored_path_to_disk_path(stored_path)),
+                original_name,
+                manual_department,
+            )
         final_department = manual_department or str(ocr_result.get("department_name") or "General")
         report.department = get_department(db, final_department)
         analysis = await analyze_report_result(ocr_result, final_department)

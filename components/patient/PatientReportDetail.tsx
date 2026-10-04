@@ -19,7 +19,7 @@ import {
 import { NoraLogo } from "@/components/ui/NoraLogo";
 import { api } from "@/lib/api";
 import { clearSession, getSession } from "@/lib/auth";
-import { REPORT_CATEGORIES, normalizeReportCategory } from "@/lib/patient-dashboard";
+import { REPORT_CATEGORIES, normalizeReportCategory, validationLabel } from "@/lib/patient-dashboard";
 import type { MedicalDocument } from "@/lib/types";
 
 const departments = REPORT_CATEGORIES.map((category) => ({
@@ -236,7 +236,7 @@ export function PatientReportDetail({ reportId }: { reportId: number }) {
               <SmallDetail label="OCR status" value={report.ocr_status.replaceAll("_", " ")} />
               <SmallDetail label="Confidence" value={typeof report.ocr_confidence === "number" ? `${Math.round(report.ocr_confidence * 100)}%` : "Not available"} />
               <SmallDetail label="File type" value={report.file_type.toUpperCase()} />
-              <SmallDetail label="AI validation" value={report.validation_status?.replaceAll("_", " ") ?? "SAFE"} />
+              <SmallDetail label="AI validation" value={validationLabel(report.validation_status)} />
             </div>
           </div>
         </header>

@@ -446,7 +446,7 @@ export const api = {
     });
   },
   regenerateDocumentOcr(token: string, documentId: number) {
-    return apiRequest<MedicalDocument>(`/api/reports/${documentId}/regenerate-ocr`, {
+    return apiRequest<MedicalDocument>(`/patient/reports/${documentId}/regenerate-ocr`, {
       method: "POST",
       token,
       baseUrl: API_BASE_URL,
@@ -582,7 +582,7 @@ export const api = {
     });
   },
   uploadUrl(path: string) {
-    if (path.startsWith("http")) {
+    if (path.startsWith("http") || path.startsWith("data:")) {
       return path;
     }
     const normalized = path.replace(/\\/g, "/").replace(/^\/+/, "");

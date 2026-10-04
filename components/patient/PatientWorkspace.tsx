@@ -61,6 +61,7 @@ import {
   REPORT_CATEGORIES,
   type ReportCategoryId,
   normalizeReportCategory,
+  validationLabel,
 } from "@/lib/patient-dashboard";
 import type {
   Appointment,
@@ -207,6 +208,7 @@ function categoryStatus(categoryId: string, reports: MedicalDocument[]) {
   const latest = matches[0];
   if (latest.validation_status === "HIGH_RISK") return "Review";
   if (latest.validation_status === "CAUTION") return "Monitor";
+  if (latest.validation_status === "NOT_VALIDATED") return "Not validated";
   return "Stable";
 }
 
@@ -1351,6 +1353,8 @@ export function PatientWorkspace({
                                 ? "bg-rose-50 text-rose-600 border border-rose-100"
                                 : r.validation_status === "CAUTION"
                                 ? "bg-amber-50 text-amber-600 border border-amber-100"
+                                : r.validation_status === "NOT_VALIDATED"
+                                ? "bg-slate-100 text-slate-600 border border-slate-200"
                                 : "bg-blue-50 text-blue-600 border border-blue-100",
                             )}
                           >
@@ -1358,6 +1362,8 @@ export function PatientWorkspace({
                               ? "Review"
                               : r.validation_status === "CAUTION"
                               ? "Monitor"
+                              : r.validation_status === "NOT_VALIDATED"
+                              ? validationLabel(r.validation_status)
                               : "AI summarized"}
                           </span>
                           <button
