@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { FormEvent, useState } from "react";
 
-import { authHeaders } from "@/lib/auth";
+import { api } from "@/lib/api";
+import { getSession } from "@/lib/auth";
+import { summarizeMedicalText } from "@/lib/medical-summarizer";
 
 type SummaryResponse = {
   summary: string;
@@ -59,9 +61,9 @@ export default function SummarizePage() {
     setStatusMessage("");
     setSummary(null);
 
-    const userId = getStoredUserId();
+    const session = getSession();
 
-    if (!userId) {
+    if (!getStoredUserId() || !session) {
       setStatusMessage("Login as a patient before summarizing saved reports.");
       return;
     }
@@ -69,26 +71,15 @@ export default function SummarizePage() {
     setIsSummarizingSavedReports(true);
 
     try {
-      const response = await fetch("/api/summarize", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
-        body: JSON.stringify({}),
-      });
-      const data = (await response.json()) as SummaryResponse & { message?: string };
-
-      if (!response.ok) {
-        setStatusMessage(data.message ?? "Unable to summarize saved reports.");
-        return;
-      }
+      const backend = await api.summarizeSavedReports(session.token);
+      // Same merge as the former Next route: local rule-based breakdown, server summary text.
+      const data: SummaryResponse = { ...summarizeMedicalText(backend.text), summary: backend.summary, warning: backend.warning };
 
       setText("");
       setSummary(data);
       setStatusMessage(data.warning ?? "Summary generated from saved patient reports.");
-    } catch {
-      setStatusMessage("Unable to reach the summarization service.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Unable to reach the summarization service.");
     } finally {
       setIsSummarizingSavedReports(false);
     }
@@ -107,27 +98,20 @@ export default function SummarizePage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch("/api/summarize", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...authHeaders(),
-        },
-        body: JSON.stringify({ text }),
-      });
-      const data = (await response.json()) as SummaryResponse & { message?: string };
-
-      if (!response.ok) {
-        setStatusMessage(data.message ?? "Unable to summarize this report.");
+      const session = getSession();
+      if (!session) {
+        setStatusMessage("Please login before summarizing a report.");
         return;
       }
+      const backend = await api.summarizeText(session.token, text.trim());
+      const data: SummaryResponse = { ...summarizeMedicalText(text.trim()), summary: backend.summary, warning: backend.warning };
 
       setSummary(data);
       if (data.warning) {
         setStatusMessage(data.warning);
       }
-    } catch {
-      setStatusMessage("Unable to reach the summarization service.");
+    } catch (error) {
+      setStatusMessage(error instanceof Error ? error.message : "Unable to reach the summarization service.");
     } finally {
       setIsSubmitting(false);
     }

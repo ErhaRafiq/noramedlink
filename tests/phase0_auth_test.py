@@ -61,7 +61,6 @@ DOCTOR_ROUTES = [
 PATIENT_ROUTES = [
 ]
 ANY_USER_ROUTES = [
-    ("POST", "/api/summarize"),
 ]
 # FastAPI endpoints (through the proxy) that replaced Next routes in Phase 1.
 FASTAPI_PATIENT_ROUTES = [
@@ -84,6 +83,7 @@ FASTAPI_PATIENT_ROUTES = [
     ("GET", "/api/backend/patient/reports"),
     ("POST", "/api/backend/patient/reports/upload"),
     ("DELETE", "/api/backend/patient/reports/1"),
+    ("POST", "/api/backend/nlp/summarize/saved-reports"),
 ]
 # FastAPI endpoints restricted to admins.
 FASTAPI_ADMIN_ROUTES = [
@@ -102,6 +102,7 @@ FASTAPI_ANY_USER_ROUTES = [
     ("GET", "/api/backend/appointments"),
     ("PUT", "/api/backend/appointments/1"),
     ("GET", "/api/backend/payments"),
+    ("POST", "/api/backend/nlp/summarize"),
 ]
 ALL_ROUTES = (ADMIN_ROUTES + DOCTOR_ROUTES + PATIENT_ROUTES + ANY_USER_ROUTES
               + FASTAPI_PATIENT_ROUTES + FASTAPI_ANY_USER_ROUTES + FASTAPI_ADMIN_ROUTES)
@@ -387,7 +388,7 @@ def run_tests() -> None:
     for method, path in PATIENT_ROUTES + FASTAPI_PATIENT_ROUTES:
         response = call(method, path, tok_doctor)
         check(f"doctor on {path} -> 403", response.status_code == 403, f"got {response.status_code}")
-    response = call("POST", "/api/summarize", tok_doctor, {})
+    response = call("POST", "/api/backend/nlp/summarize/saved-reports", tok_doctor)
     check("doctor on summarize saved-report mode -> 403", response.status_code == 403, f"got {response.status_code}")
     response = call("GET", "/api/backend/patient/overview", token_for(inactive))
     check("inactive patient account -> 403", response.status_code == 403, f"got {response.status_code}")
@@ -574,6 +575,10 @@ def run_tests() -> None:
                  a=patient_a) == 1
           and scalar("select count(*) from emergency_bookings where user_id = :b", b=patient_b) == 0)
 
+    response = call("POST", "/api/backend/nlp/summarize", tok_a, {"text": "too short"})
+    check("summarize text under 20 characters -> 400", response.status_code == 400, f"got {response.status_code}")
+    response = call("POST", "/api/backend/nlp/summarize", tok_a, {"text": "x" * 20001})
+    check("summarize text over 20,000 characters -> 413", response.status_code == 413, f"got {response.status_code}")
     response = call("GET", "/api/backend/patient/documents", tok_a)
     check("removed /patient/documents endpoint -> 404", response.status_code == 404, f"got {response.status_code}")
 
@@ -600,6 +605,15 @@ def run_tests() -> None:
         check("upload appears on A's /dashboard data", uploaded.get("id") in [r["id"] for r in overview_records])
         response = call("DELETE", f"/api/backend/patient/reports/{uploaded.get('id')}", tok_b)
         check("B deleting A's upload -> 404", response.status_code == 404, f"got {response.status_code}")
+        response = call("POST", "/api/backend/nlp/summarize/saved-reports", tok_a)
+        saved = response.json() if response.status_code == 200 else {}
+        check("saved-report summary uses only A's reports",
+              response.status_code == 200 and f"{TEST_PREFIX}record A" in saved.get("text", "")
+              and f"{TEST_PREFIX}record B" not in saved.get("text", "") and bool(saved.get("summary")),
+              f"got {response.status_code}")
+        response = call("POST", "/api/backend/nlp/summarize", tok_doctor, {"text": "Hemoglobin 10.2 g/dL, glucose 250 mg/dL."})
+        check("doctor can summarize pasted text -> 200", response.status_code == 200 and bool(response.json().get("summary")),
+              f"got {response.status_code}")
         response = call("POST", "/api/backend/patient/doctor-summaries/generate", tok_a)
         summary_text = (response.json() or {}).get("summary_text", "") if response.status_code == 200 else ""
         check("doctor-summary generator reads reports from patient_reports",
