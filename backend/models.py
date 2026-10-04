@@ -583,6 +583,22 @@ class PatientDashboardAccess(Base):
     )
 
 
+class DashboardOtpAttempt(Base):
+    """Every attempt to redeem a patient dashboard OTP, for rate limiting and audit.
+    The OTP code itself is never stored here."""
+
+    __tablename__ = "dashboard_otp_attempts"
+    __table_args__ = (
+        Index("dashboard_otp_attempts_actor_id_created_at_idx", "actor_id", "created_at"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    actor_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    context: Mapped[str] = mapped_column(String(20), nullable=False)  # "unlock" (doctor) or "booking" (patient)
+    succeeded: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
 class PatientDashboardOtp(Base):
     __tablename__ = "patient_dashboard_otps"
 

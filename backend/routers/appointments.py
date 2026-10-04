@@ -14,7 +14,7 @@ from schemas import (
     AppointmentOut,
     AppointmentUpdate,
 )
-from services.dashboard_access import grant_access_by_otp
+from services.dashboard_access import ensure_otp_attempts_allowed, grant_access_by_otp, record_otp_attempt
 
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
@@ -151,6 +151,10 @@ def create_appointment(
         )
 
     doctor = resolve_doctor(payload, db)
+    patient_access_otp = payload.patient_access_otp.strip() if payload.patient_access_otp else ""
+    if patient_access_otp:
+        # Checked before anything is created, so a blocked request books nothing.
+        ensure_otp_attempts_allowed(db, current_user.id)
     reason = payload.reason.strip() if payload.reason and payload.reason.strip() else None
     notes = payload.notes.strip() if payload.notes and payload.notes.strip() else reason
 
@@ -168,12 +172,12 @@ def create_appointment(
     db.add(appointment)
 
     dashboard_access_granted = False
-    patient_access_otp = payload.patient_access_otp.strip() if payload.patient_access_otp else ""
     if patient_access_otp:
         dashboard_access_granted = (
             grant_access_by_otp(db, doctor.id, patient_access_otp, expected_patient_id=current_user.id, commit=False)
             is not None
         )
+        record_otp_attempt(db, current_user.id, "booking", dashboard_access_granted, commit=False)
 
     db.commit()
     db.refresh(appointment)

@@ -4,18 +4,64 @@ A patient issues a one-time 6-digit OTP (valid 15 minutes). A doctor who enters 
 gets a 2-hour grant; the doctor can end it early. Ported from lib/patient-access.ts.
 """
 
+import logging
 import secrets
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
+from fastapi import HTTPException, status
 from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from models import PatientDashboardAccess, PatientDashboardOtp, User
+from models import DashboardOtpAttempt, PatientDashboardAccess, PatientDashboardOtp, User
+
+logger = logging.getLogger("nora.dashboard_access")
 
 OTP_LIFETIME = timedelta(minutes=15)
 CONSULTATION_LIFETIME = timedelta(hours=2)
+
+# Brute-force protection: 6-digit codes, so failed redemptions are limited per account.
+MAX_FAILED_ATTEMPTS = 5
+ATTEMPT_WINDOW = timedelta(minutes=15)
+
+
+def ensure_otp_attempts_allowed(db: Session, actor_id: int) -> None:
+    """Raise 429 if the account has MAX_FAILED_ATTEMPTS failed OTP attempts in the window."""
+    since = _now() - ATTEMPT_WINDOW
+    failures = (
+        db.query(DashboardOtpAttempt)
+        .filter(
+            DashboardOtpAttempt.actor_id == actor_id,
+            DashboardOtpAttempt.succeeded.is_(False),
+            DashboardOtpAttempt.created_at > since,
+        )
+        .order_by(DashboardOtpAttempt.created_at.asc())
+        .all()
+    )
+    if len(failures) >= MAX_FAILED_ATTEMPTS:
+        oldest = failures[0].created_at
+        if oldest.tzinfo is None:  # SQLite returns naive datetimes (stored as UTC)
+            oldest = oldest.replace(tzinfo=timezone.utc)
+        retry_after = max(60, int((oldest + ATTEMPT_WINDOW - _now()).total_seconds()))
+        logger.warning("Dashboard OTP attempts blocked for user %s (%s failures in 15 minutes)", actor_id, len(failures))
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=(
+                f"Too many incorrect OTP attempts. Please wait {max(1, retry_after // 60)} minutes "
+                "and ask the patient for a new code."
+            ),
+            headers={"Retry-After": str(retry_after)},
+        )
+
+
+def record_otp_attempt(db: Session, actor_id: int, context: str, succeeded: bool, commit: bool = True) -> None:
+    """Log an OTP redemption attempt (never the code). Failures also go to the server log."""
+    db.add(DashboardOtpAttempt(actor_id=actor_id, context=context, succeeded=succeeded))
+    if not succeeded:
+        logger.warning("Failed dashboard OTP attempt by user %s (%s)", actor_id, context)
+    if commit:
+        db.commit()
 
 
 @dataclass

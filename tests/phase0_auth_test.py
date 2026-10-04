@@ -118,6 +118,7 @@ USER_OWNED_ROWS = [
     ("patient_dashboard_access", "patient_id"),
     ("patient_dashboard_access", "doctor_id"),
     ("patient_dashboard_otps", "patient_id"),
+    ("dashboard_otp_attempts", "actor_id"),
     ("reminder_logs", "patient_id"),
     ("medicine_reminders", "patient_id"),
     ("reminders", "user_id"),
@@ -330,6 +331,7 @@ def run_tests() -> None:
     admin = create_user("admin", "ADMIN")
     doctor_pending = create_user("doctor-pending", "DOCTOR", doctor_status="pending")
     doctor_inactive = create_user("doctor-inactive", "DOCTOR", active=False)
+    doctor_bf = create_user("doctor-bruteforce", "DOCTOR")
 
     tok_a, tok_b = token_for(patient_a), token_for(patient_b)
     tok_doctor, tok_doctor_2, tok_admin = token_for(doctor), token_for(doctor_2), token_for(admin)
@@ -610,6 +612,42 @@ def run_tests() -> None:
     check("booked doctor (2) now sees A", patient_a in overview_patient_ids(tok_doctor_2))
     check("other doctor still does not", patient_a not in overview_patient_ids(tok_doctor))
     call("POST", "/api/backend/doctor/access/end", tok_doctor_2, {"patientId": patient_a})
+
+    print("\n[8] OTP brute-force limit: 5 failures per 15 minutes")
+    tok_bf = token_for(doctor_bf)
+    for attempt in range(1, 6):
+        response = call("POST", "/api/backend/doctor/access/unlock", tok_bf, {"patientAccessOtp": f"wrong-{attempt}"})
+        check(f"wrong unlock attempt {attempt} -> 404", response.status_code == 404, f"got {response.status_code}")
+    response = call("POST", "/api/backend/doctor/access/unlock", tok_bf, {"patientAccessOtp": "wrong-6"})
+    check("6th attempt -> 429 with Retry-After and a clear message",
+          response.status_code == 429 and int(response.headers.get("retry-after", "0")) > 0
+          and "Too many incorrect OTP attempts" in response.json().get("detail", ""),
+          f"got {response.status_code} {response.headers.get('retry-after')}")
+    good_otp = call("POST", "/api/backend/patient/dashboard-otp", tok_a).json()["otp"]["code"]
+    response = call("POST", "/api/backend/doctor/access/unlock", tok_bf, {"patientAccessOtp": good_otp})
+    check("while blocked, even a correct OTP -> 429 (and the OTP stays unused)", response.status_code == 429,
+          f"got {response.status_code}")
+    check("blocked doctor does not see A", patient_a not in overview_patient_ids(tok_bf))
+    check("5 failed unlock attempts logged for that doctor (code not stored)",
+          scalar("select count(*) from dashboard_otp_attempts where actor_id = :id and context = 'unlock' "
+                 "and succeeded = false", id=doctor_bf) == 5)
+    response = call("POST", "/api/backend/doctor/access/unlock", tok_doctor_2, {"patientAccessOtp": good_otp})
+    check("another doctor is not affected -> unlock 200", response.status_code == 200, f"got {response.status_code}")
+    call("POST", "/api/backend/doctor/access/end", tok_doctor_2, {"patientId": patient_a})
+
+    appointments_before = scalar("select count(*) from appointments where user_id = :id", id=patient_b)
+    for attempt in range(1, 6):
+        response = call("POST", "/api/backend/appointments", tok_b,
+                        {"doctor_id": doctor, "date": future, "patient_access_otp": f"wrong-{attempt}"})
+        check(f"booking with wrong OTP {attempt} -> 201, no access shared",
+              response.status_code == 201 and response.json().get("dashboard_access_granted") is False,
+              f"got {response.status_code}")
+    response = call("POST", "/api/backend/appointments", tok_b, {"doctor_id": doctor, "date": future, "patient_access_otp": "wrong-6"})
+    check("6th booking with an OTP -> 429", response.status_code == 429, f"got {response.status_code}")
+    check("the blocked booking created no appointment",
+          scalar("select count(*) from appointments where user_id = :id", id=patient_b) == appointments_before + 5)
+    response = call("POST", "/api/backend/appointments", tok_b, {"doctor_id": doctor, "date": future})
+    check("booking without an OTP still works while blocked -> 201", response.status_code == 201, f"got {response.status_code}")
 
 
 def main() -> int:

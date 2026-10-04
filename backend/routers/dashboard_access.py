@@ -17,7 +17,14 @@ from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import require_doctor, require_patient
 from models import Appointment, EmergencyBooking, Medication, MedicalDocument, Reminder, User, Vitals
-from services.dashboard_access import active_grants, create_dashboard_otp, end_access, grant_access_by_otp
+from services.dashboard_access import (
+    active_grants,
+    create_dashboard_otp,
+    end_access,
+    ensure_otp_attempts_allowed,
+    grant_access_by_otp,
+    record_otp_attempt,
+)
 
 router = APIRouter(tags=["dashboard-access"])
 
@@ -98,7 +105,9 @@ def unlock_patient_dashboard(
     current_user: User = Depends(require_doctor),
     db: Session = Depends(get_db),
 ):
-    grant = grant_access_by_otp(db, current_user.id, payload.patient_access_otp)
+    ensure_otp_attempts_allowed(db, current_user.id)
+    grant = grant_access_by_otp(db, current_user.id, payload.patient_access_otp, commit=False)
+    record_otp_attempt(db, current_user.id, "unlock", grant is not None)
     if not grant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid or expired patient dashboard OTP.")
     patient = grant.patient
