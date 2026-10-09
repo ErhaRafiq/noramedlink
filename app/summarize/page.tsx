@@ -131,7 +131,7 @@ export default function SummarizePage() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link href="/dashboard" className="secondary-button px-4 py-2">
+            <Link href="/dashboard/patient" className="secondary-button px-4 py-2">
               Dashboard
             </Link>
             <Link href="/doctors" className="gradient-button px-4 py-2">
