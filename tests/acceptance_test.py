@@ -54,6 +54,7 @@ LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 # Next.js admin routes were all removed in Phase 1; admin endpoints are in FASTAPI_ADMIN_ROUTES.
 ADMIN_ROUTES: list[tuple[str, str]] = []
 DOCTOR_ROUTES = [
+    ("GET", "/api/backend/doctor/dashboard"),
     ("GET", "/api/backend/doctor/overview"),
     ("POST", "/api/backend/doctor/access/unlock"),
     ("POST", "/api/backend/doctor/access/end"),
@@ -630,6 +631,9 @@ def run_tests() -> None:
               f"got {response.status_code} {summary_text[:120]!r}")
 
     print("\n[6] Doctor grant lifecycle on doctor/overview")
+    profile = call("GET", "/api/backend/doctor/dashboard", tok_doctor).json()
+    check("doctor/dashboard returns only the doctor's own profile (no placeholder stats)",
+          set(profile) == {"doctor"} and profile["doctor"]["id"] == doctor, f"got {profile}")
     check("no grant -> patient A not listed", patient_a not in overview_patient_ids(tok_doctor))
 
     create_grant(doctor, patient_a, expires_in=timedelta(minutes=-5))
