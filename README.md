@@ -119,7 +119,7 @@ If your database already has data (it was created earlier by FastAPI or by Prism
 
 To check the state manually from `backend/`: `alembic current` shows the applied revision, and `alembic check` reports any difference between the models and the database.
 
-`medical_documents` stores the uploaded file metadata, OCR status, raw OCR text, cleaned OCR text, detected keywords, structured OCR sections, safe summary, and upload date.
+`patient_reports` stores the uploaded file metadata, OCR status, raw OCR text, cleaned OCR text, detected keywords, structured OCR sections, safe summary, and upload date. The older `medical_documents` table is kept read-only: migration 0008 copied its rows into `patient_reports`, the backend refuses to write to it, and it is never dropped.
 
 ## Test Flow
 

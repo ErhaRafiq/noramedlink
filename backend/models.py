@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, func
+from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text, UniqueConstraint, event, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from database import Base
@@ -294,6 +294,9 @@ class Reminder(Base):
 
 
 class MedicalDocument(Base):
+    """Legacy report table, kept read-only. Migration 0008 copied every row into
+    patient_reports, which is the only report table the app writes. Never dropped."""
+
     __tablename__ = "medical_documents"
     # Index names from the retired Prisma schema, so existing databases match.
     __table_args__ = (
@@ -493,6 +496,13 @@ class MedicalAiAnalysis(Base):
 
     medical_document: Mapped[MedicalDocument | None] = relationship(back_populates="ai_analyses")
     patient_report: Mapped[PatientReport | None] = relationship(back_populates="ai_analyses")
+
+
+@event.listens_for(MedicalDocument, "before_insert")
+@event.listens_for(MedicalDocument, "before_update")
+@event.listens_for(MedicalDocument, "before_delete")
+def _reject_medical_document_writes(mapper, connection, target) -> None:
+    raise RuntimeError("medical_documents is read-only; write reports to patient_reports.")
 
 
 class MedicineHistory(Base):
