@@ -179,7 +179,7 @@ class Payment(Base):
 
 class Vitals(Base):
     __tablename__ = "vitals"
-    # Matches the Prisma schema's @@index declarations.
+    # Index names from the retired Prisma schema, so existing databases match.
     __table_args__ = (
         Index("vitals_user_id_created_at_idx", "user_id", "created_at"),
     )
@@ -274,7 +274,7 @@ class ReminderLog(Base):
 
 class Reminder(Base):
     __tablename__ = "reminders"
-    # Matches the Prisma schema's @@index declarations.
+    # Index names from the retired Prisma schema, so existing databases match.
     __table_args__ = (
         Index("reminders_user_id_due_at_idx", "user_id", "due_at"),
     )
@@ -295,7 +295,7 @@ class Reminder(Base):
 
 class MedicalDocument(Base):
     __tablename__ = "medical_documents"
-    # Matches the Prisma schema's @@index declarations.
+    # Index names from the retired Prisma schema, so existing databases match.
     __table_args__ = (
         Index("medical_documents_user_id_created_at_idx", "user_id", "created_at"),
     )
@@ -408,7 +408,7 @@ class MedicalDepartment(Base):
 
 class PatientReport(Base):
     __tablename__ = "patient_reports"
-    # Matches the Prisma schema's @@index declarations.
+    # Index names from the retired Prisma schema, so existing databases match.
     __table_args__ = (
         Index("patient_reports_patient_id_upload_date_idx", "patient_id", "upload_date"),
         Index("patient_reports_legacy_medical_document_id_key", "legacy_medical_document_id", unique=True),
@@ -461,7 +461,7 @@ class PatientReport(Base):
 
 class MedicalAiAnalysis(Base):
     __tablename__ = "medical_ai_analyses"
-    # Matches the Prisma schema's @@index declarations.
+    # Index names from the retired Prisma schema, so existing databases match.
     __table_args__ = (
         Index("medical_ai_analyses_user_id_created_at_idx", "user_id", "created_at"),
     )
@@ -520,7 +520,7 @@ class MedicineHistory(Base):
 
 class HealthRiskPrediction(Base):
     __tablename__ = "health_risk_predictions"
-    # Matches the Prisma schema's @@index declarations.
+    # Index names from the retired Prisma schema, so existing databases match.
     __table_args__ = (
         Index("health_risk_predictions_patient_id_created_at_idx", "patient_id", "created_at"),
     )
@@ -538,7 +538,7 @@ class HealthRiskPrediction(Base):
 
 class HealthTip(Base):
     __tablename__ = "health_tips"
-    # Matches the Prisma schema's @@index declarations.
+    # Index names from the retired Prisma schema, so existing databases match.
     __table_args__ = (
         Index("health_tips_patient_id_created_at_idx", "patient_id", "created_at"),
     )
@@ -555,7 +555,7 @@ class HealthTip(Base):
 
 class DoctorSummary(Base):
     __tablename__ = "doctor_summaries"
-    # Matches the Prisma schema's @@index declarations.
+    # Index names from the retired Prisma schema, so existing databases match.
     __table_args__ = (
         Index("doctor_summaries_patient_id_generated_at_idx", "patient_id", "generated_at"),
     )
@@ -570,7 +570,7 @@ class DoctorSummary(Base):
 
 class PatientDashboardAccess(Base):
     __tablename__ = "patient_dashboard_access"
-    # Same name as Prisma's @@unique([doctorId, patientId]); Prisma upserts rely on it.
+    # Same name as the retired Prisma schema's @@unique([doctorId, patientId]), so existing databases match.
     __table_args__ = (
         UniqueConstraint("doctor_id", "patient_id", name="patient_dashboard_access_doctor_id_patient_id_key"),
     )
@@ -649,7 +649,7 @@ class NotificationToken(Base):
 
 class Notification(Base):
     __tablename__ = "notifications"
-    # Matches the Prisma schema's @@index declarations.
+    # Index names from the retired Prisma schema, so existing databases match.
     __table_args__ = (
         Index("notifications_user_id_created_at_idx", "user_id", "created_at"),
         Index("notifications_reminder_id_idx", "reminder_id"),

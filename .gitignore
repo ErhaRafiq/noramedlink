@@ -68,4 +68,3 @@ uploads/
 *.tsbuildinfo
 next-env.d.ts
 
-/app/generated/prisma
