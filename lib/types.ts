@@ -448,14 +448,70 @@ export type DoctorDashboard = {
     hospital_name: string;
     verification_status: string;
   };
+};
+
+/** GET /doctor/overview: the doctor's appointments and emergency visits, plus medical
+ *  data only for patients who granted access with a one-time code. */
+export type DoctorOverview = {
+  doctor: { id: number; name: string; email: string; role: string };
   stats: {
-    assigned_patients: number;
-    pending_consults: number;
-    records_reviewed: number;
-    future_modules: number;
+    appointments: number;
+    patients: number;
+    emergencyBookings: number;
+    medicalRecords: number;
+    medications: number;
   };
-  modules: Array<{
+  appointments: Array<{
+    id: number;
+    userId: number;
+    date: string;
+    patientName: string;
+    patientEmail: string;
+    hasDashboardAccess: boolean;
+    accessExpiresAt: string | null;
+  }>;
+  emergencyBookings: Array<{
+    id: number;
+    userId: number;
+    patientName: string;
+    phone: string;
+    address: string;
+    symptoms: string;
+    status: string;
+    estimatedMinutes: number;
+    createdAt: string;
+    hasDashboardAccess: boolean;
+    accessExpiresAt: string | null;
+  }>;
+  patients: Array<{
+    id: number;
+    name: string;
+    email: string;
+    latestVitals: { bloodPressure: string; sugarLevel: string; createdAt: string } | null;
+    recordCount: number;
+    appointmentCount: number;
+    accessExpiresAt: string;
+  }>;
+  medicalRecords: Array<{
+    id: number;
+    userId: number;
     title: string;
-    description: string;
+    fileName: string;
+    scanStatus: string;
+    extractedText: string | null;
+    department: string;
+    summary: string | null;
+    validationStatus: string | null;
+    createdAt: string;
+    patientName: string;
+  }>;
+  medications: Array<{
+    id: number;
+    userId: number;
+    name: string;
+    dosage: string;
+    status: string;
+    createdAt: string;
+    patientName: string;
   }>;
 };

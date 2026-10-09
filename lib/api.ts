@@ -10,6 +10,7 @@ import type {
   DepartmentTile,
   DoctorSummary,
   DoctorDashboard,
+  DoctorOverview,
   DoctorOption,
   DoctorSignupPayload,
   HealthRiskPrediction,
@@ -315,7 +316,7 @@ export const api = {
       token,
     });
   },
-  doctorOverview<T>(token: string) {
+  doctorOverview<T = DoctorOverview>(token: string) {
     return apiRequest<T>("/doctor/overview", { token });
   },
   unlockPatientDashboard(token: string, patientAccessOtp: string) {
