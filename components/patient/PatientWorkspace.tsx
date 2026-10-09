@@ -40,7 +40,6 @@ import {
   Settings,
   Shield,
   Sparkles,
-  Star,
   Stethoscope,
   Thermometer,
   Upload,
@@ -161,6 +160,10 @@ const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 // Large photos are shrunk before upload; smaller ones go as they are, to keep OCR detail.
 const SHRINK_ABOVE_BYTES = 4 * 1024 * 1024;
 const SHRINK_MAX_SIDE = 2400;
+
+// How many items the dashboard lists before "View all".
+const REPORTS_PREVIEW = 6;
+const RISKS_PREVIEW = 4;
 
 const QUICK_LINKS: Array<{ href: string; label: string; icon: LucideIcon }> = [
   { href: "/doctors", label: "Find a doctor", icon: Stethoscope },
@@ -341,6 +344,8 @@ export function PatientWorkspace({
   const [isGeneratingOtp, setIsGeneratingOtp] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const [activeNav, setActiveNav] = useState("dashboard");
+  const [showAllReports, setShowAllReports] = useState(false);
+  const [showAllRisks, setShowAllRisks] = useState(false);
 
   const notify = (type: ToastType, message: string) => {
     setToast({ type, message });
@@ -777,24 +782,6 @@ export function PatientWorkspace({
           })}
         </nav>
 
-        {/* Premium card */}
-        <div className="mx-4 mb-3">
-          <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-violet-600 p-4 text-white shadow-lg shadow-blue-200/40">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Star className="h-3.5 w-3.5 text-yellow-300" />
-              <p className="text-[11px] font-black uppercase tracking-wider">Go Premium</p>
-            </div>
-            <p className="text-[11px] leading-5 text-blue-100 mb-3">
-              Unlock AI insights, advanced reports &amp; priority support.
-            </p>
-            <button
-              type="button"
-              className="w-full py-2 rounded-xl bg-white text-blue-700 text-xs font-black hover:bg-blue-50 transition shadow-sm"
-            >
-              Upgrade Now
-            </button>
-          </div>
-        </div>
 
         {/* Profile card */}
         <div className="mx-4 mb-4 p-3.5 rounded-2xl bg-blue-50/80 border border-blue-100">
@@ -1384,12 +1371,6 @@ export function PatientWorkspace({
             <DashCard>
               <div className="flex items-center justify-between mb-5">
                 <h2 className="text-sm font-black text-slate-900">Health Categories</h2>
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition"
-                >
-                  View all <ArrowRight className="h-3 w-3" />
-                </button>
               </div>
               <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
                 {categories.map((cat) => {
@@ -1400,7 +1381,7 @@ export function PatientWorkspace({
                       type="button"
                       onClick={() => {
                         setActiveCategory(cat.id);
-                        focusSection("reports");
+                        document.getElementById("recent-reports")?.scrollIntoView({ behavior: "smooth", block: "start" });
                       }}
                       className="group rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5 text-left hover:border-blue-200 hover:bg-blue-50/60 hover:-translate-y-0.5 transition-all duration-200"
                     >
@@ -1425,20 +1406,33 @@ export function PatientWorkspace({
           <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
 
             {/* Recent Reports */}
-            <DashCard>
+            <DashCard id="recent-reports">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm font-black text-slate-900">Recent Reports</h2>
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition"
-                >
-                  View all <ArrowRight className="h-3 w-3" />
-                </button>
+                <h2 className="text-sm font-black text-slate-900">
+                  Recent Reports
+                  {activeCategory !== "all" && (
+                    <span className="font-semibold text-slate-400"> · {getCategoryMeta(activeCategory).label}</span>
+                  )}
+                </h2>
+                {(activeCategory !== "all" || (!showAllReports && filteredReports.length > REPORTS_PREVIEW)) && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveCategory("all");
+                      setShowAllReports(true);
+                    }}
+                    className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition"
+                  >
+                    View all ({reports.length}) <ArrowRight className="h-3 w-3" />
+                  </button>
+                )}
               </div>
               <div className="space-y-2">
                 {reports.length === 0
                   ? <p className="p-3 text-sm text-slate-500">No reports uploaded yet.</p>
-                  : filteredReports.slice(0, 6).map((r) => {
+                  : filteredReports.length === 0
+                  ? <p className="p-3 text-sm text-slate-500">No reports match this filter.</p>
+                  : (showAllReports ? filteredReports : filteredReports.slice(0, REPORTS_PREVIEW)).map((r) => {
                       const meta = getCategoryMeta(r.category);
                       return (
                         <div
@@ -1510,17 +1504,20 @@ export function PatientWorkspace({
             <DashCard id="insights">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-black text-slate-900">Risk &amp; Health Flags</h2>
-                <button
-                  type="button"
-                  className="text-xs font-semibold text-rose-500 hover:text-rose-600 flex items-center gap-1 transition"
-                >
-                  View all <ArrowRight className="h-3 w-3" />
-                </button>
+                {!showAllRisks && riskPredictions.length > RISKS_PREVIEW && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllRisks(true)}
+                    className="text-xs font-semibold text-rose-500 hover:text-rose-600 flex items-center gap-1 transition"
+                  >
+                    View all ({riskPredictions.length}) <ArrowRight className="h-3 w-3" />
+                  </button>
+                )}
               </div>
               <div className="space-y-3">
                 {riskPredictions.length === 0
                   ? <p className="p-3 text-sm text-slate-500">No health risk insights yet.</p>
-                  : riskPredictions.slice(0, 4).map((r) => (
+                  : (showAllRisks ? riskPredictions : riskPredictions.slice(0, RISKS_PREVIEW)).map((r) => (
                       <RiskRow
                         key={r.id}
                         title={r.risk_title}
@@ -1710,12 +1707,6 @@ export function PatientWorkspace({
                 </div>
               </div>
               <div className="flex items-center gap-2.5 flex-shrink-0">
-                <button
-                  type="button"
-                  className="px-4 py-2 rounded-xl bg-white text-blue-700 text-sm font-black hover:bg-blue-50 transition shadow-sm"
-                >
-                  Manage Privacy
-                </button>
                 <button
                   type="button"
                   onClick={() => { clearSession(); router.push("/login"); }}
