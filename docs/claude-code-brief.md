@@ -104,7 +104,7 @@ These are project requirements (scope limitations LI-1 and LI-5), not suggestion
   - `dashboard/access-otp`: patient only
   - `doctor/access/unlock`, `doctor/access/end`: doctor only
 - Signup/login OTP routes (`request-otp`, `verify-otp-signup`) stay public: users have no token before signing up.
-- `eng.traineddata` stays where it is.
+- `eng.traineddata` stays where it is. *(Phase 1: removed once `tesseract.js` was dropped; OCR runs in FastAPI with the system Tesseract.)*
 - Tests may create temporary `phase0-test-` users in the dev database, on these conditions:
   - Before creating anything, confirm `DATABASE_URL` points to localhost (parse and check the hostname only; never print the value).
   - Cleanup runs in a teardown/finally block, so it happens even when tests fail.
