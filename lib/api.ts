@@ -316,8 +316,8 @@ export const api = {
       token,
     });
   },
-  doctorOverview<T = DoctorOverview>(token: string) {
-    return apiRequest<T>("/doctor/overview", { token });
+  doctorOverview(token: string) {
+    return apiRequest<DoctorOverview>("/doctor/overview", { token });
   },
   unlockPatientDashboard(token: string, patientAccessOtp: string) {
     return apiRequest<{ message: string; patient: { id: number; name: string; email: string }; expiresAt: string }>(
