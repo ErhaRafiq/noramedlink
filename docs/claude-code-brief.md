@@ -91,7 +91,7 @@ These are project requirements (scope limitations LI-1 and LI-5), not suggestion
 3. Update frontend callers (`app/dashboard/page.tsx`, `app/doctor-dashboard/page.tsx`, `app/admin/page.tsx`, `app/emergency/page.tsx`, `app/payments/*`, etc.) to send `Authorization: Bearer <token>` using `getSession()` from `lib/auth.ts`, and stop sending `userId`.
 4. Ownership checks: a patient can only touch their own records; a doctor can only see a patient's data while an active `PatientDashboardAccess` grant exists; admin routes require role `admin`.
 5. Add `*.log` to `.gitignore` and `git rm --cached` the tracked log files. Check whether `eng.traineddata` is actually loaded by `tesseract.js` before touching it; if it's needed, leave it and tell me.
-6. **Acceptance tests** (write them as a small script or pytest/HTTP test file):
+6. **Acceptance tests** in `tests/acceptance_test.py` (a small HTTP test script, extended as routes move to FastAPI):
    - No token → 401 on every patched route.
    - Patient token on an admin route → 403.
    - Patient A cannot read or delete Patient B's records.

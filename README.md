@@ -135,6 +135,18 @@ To check the state manually from `backend/`: `alembic current` shows the applied
 10. Save corrected text.
 11. Confirm the document remains available in records and data is stored in PostgreSQL.
 
+## Acceptance Tests
+
+`tests/acceptance_test.py` checks route authentication and ownership: no token gives 401, the wrong role gives 403, one patient cannot read or change another patient's data, and a doctor without an access grant cannot open a patient's dashboard.
+
+It runs against the local Next.js dev server and the local database. It refuses to start unless every database URL points to localhost, creates temporary users whose email starts with `phase0-test-`, and deletes only those users and their rows when it finishes, even if a check fails. With FastAPI and `npm run dev` running, from the repo root:
+
+```powershell
+backend\venv\Scripts\python.exe tests\acceptance_test.py
+```
+
+Set `PHASE0_BASE_URL` to test a dev server on another port (default `http://localhost:3000`).
+
 ## OCR Limitations
 
 Tesseract works best with clear printed text, high contrast, straight images, and minimal shadows. Handwriting, blurred photos, folded paper, low light, stamps over text, and complex table layouts can reduce accuracy. Always review and correct OCR text before relying on summaries.

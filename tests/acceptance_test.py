@@ -16,7 +16,7 @@ Safety:
   return before that work (401/403).
 
 Usage (from the repo root, with `npm run dev` running):
-    backend\\venv\\Scripts\\python.exe tests\\phase0_auth_test.py
+    backend\\venv\\Scripts\\python.exe tests\\acceptance_test.py
 Optional: PHASE0_BASE_URL=http://localhost:3001
 """
 
