@@ -563,7 +563,7 @@ export function PatientWorkspace({
     el?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  const firstName = user?.full_name?.split(" ")[0] ?? "Arjun";
+  const firstName = user?.full_name?.split(" ")[0] ?? "";
 
   // ── Loading screen ──────────────────────────────────────────────────────────
   if (isLoading) {
@@ -578,8 +578,6 @@ export function PatientWorkspace({
       </div>
     );
   }
-
-  // Fallback to mock data when API returns empty
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-violet-50">
@@ -655,11 +653,11 @@ export function PatientWorkspace({
         <div className="mx-4 mb-4 p-3.5 rounded-2xl bg-blue-50/80 border border-blue-100">
           <div className="flex items-center gap-3">
             <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-violet-500 flex items-center justify-center text-white font-black text-sm flex-shrink-0">
-              {(user?.full_name ?? "A").slice(0, 1).toUpperCase()}
+              {(user?.full_name ?? "P").slice(0, 1).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-black text-slate-900 truncate">
-                {user?.full_name ?? "Arjun Mehta"}
+                {user?.full_name ?? "Patient"}
               </p>
               <button
                 type="button"
@@ -684,7 +682,7 @@ export function PatientWorkspace({
           <div className="px-4 xl:px-6 py-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
               <h1 className="text-lg font-black text-slate-900">
-                Good morning, {firstName} 👋
+                {firstName ? `Welcome back, ${firstName}` : "Welcome back"}
               </h1>
               <p className="text-xs text-slate-500 mt-0.5">
                 Here&apos;s your personalized health overview for today.
@@ -749,7 +747,9 @@ export function PatientWorkspace({
                   <p className="text-xs font-bold uppercase tracking-wider text-blue-600">
                     Today&apos;s Vitals
                   </p>
-                  <p className="text-[11px] text-slate-400 mt-0.5">Updated just now</p>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    {vitalsToday ? `Recorded ${formatDateTime(vitalsToday.recorded_at)}` : "Nothing recorded today"}
+                  </p>
                 </div>
                 <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-md shadow-blue-200/40 flex-shrink-0">
                   <HeartPulse className="h-4 w-4 text-white" />
@@ -779,7 +779,7 @@ export function PatientWorkspace({
                 <ArrowRight className="h-4 w-4 text-slate-300 mt-1" />
               </div>
               <p className="mt-4 text-3xl font-black text-slate-900">
-                {Math.max(reminders.length, 7)}
+                {reminders.length}
               </p>
               <p className="text-sm font-semibold text-slate-500 mt-0.5">Active Reminders</p>
               <p className="text-xs text-slate-400 mt-0.5">Due today</p>
@@ -817,9 +817,8 @@ export function PatientWorkspace({
                 </>
               ) : (
                 <>
-                  <p className="mt-4 text-base font-black text-slate-900">May 24, 2025</p>
-                  <p className="text-xs text-slate-500 mt-0.5">10:30 AM</p>
-                  <p className="text-sm font-semibold text-violet-700 mt-1">Dr. Neha Sharma</p>
+                  <p className="mt-4 text-base font-black text-slate-900">No upcoming appointment</p>
+                  <p className="text-xs text-slate-500 mt-0.5">Book one with a verified doctor.</p>
                 </>
               )}
               <button
@@ -840,7 +839,7 @@ export function PatientWorkspace({
                 <ArrowRight className="h-4 w-4 text-slate-300 mt-1" />
               </div>
               <p className="mt-4 text-3xl font-black text-slate-900">
-                {Math.max(criticalFlags.length, 2)}
+                {criticalFlags.length}
               </p>
               <p className="text-sm font-semibold text-slate-500 mt-0.5">Critical Flags</p>
               <p className="text-xs text-slate-400 mt-0.5">Needs attention</p>
@@ -996,9 +995,11 @@ export function PatientWorkspace({
               <div className="relative">
                 <div className="flex items-center justify-between mb-5">
                   <h2 className="text-sm font-black text-slate-900">AI Health Summary</h2>
-                  <span className="text-[11px] bg-violet-50 text-violet-600 font-bold px-2.5 py-1 rounded-full border border-violet-100">
-                    Generated just now
-                  </span>
+                  {doctorSummaries[0] ? (
+                    <span className="text-[11px] bg-violet-50 text-violet-600 font-bold px-2.5 py-1 rounded-full border border-violet-100">
+                      Generated {formatDate(doctorSummaries[0].generated_at)}
+                    </span>
+                  ) : null}
                 </div>
                 <div className="flex gap-5 items-start">
                   {/* Heart visual */}
@@ -1023,33 +1024,8 @@ export function PatientWorkspace({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm leading-6 text-slate-600">
                       {doctorSummaries[0]?.summary_text ||
-                        "Your key health indicators are stable. Keep focusing on heart health and liver function. Continue current medications and maintain a balanced lifestyle."}
+                        "No AI summary yet. Upload a report to generate one."}
                     </p>
-                    <div className="mt-3 space-y-2">
-                      <StatusBadgeRow
-                        label="Heart"
-                        value={
-                          riskPredictions.some((r) =>
-                            r.risk_title.toLowerCase().includes("heart"),
-                          )
-                            ? "Monitor"
-                            : "Stable"
-                        }
-                        color="emerald"
-                      />
-                      <StatusBadgeRow label="Liver" value="Monitor" color="amber" />
-                      <StatusBadgeRow
-                        label="Sugar"
-                        value={
-                          riskPredictions.some((r) =>
-                            r.risk_title.toLowerCase().includes("sugar"),
-                          )
-                            ? "Monitor"
-                            : "Controlled"
-                        }
-                        color="emerald"
-                      />
-                    </div>
                   </div>
                 </div>
                 <p className="mt-4 text-[11px] text-slate-400 leading-5">{DISCLAIMER}</p>
@@ -1530,35 +1506,6 @@ function MiniVital({
         <span className="text-xs font-semibold text-slate-500">{label}</span>
       </div>
       <span className="text-xs font-black text-slate-900">{value}</span>
-    </div>
-  );
-}
-
-function StatusBadgeRow({
-  label,
-  value,
-  color,
-}: {
-  label: string;
-  value: string;
-  color: "emerald" | "amber" | "rose";
-}) {
-  const styles = {
-    emerald: "bg-emerald-50 text-emerald-700 border-emerald-100",
-    amber: "bg-amber-50 text-amber-700 border-amber-100",
-    rose: "bg-rose-50 text-rose-700 border-rose-100",
-  };
-  return (
-    <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-100">
-      <span className="text-xs font-semibold text-slate-600">{label}</span>
-      <span
-        className={cn(
-          "text-[11px] font-black px-2 py-0.5 rounded-full border",
-          styles[color],
-        )}
-      >
-        {value}
-      </span>
     </div>
   );
 }
