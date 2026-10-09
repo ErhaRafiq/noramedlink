@@ -17,6 +17,7 @@ from schemas import BasicVitalsCreate, DailyVitalOut, PatientVitalCreate, Vitals
 router = APIRouter(prefix="/patient/vitals", tags=["vitals"])
 
 TREND_POINTS = 14
+BASIC_HISTORY_LIMIT = 10
 
 
 def _parse_blood_pressure(value: str) -> tuple[int, int] | None:
@@ -72,6 +73,19 @@ def add_basic_vitals(
     db.commit()
     db.refresh(vital)
     return _vitals_out(vital)
+
+
+@router.get("/basic", response_model=list[VitalsOut])
+def basic_vitals_history(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+    """The patient's most recent BP/sugar entries, newest first."""
+    vitals = (
+        db.query(Vitals)
+        .filter(Vitals.user_id == current_user.id)
+        .order_by(Vitals.created_at.desc())
+        .limit(BASIC_HISTORY_LIMIT)
+        .all()
+    )
+    return [_vitals_out(vital) for vital in vitals]
 
 
 @router.post("", response_model=DailyVitalOut, status_code=status.HTTP_201_CREATED)

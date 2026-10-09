@@ -65,6 +65,7 @@ ANY_USER_ROUTES = [
 # FastAPI endpoints (through the proxy) that replaced Next routes in Phase 1.
 FASTAPI_PATIENT_ROUTES = [
     ("POST", "/api/backend/patient/vitals/basic"),
+    ("GET", "/api/backend/patient/vitals/basic"),
     ("POST", "/api/backend/patient/vitals"),
     ("GET", "/api/backend/patient/vitals/today"),
     ("GET", "/api/backend/patient/vitals/trends"),
@@ -427,6 +428,12 @@ def run_tests() -> None:
     response = call("GET", f"/api/backend/patient/vitals/latest?user_id={patient_b}&userId={patient_b}", tok_a)
     vitals = response.json() or {}
     check("vitals/latest (with ?user_id=B) returns A's vitals", vitals.get("user_id") == patient_a, f"got {vitals.get('user_id')}")
+    response = call("GET", f"/api/backend/patient/vitals/basic?user_id={patient_b}&userId={patient_b}", tok_a)
+    history = response.json() if response.status_code == 200 else []
+    check("vitals/basic history (with ?user_id=B) lists only A's entry",
+          len(history) == 1 and history[0].get("user_id") == patient_a, f"got {response.status_code} {history}")
+    response = call("GET", "/api/backend/patient/vitals/basic", tok_b)
+    check("B's vitals/basic history is empty", response.status_code == 200 and response.json() == [])
     response = call("GET", "/api/backend/patient/vitals/today", tok_b)
     check("B's vitals/today is empty", response.status_code == 200 and response.json() is None)
 

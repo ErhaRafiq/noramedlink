@@ -211,6 +211,9 @@ export const api = {
   patientLatestVitals(token: string) {
     return apiRequest<PatientVitals | null>("/patient/vitals/latest", { token });
   },
+  basicVitalsHistory(token: string) {
+    return apiRequest<PatientVitals[]>("/patient/vitals/basic", { token });
+  },
   addBasicVitals(token: string, payload: { blood_pressure: string; sugar_level: string }) {
     return apiRequest<PatientVitals>("/patient/vitals/basic", {
       method: "POST",

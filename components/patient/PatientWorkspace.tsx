@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  Activity,
   AlertCircle,
   AlertTriangle,
   ArrowRight,
@@ -36,7 +37,6 @@ import {
   Shield,
   Sparkles,
   Star,
-  Stethoscope,
   Thermometer,
   Upload,
   UserRound,
@@ -72,6 +72,7 @@ import type {
   MedicalDocument,
   MedicationSchedule,
   MedicineReminder,
+  PatientVitals,
   VitalTrendPoint,
 } from "@/lib/types";
 
@@ -94,6 +95,7 @@ const DISCLAIMER = buildMedicalDisclaimer();
 const NAV_ITEMS: Array<{ id: string; label: string; icon: LucideIcon }> = [
   { id: "dashboard", label: "Dashboard", icon: Home },
   { id: "reports", label: "My Reports", icon: FileText },
+  { id: "vitals", label: "Vitals", icon: Activity },
   { id: "medications", label: "Medications", icon: Pill },
   { id: "appointments", label: "Appointments", icon: CalendarDays },
   { id: "insights", label: "Health Insights", icon: HeartPulse },
@@ -134,6 +136,10 @@ function formatVitalCardValue(vital: DailyVital | null) {
     spo2: vital.spo2 === null ? NO_VITALS.spo2 : `${vital.spo2}%`,
     temperature: vital.temperature === null ? NO_VITALS.temperature : `${vital.temperature.toFixed(1)}°F`,
   };
+}
+
+function isToday(value: string) {
+  return new Date(value).toDateString() === new Date().toDateString();
 }
 
 function getUpcomingAppointment(appointments: Appointment[]) {
@@ -239,6 +245,7 @@ export function PatientWorkspace({
   const [reports, setReports] = useState<MedicalDocument[]>([]);
   const [vitalsToday, setVitalsToday] = useState<DailyVital | null>(null);
   const [vitalTrends, setVitalTrends] = useState<VitalTrendPoint[]>([]);
+  const [basicVitals, setBasicVitals] = useState<PatientVitals[]>([]);
   const [doctors, setDoctors] = useState<DoctorOption[]>([]);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [medications, setMedications] = useState<MedicationSchedule[]>([]);
@@ -255,6 +262,8 @@ export function PatientWorkspace({
   const [isBooking, setIsBooking] = useState(false);
   const [isSavingMedication, setIsSavingMedication] = useState(false);
   const [isCreatingReminder, setIsCreatingReminder] = useState(false);
+  const [isSavingVitals, setIsSavingVitals] = useState(false);
+  const [vitalsForm, setVitalsForm] = useState({ bloodPressure: "", sugarLevel: "" });
   const [toast, setToast] = useState<ToastState>(null);
   const [uploadQueue, setUploadQueue] = useState<FileQueueItem[]>([]);
   const [uploadTitle, setUploadTitle] = useState("");
@@ -339,7 +348,12 @@ export function PatientWorkspace({
     return [...fromReports, ...fromRisks].slice(0, 5);
   }, [reports, riskPredictions]);
 
-  const todayVitalsView = formatVitalCardValue(vitalsToday);
+  // A detailed reading wins; otherwise show a BP entered today through the simple log.
+  const basicToday = !vitalsToday && basicVitals[0] && isToday(basicVitals[0].created_at) ? basicVitals[0] : null;
+  const todayVitalsView = basicToday
+    ? { ...formatVitalCardValue(null), bloodPressure: basicToday.blood_pressure }
+    : formatVitalCardValue(vitalsToday);
+  const todayVitalsRecordedAt = vitalsToday?.recorded_at ?? basicToday?.created_at ?? null;
   const totalUnread = upcomingReminderCount + criticalFlags.length;
 
   async function loadWorkspace(activeToken: string) {
@@ -354,6 +368,7 @@ export function PatientWorkspace({
       reminderData,
       riskData,
       summaryData,
+      basicVitalData,
     ] = await Promise.all([
       api.me(activeToken).catch(() => null),
       api.patientVitalsToday(activeToken).catch(() => null),
@@ -365,6 +380,7 @@ export function PatientWorkspace({
       api.remindersToday(activeToken).catch(() => []),
       api.riskPredictions(activeToken).catch(() => []),
       api.doctorSummaries(activeToken).catch(() => []),
+      api.basicVitalsHistory(activeToken).catch(() => []),
     ]);
 
     if (currentUser && currentUser.role !== "patient") {
@@ -384,6 +400,7 @@ export function PatientWorkspace({
     setReminders(reminderData);
     setRiskPredictions(riskData);
     setDoctorSummaries(summaryData);
+    setBasicVitals(basicVitalData);
   }
 
   async function refreshWorkspace() {
@@ -505,6 +522,28 @@ export function PatientWorkspace({
       notify("error", err instanceof Error ? err.message : "Unable to save medication.");
     } finally {
       setIsSavingMedication(false);
+    }
+  }
+
+  async function handleSaveVitals(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token) { notify("error", "Please sign in again."); return; }
+    const bloodPressure = vitalsForm.bloodPressure.trim();
+    const sugarLevel = vitalsForm.sugarLevel.trim();
+    if (!bloodPressure || !sugarLevel) {
+      notify("error", "Enter both blood pressure and sugar level.");
+      return;
+    }
+    setIsSavingVitals(true);
+    try {
+      await api.addBasicVitals(token, { blood_pressure: bloodPressure, sugar_level: sugarLevel });
+      notify("success", "Vitals saved.");
+      setVitalsForm({ bloodPressure: "", sugarLevel: "" });
+      await refreshWorkspace();
+    } catch (err) {
+      notify("error", err instanceof Error ? err.message : "Unable to save vitals.");
+    } finally {
+      setIsSavingVitals(false);
     }
   }
 
@@ -776,7 +815,7 @@ export function PatientWorkspace({
                     Today&apos;s Vitals
                   </p>
                   <p className="text-[11px] text-slate-400 mt-0.5">
-                    {vitalsToday ? `Recorded ${formatDateTime(vitalsToday.recorded_at)}` : "Nothing recorded today"}
+                    {todayVitalsRecordedAt ? `Recorded ${formatDateTime(todayVitalsRecordedAt)}` : "Nothing recorded today"}
                   </p>
                 </div>
                 <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-md shadow-blue-200/40 flex-shrink-0">
@@ -791,10 +830,10 @@ export function PatientWorkspace({
               </div>
               <button
                 type="button"
-                onClick={() => focusSection("insights")}
+                onClick={() => focusSection("vitals")}
                 className="mt-3 text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition"
               >
-                View trends <ArrowRight className="h-3 w-3" />
+                Add or view vitals <ArrowRight className="h-3 w-3" />
               </button>
             </DashCard>
 
@@ -923,6 +962,74 @@ export function PatientWorkspace({
                   </button>
                 </div>
               )}
+            </DashCard>
+          </section>
+
+          {/* ── Vitals log (BP + sugar) ─────────────────────────────────────── */}
+          <section id="vitals" className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
+            <DashCard>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-black text-slate-900">Add Vitals</h2>
+                <Activity className="h-5 w-5 text-blue-500" />
+              </div>
+              <form className="space-y-3" onSubmit={handleSaveVitals}>
+                <div>
+                  <label htmlFor="vitals-bp" className="text-xs font-bold text-slate-600">Blood pressure</label>
+                  <input
+                    id="vitals-bp"
+                    value={vitalsForm.bloodPressure}
+                    onChange={(e) => setVitalsForm((c) => ({ ...c, bloodPressure: e.target.value }))}
+                    className="form-field mt-1"
+                    placeholder="120/80 mmHg"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="vitals-sugar" className="text-xs font-bold text-slate-600">Sugar level</label>
+                  <input
+                    id="vitals-sugar"
+                    value={vitalsForm.sugarLevel}
+                    onChange={(e) => setVitalsForm((c) => ({ ...c, sugarLevel: e.target.value }))}
+                    className="form-field mt-1"
+                    placeholder="110 mg/dL"
+                  />
+                </div>
+                <button type="submit" className="primary-button w-full" disabled={isSavingVitals}>
+                  {isSavingVitals ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  {isSavingVitals ? "Saving..." : "Save Vitals"}
+                </button>
+              </form>
+            </DashCard>
+            <DashCard>
+              <h2 className="text-sm font-black text-slate-900">Vitals History</h2>
+              <p className="text-[11px] text-slate-400 mt-0.5 mb-3">
+                Your latest readings. Your doctor sees them during an unlocked consultation.
+              </p>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                      <th className="py-2 pr-4">Date</th>
+                      <th className="py-2 pr-4">Blood pressure</th>
+                      <th className="py-2">Sugar level</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {basicVitals.length === 0 ? (
+                      <tr>
+                        <td colSpan={3} className="py-3 text-sm text-slate-500">No vitals recorded yet.</td>
+                      </tr>
+                    ) : (
+                      basicVitals.map((v) => (
+                        <tr key={v.id} className="border-b border-slate-50 last:border-0">
+                          <td className="py-2 pr-4 text-slate-500">{formatDateTime(v.created_at)}</td>
+                          <td className="py-2 pr-4 font-bold text-slate-900">{v.blood_pressure}</td>
+                          <td className="py-2 font-bold text-slate-900">{v.sugar_level}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </DashCard>
           </section>
 
