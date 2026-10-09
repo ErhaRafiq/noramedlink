@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -27,6 +28,7 @@ import {
   FileText,
   HeartPulse,
   Home,
+  Siren,
   KeyRound,
   Loader2,
   LogOut,
@@ -39,6 +41,7 @@ import {
   Shield,
   Sparkles,
   Star,
+  Stethoscope,
   Thermometer,
   Upload,
   UserRound,
@@ -151,6 +154,41 @@ function readNotificationPermission(): NotificationPermissionState {
 }
 
 const POPUP_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+// The server accepts these types up to 10 MB (backend/services/file_service.py).
+const UPLOAD_ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp";
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+// Large photos are shrunk before upload; smaller ones go as they are, to keep OCR detail.
+const SHRINK_ABOVE_BYTES = 4 * 1024 * 1024;
+const SHRINK_MAX_SIDE = 2400;
+
+const QUICK_LINKS: Array<{ href: string; label: string; icon: LucideIcon }> = [
+  { href: "/doctors", label: "Find a doctor", icon: Stethoscope },
+  { href: "/summarize", label: "Summarize a report", icon: Sparkles },
+  { href: "/emergency", label: "Emergency / home visit", icon: Siren },
+];
+
+async function shrinkLargeImage(file: File): Promise<File> {
+  if (!/^image\/(jpeg|png|webp)$/.test(file.type) || file.size <= SHRINK_ABOVE_BYTES) return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, SHRINK_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+    context.fillStyle = "#ffffff";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], `${file.name.replace(/\.[^.]+$/, "")}.jpg`, { type: "image/jpeg" });
+  } catch {
+    return file;
+  }
+}
 
 function getUpcomingAppointment(appointments: Appointment[]) {
   const now = Date.now();
@@ -443,14 +481,13 @@ export function PatientWorkspace({
   }
 
   function addFilesToQueue(files: File[]) {
-    const MAX_MB = 20 * 1024 * 1024;
     const valid: FileQueueItem[] = [];
     let skipped = 0;
     for (const f of files) {
-      if (f.size > MAX_MB) { skipped++; continue; }
+      if (f.size > MAX_UPLOAD_BYTES && !f.type.startsWith("image/")) { skipped++; continue; }
       valid.push({ id: Math.random().toString(36).slice(2) + Date.now().toString(36), file: f, step: "idle" });
     }
-    if (skipped > 0) notify("error", `${skipped} file(s) exceeded the 20 MB limit and were skipped.`);
+    if (skipped > 0) notify("error", `${skipped} file(s) exceeded the 10 MB limit and were skipped.`);
     if (valid.length > 0) setUploadQueue((prev) => [...prev, ...valid]);
   }
 
@@ -477,8 +514,11 @@ export function PatientWorkspace({
     }, 2800);
 
     try {
+      const file = await shrinkLargeImage(item.file);
+      if (file !== item.file) update({ file });
+      if (file.size > MAX_UPLOAD_BYTES) throw new Error("File is larger than 10 MB.");
       const formData = new FormData();
-      formData.append("file", item.file);
+      formData.append("file", file);
       formData.append("title", uploadTitle.trim());
       formData.append("notes", uploadNotes.trim());
       formData.append("category", uploadCategory === "all" ? "general" : uploadCategory);
@@ -844,6 +884,20 @@ export function PatientWorkspace({
         {/* ── Page body ─────────────────────────────────────────────────────── */}
         <div className="flex-1 p-4 xl:p-6 space-y-5">
 
+          {/* ── Quick links ─────────────────────────────────────────────────── */}
+          <nav aria-label="Quick links" className="flex flex-wrap gap-2">
+            {QUICK_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-blue-100 bg-white px-3.5 py-2 text-xs font-bold text-slate-600 hover:border-blue-300 hover:text-blue-700 transition"
+              >
+                <link.icon className="h-3.5 w-3.5" />
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+
           {/* ── KPI Row ─────────────────────────────────────────────────────── */}
           <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
 
@@ -1081,7 +1135,7 @@ export function PatientWorkspace({
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-black text-slate-900">Upload &amp; Understand with AI</h2>
                 <span className="text-[11px] bg-blue-50 text-blue-600 font-bold px-2.5 py-1 rounded-full border border-blue-100">
-                  Max 20 MB each
+                  Max 10 MB each
                 </span>
               </div>
 
@@ -1104,7 +1158,7 @@ export function PatientWorkspace({
                 <input
                   type="file"
                   multiple
-                  accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.docx"
+                  accept={UPLOAD_ACCEPT}
                   onChange={(e: ChangeEvent<HTMLInputElement>) => {
                     if (e.target.files) addFilesToQueue(Array.from(e.target.files));
                     e.target.value = "";
@@ -1129,7 +1183,7 @@ export function PatientWorkspace({
                   </div>
                   <div>
                     <p className="text-sm font-bold text-slate-700">Drag &amp; drop files here</p>
-                    <p className="text-[11px] text-slate-400 mt-0.5">PDF, JPG, PNG, WEBP, HEIC, DOCX — multiple files supported</p>
+                    <p className="text-[11px] text-slate-400 mt-0.5">PDF, JPG, PNG, WEBP — multiple files supported; large photos are shrunk</p>
                   </div>
                   <span className="px-4 py-2 rounded-xl bg-white border border-blue-200 text-sm font-bold text-blue-600 hover:bg-blue-50 transition shadow-sm">
                     Choose Files
