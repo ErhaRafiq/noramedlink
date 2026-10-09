@@ -8,6 +8,8 @@ import {
   AlertTriangle,
   ArrowRight,
   Bell,
+  BellOff,
+  BellRing,
   Bone,
   BookOpen,
   CalendarCheck2,
@@ -79,6 +81,7 @@ import type {
 // ─── Types ────────────────────────────────────────────────────────────────────
 type PatientView = "dashboard" | "upload" | "records" | "ocr" | "summary" | "profile";
 type ToastType = "success" | "error" | "info";
+type NotificationPermissionState = NotificationPermission | "unsupported";
 type ToastState = { type: ToastType; message: string } | null;
 type UploadStep = "idle" | "uploading" | "ocr" | "ai" | "saving" | "done" | "error";
 type FileQueueItem = {
@@ -141,6 +144,13 @@ function formatVitalCardValue(vital: DailyVital | null) {
 function isToday(value: string) {
   return new Date(value).toDateString() === new Date().toDateString();
 }
+
+function readNotificationPermission(): NotificationPermissionState {
+  if (typeof window === "undefined" || !("Notification" in window)) return "unsupported";
+  return Notification.permission;
+}
+
+const POPUP_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 function getUpcomingAppointment(appointments: Appointment[]) {
   const now = Date.now();
@@ -288,6 +298,7 @@ export function PatientWorkspace({
     reminderTime: "",
     frequency: "Once daily",
   });
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermissionState>("unsupported");
   const [dashboardOtp, setDashboardOtp] = useState<{ code: string; expiresAt: string } | null>(null);
   const [isGeneratingOtp, setIsGeneratingOtp] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -312,6 +323,29 @@ export function PatientWorkspace({
       })
       .finally(() => setIsLoading(false));
   }, [router]);
+
+  useEffect(() => {
+    // Read after mount so the server render and the first client render match.
+    const timer = window.setTimeout(() => setNotificationPermission(readNotificationPermission()), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  useEffect(() => {
+    if (notificationPermission !== "granted") return;
+    const timers = reminders
+      .filter((r) => !r.taken_at && !r.skipped_at)
+      .map((r) => {
+        const delay = new Date(r.reminder_time).getTime() - Date.now();
+        if (delay <= 0 || delay > POPUP_WINDOW_MS) return null;
+        const name = r.medication?.medicine_name ?? "your medicine";
+        const dosage = r.medication?.dosage ? ` (${r.medication.dosage})` : "";
+        return window.setTimeout(() => {
+          new Notification("Medicine reminder", { body: `Time to take ${name}${dosage}.`, tag: `reminder-${r.id}` });
+        }, delay);
+      })
+      .filter((timer): timer is number => timer !== null);
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [notificationPermission, reminders]);
 
   const filteredReports = useMemo(() => {
     const query = deferredSearchQuery.trim().toLowerCase();
@@ -525,6 +559,11 @@ export function PatientWorkspace({
     }
   }
 
+  async function enableReminderPopups() {
+    if (readNotificationPermission() !== "default") return;
+    setNotificationPermission(await Notification.requestPermission());
+  }
+
   async function handleSaveVitals(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token) { notify("error", "Please sign in again."); return; }
@@ -557,6 +596,7 @@ export function PatientWorkspace({
     }
     setIsCreatingReminder(true);
     try {
+      await enableReminderPopups();
       await api.createReminder(token, {
         medicationId,
         reminderTime: reminderForm.reminderTime,
@@ -1219,10 +1259,7 @@ export function PatientWorkspace({
               <div className="flex items-center justify-between mb-1">
                 <div>
                   <h2 className="text-sm font-black text-slate-900">Today&apos;s Medicine Schedule</h2>
-                  <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                    Smart medication alerts are active
-                  </p>
+                  <ReminderPopupStatus permission={notificationPermission} onEnable={enableReminderPopups} />
                 </div>
                 <button
                   type="button"
@@ -1687,6 +1724,42 @@ function MiniVital({
       </div>
       <span className="text-xs font-black text-slate-900">{value}</span>
     </div>
+  );
+}
+
+function ReminderPopupStatus({
+  permission,
+  onEnable,
+}: {
+  permission: NotificationPermissionState;
+  onEnable: () => void;
+}) {
+  if (permission === "unsupported") return null;
+  if (permission === "granted") {
+    return (
+      <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+        <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block" />
+        Browser pop-ups are on while this page is open
+      </p>
+    );
+  }
+  if (permission === "denied") {
+    return (
+      <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1.5">
+        <BellOff className="h-3 w-3" />
+        Pop-ups are blocked in your browser settings
+      </p>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onEnable}
+      className="text-[11px] font-semibold text-blue-600 hover:text-blue-700 mt-0.5 flex items-center gap-1.5 transition"
+    >
+      <BellRing className="h-3 w-3" />
+      Turn on browser pop-ups
+    </button>
   );
 }
 
