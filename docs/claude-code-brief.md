@@ -20,41 +20,56 @@ The project is roughly 30% implemented. Your job is to take it further in **phas
 
 ---
 
-## 2. Current state (verified by reading the repo)
+## 2. Current state (after Phase 0 and Phase 1)
 
 ### Real stack
 | Layer | Technology |
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, Tailwind |
-| Backend A | Next.js API routes in `app/api/**` using **Prisma** |
-| Backend B | **FastAPI** in `backend/` using **SQLAlchemy** |
-| Database | PostgreSQL (shared by both backends) |
-| OCR | Tesseract (pytesseract + tesseract.js), OCR.space fallback |
+| Backend | **FastAPI** in `backend/` using **SQLAlchemy**: the only backend. Next.js keeps a same-origin proxy (`app/api/backend/[...path]`), thin auth proxies (`app/api/auth/login`, `signup`) and `app/api/drug-check` (OpenFDA, not used by any page yet) |
+| Database | PostgreSQL. Schema = SQLAlchemy models + **Alembic** migrations (`backend/migrations/`, head `0008`), applied by `alembic upgrade head` at startup. Migrations are additive. **No Prisma** (removed in Phase 1) |
+| OCR | Tesseract via pytesseract in FastAPI, OCR.space fallback (no `tesseract.js`) |
 | AI | OpenAI and Groq via env keys, rule-based fallback when no key, BioBERT NER (`d4data/biomedical-ner-all`) |
-| Auth | JWT (HS256) issued by FastAPI, stored in `localStorage` on the client |
+| Auth | JWT (HS256) issued by FastAPI, stored in `localStorage` on the client; FastAPI role dependencies (`require_patient`, `require_doctor`, admin) on every protected endpoint |
+| Tests | `tests/acceptance_test.py`: route authentication, ownership and access-grant checks against the local stack (see README) |
 
 There is **no** Flutter app and **no** Node gateway, despite what the design documents say. Don't create them.
 
 ### Module status
 | # | Module | Status | Notes |
 |---|---|---|---|
-| 1 | Auth & profiles | Mostly done | JWT, OTP signup, patient/doctor/admin roles, admin invite code, doctor approve/reject in `backend/routers/admin.py` |
-| 2 | Unified health records | Partial | Reports upload + OCR + department categorisation, vitals, medicine history. **Missing:** audit log, versioning, structured allergies / diagnoses / chronic conditions |
-| 3 | Clinical summary (ICSE) | Partial | OpenAI summaries with rule fallback, doctor summaries, BioBERT service |
-| 4 | Medication safety (MSCIE) | Early | Patient-side check in `backend/routers/patient.py` (`/medicine-safety/check`); `app/api/drug-check/route.js` (OpenFDA) exists but no page uses it. **Missing:** doctor-side prescription flow, interaction rules, alternatives, override log |
-| 5 | Doctor search & booking | Partial | `app/doctors/page.tsx`, booking, FastAPI PUT/DELETE appointments. **Missing:** filters, availability slots, double-booking prevention |
-| 6 | Home visit | Not started | An `EmergencyBooking` feature exists instead (conflicts with scope limitation LI-5) |
-| 7 | Symptom → specialist | Not started | Only a generic AI chat route (`app/api/ai/chat`) |
-| 8 | Payments | Partial | Manual payment records; JazzCash/Easypaisa are env placeholders only |
-| 9 | Admin panel | Partial | Overview stats, doctor verification. **Missing:** audit log view; routes insecure |
+| 1 | Auth & profiles | Mostly done | JWT, patient/doctor/admin roles, admin invite code, doctor approve/reject in `backend/routers/admin.py`, inactive accounts get 403. Signup is direct: the OTP signup routes (`request-otp`, `verify-otp-signup`) return 410 |
+| 2 | Unified health records | Partial | Reports in `patient_reports` (upload, OCR, department categorisation, file access only for the owner or a granted doctor), BP/sugar log, detailed vitals, medicine schedules with reminders. **Missing:** audit log, versioning, structured allergies / diagnoses / chronic conditions |
+| 3 | Clinical summary (ICSE) | Partial | Report summaries with rule fallback, doctor summaries, BioBERT service; `/nlp/summarize` requires sign-in |
+| 4 | Medication safety (MSCIE) | Early | Patient-side check in `backend/routers/patient.py` (`/medicine-safety/check`); the LLM can still raise its status (to fix in 3b). `app/api/drug-check` (OpenFDA) is unused. **Missing:** doctor-side prescription flow, interaction rules, alternatives, override log |
+| 5 | Doctor search & booking | Partial | `app/doctors/page.tsx` and booking on the patient dashboard; only verified doctors are bookable. **Missing:** filters, availability slots, double-booking prevention |
+| 6 | Home visit | Not started | `EmergencyBooking` requests are recorded honestly (status `REQUESTED`, no doctor, no ETA), but nothing assigns a doctor (conflicts with scope limitation LI-5; replaced in 2d) |
+| 7 | Symptom → specialist | Not started | The generic AI chat was removed in Phase 1 |
+| 8 | Payments | Partial | Manual/wallet payments are recorded as `PENDING` until an admin confirms; only admins can update payments. JazzCash/Easypaisa are env placeholders only |
+| 9 | Admin panel | Partial | Overview stats, doctor verification, payment confirmation, all admin-only in FastAPI. **Missing:** audit log view |
+
+### Dashboards
+- **Patient:** `/dashboard/patient` (`components/patient/PatientWorkspace.tsx`): reports and upload, BP/sugar log, today's detailed vitals, medicines and reminders with browser pop-ups, appointments, risk flags, AI summary, and the one-time doctor access code. `/dashboard` redirects here.
+- **Doctor:** `/dashboard/doctor` (`components/dashboard/DoctorDashboard.tsx`): code unlock, appointments, patient file (vitals, reports, medicines) while a grant is active, end consultation, emergency visits. `/doctor-dashboard` redirects here.
+- Both show only real data, with empty states when there is none.
 
 ### Known problems
-1. **Insecure routes.** These Next.js routes take the user's identity from `?userId=` or the request body instead of a verified token, so anyone can act as anyone (including admin):
-   `admin/overview`, `admin/emergency/update`, `admin/payments/update`, `doctor/overview`, `dashboard`, `medical-records/upload`, `medical-records/scan`, `medical-records/delete`, `payments/create`, `emergency/book`, `vitals/add`, `vitals/latest`, `reminders/add`, `appointment/create`, `summarize`.
-   The secure pattern already exists: `resolvePatientSession()` in `lib/patient-session.ts` verifies the JWT.
-2. **Two backends, one database.** Prisma and SQLAlchemy both define and modify the same tables (Prisma migrations **and** FastAPI `Base.metadata.create_all` + `ensure_schema_compatibility`). Models have drifted (e.g. Prisma `MedicalRecord` vs SQLAlchemy `MedicalDocument`).
-3. **Committed runtime files.** `*.log` files at the root and in `backend/` are tracked in git.
-4. **Duplicate UIs.** `app/dashboard/page.tsx` (~2,400 lines) and `components/patient/PatientWorkspace.tsx` (~2,000 lines) overlap.
+
+**Resolved in Phase 0 and Phase 1**
+1. ~~Insecure routes taking identity from `?userId=` or the body~~: identity comes only from the verified token; the affected Next routes were ported to FastAPI or removed, and the acceptance tests cover them. Doctor access needs an active grant; OTP unlock is limited to 5 failures per 15 minutes.
+2. ~~Two backends, one database~~: FastAPI is the only backend, Alembic owns the schema, Prisma is gone. `MedicalRecord`/`MedicalDocument` were reconciled into `patient_reports` (migration 0008). The tables missing from `create_all` databases (`medicine_reminders`, `patient_vitals`, `reminder_logs`) now have models and migrations.
+3. ~~Committed runtime files~~: `*.log` is ignored and untracked; `eng.traineddata` was removed with `tesseract.js`.
+4. ~~Duplicate UIs~~: `app/dashboard/page.tsx` and `app/doctor-dashboard/page.tsx` were merged into `/dashboard/patient` and `/dashboard/doctor` and replaced by redirects.
+
+**Still open**
+1. **Two vitals tables.** `vitals` (free-text BP + sugar, written by the patient dashboard's vitals form, read by the doctor's patient file) and `patient_vitals` (detailed readings, shown as "Today's Vitals"; no form writes it). Merge them in a later phase.
+2. **`medical_documents` is a dead, read-only table.** Its rows were copied into `patient_reports`; SQLAlchemy rejects any write to it. It is kept, not dropped, and `medical_ai_analyses.medical_record_id` still references it.
+3. **`reminders` table has no UI.** The free-text reminder form was dropped in Phase 1; the rows and the FastAPI `/reminders` endpoints remain.
+4. **Emergency requests are never assigned to a doctor**, so the doctor dashboard's emergency list stays empty for new requests. Addressed by the home-visit flow (2d).
+5. **Patient sub-routes are not separate views.** `/dashboard/patient/records`, `/upload`, `/summary`, `/profile` and `/ocr-results` all render the full workspace (`initialView` is ignored), though the landing page links to them.
+6. **Doctor overview lists are capped** (30 appointments, 12 emergency visits, 40 reports), and the stat cards count those lists.
+7. **Leftover client code:** `app/emergency`, `app/payments` and `app/summarize` still gate on `localStorage.userId` (not sent to the server); a few `lib/api.ts` methods (`patientOverview`, `addReminder`) have no caller; `npm run lint` shows 9 unused-variable warnings.
+8. **JWT in `localStorage`** is readable by any script on the page; acceptable for the prototype, worth noting in the report.
 
 ---
 
