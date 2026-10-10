@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { DashboardCard, Sidebar, StatCard } from "@/components/ui/saas-shell";
+import { SkeletonCard } from "@/components/ui/skeleton";
 import { api } from "@/lib/api";
 import { clearSession } from "@/lib/auth";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
@@ -49,7 +50,7 @@ export default function AdminPage() {
   const [activity, setActivity] = useState<AdminActivity[]>([]);
   const [statusMessage, setStatusMessage] = useState("");
   const [isLoading, setIsLoading] = useState(true);
-  const [updatingDoctorId, setUpdatingDoctorId] = useState<number | null>(null);
+  const [updating, setUpdating] = useState<{ doctorId: number; action: "approve" | "reject" } | null>(null);
 
   const loadDashboard = useCallback(async (activeToken: string) => {
     setIsLoading(true);
@@ -84,8 +85,8 @@ export default function AdminPage() {
 
 
   async function updateDoctor(doctorId: number, action: "approve" | "reject") {
-    if (!token || updatingDoctorId !== null) return;
-    setUpdatingDoctorId(doctorId);
+    if (!token || updating !== null) return;
+    setUpdating({ doctorId, action });
     setStatusMessage("");
     try {
       if (action === "approve") {
@@ -98,7 +99,7 @@ export default function AdminPage() {
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Doctor verification update failed.");
     } finally {
-      setUpdatingDoctorId(null);
+      setUpdating(null);
     }
   }
 
@@ -139,17 +140,9 @@ export default function AdminPage() {
                     Admin Dashboard
                   </h1>
                   <p className="mt-2 max-w-xl text-sm leading-6 text-slate-500">
-                    Users, doctors, reports, appointments, payments, notifications, and system records.
+                    Doctor verification, new accounts and platform activity.
                   </p>
                 </div>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/dashboard/patient" className="secondary-button px-4 py-2">
-                  Patient View
-                </Link>
-                <Link href="/dashboard/doctor" className="gradient-button px-4 py-2">
-                  Doctor View
-                </Link>
               </div>
             </div>
           </header>
@@ -165,9 +158,16 @@ export default function AdminPage() {
               {auth.message}
             </p>
           ) : isLoading ? (
-            <div role="status" className="glass-card p-8 text-center text-sm font-semibold text-slate-500">
-              <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-teal-600" />
-              Loading admin dashboard...
+            <div role="status" aria-label="Loading the admin dashboard" className="space-y-6">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                {Array.from({ length: 4 }, (_, i) => (
+                  <SkeletonCard key={i} lines={2} />
+                ))}
+              </div>
+              <div className="grid gap-6 xl:grid-cols-2">
+                <SkeletonCard lines={5} />
+                <SkeletonCard lines={5} />
+              </div>
             </div>
           ) : stats ? (
             <>
@@ -204,21 +204,31 @@ export default function AdminPage() {
                             <div className="flex flex-wrap gap-2">
                               <button
                                 type="button"
-                                disabled={updatingDoctorId === doctor.id}
+                                disabled={updating !== null}
+                                aria-busy={updating?.doctorId === doctor.id && updating.action === "approve"}
                                 onClick={() => void updateDoctor(doctor.id, "approve")}
                                 className="gradient-button gap-2 px-4 py-2"
                               >
-                                <CheckCircle2 className="h-4 w-4" />
-                                Approve
+                                {updating?.doctorId === doctor.id && updating.action === "approve" ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <CheckCircle2 className="h-4 w-4" />
+                                )}
+                                {updating?.doctorId === doctor.id && updating.action === "approve" ? "Approving..." : "Approve"}
                               </button>
                               <button
                                 type="button"
-                                disabled={updatingDoctorId === doctor.id}
+                                disabled={updating !== null}
+                                aria-busy={updating?.doctorId === doctor.id && updating.action === "reject"}
                                 onClick={() => void updateDoctor(doctor.id, "reject")}
                                 className="secondary-button gap-2 px-4 py-2 text-red-700"
                               >
-                                <XCircle className="h-4 w-4" />
-                                Reject
+                                {updating?.doctorId === doctor.id && updating.action === "reject" ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <XCircle className="h-4 w-4" />
+                                )}
+                                {updating?.doctorId === doctor.id && updating.action === "reject" ? "Rejecting..." : "Reject"}
                               </button>
                             </div>
                           </div>

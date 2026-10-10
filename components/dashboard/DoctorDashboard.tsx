@@ -4,7 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { CalendarDays, FileSearch, KeyRound, LayoutDashboard, LogOut, ShieldAlert, Siren, Stethoscope, Users } from "lucide-react";
 
+import { SidebarDashboardSkeleton } from "@/components/ui/dashboard-skeleton";
 import { Sidebar, StatCard } from "@/components/ui/saas-shell";
+import { ErrorState, PageLoader } from "@/components/ui/spinner";
 import { clearSession } from "@/lib/auth";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useDoctorDashboard } from "@/hooks/doctor/use-doctor-dashboard";
@@ -31,25 +33,9 @@ export function DoctorDashboard() {
     router.replace("/login");
   }
 
-  if (auth.status === "error") {
-    return (
-      <main className="app-shell grid min-h-screen place-items-center px-4">
-        <p role="alert" className="glass-card max-w-md p-8 text-center text-sm font-semibold text-rose-700">
-          {auth.message}
-        </p>
-      </main>
-    );
-  }
-
-  if (auth.status !== "ready" || dashboard.isLoading) {
-    return (
-      <main className="app-shell grid min-h-screen place-items-center px-4">
-        <div role="status" className="glass-card p-8 text-sm font-bold text-slate-500">
-          Loading doctor workspace...
-        </div>
-      </main>
-    );
-  }
+  if (auth.status === "error") return <ErrorState message={auth.message} onRetry={() => window.location.reload()} />;
+  if (auth.status !== "ready") return <PageLoader message="Checking your session..." />;
+  if (dashboard.isLoading) return <SidebarDashboardSkeleton label="Loading the doctor dashboard" />;
 
   const doctorName = (profile?.full_name ?? overview?.doctor.name ?? "").replace(/^dr\.?\s*/i, "");
   const verification = (profile?.verification_status ?? "").toLowerCase();
