@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion, type Variants } from "framer-motion";
 import { ArrowLeft, ArrowRight, HeartPulse, ShieldCheck } from "lucide-react";
 
-import { AmbientMedicalBackground } from "@/components/landing/PremiumLanding";
+import { AmbientBackground } from "@/components/landing/AmbientBackground";
 
 const paragraphs = [
   "Nora MedLink was created for patients who carry reports, prescriptions, symptoms, and worries, but still struggle to explain their health story clearly.",
@@ -26,7 +26,7 @@ const fadeIn: Variants = {
 export function AboutStory() {
   return (
     <main className="premium-page text-slate-950">
-      <AmbientMedicalBackground />
+      <AmbientBackground />
 
       <nav className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-6 sm:px-6 lg:px-8">
         <Link href="/" className="secondary-button gap-2 rounded-full px-4 py-2">

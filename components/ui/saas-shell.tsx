@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ButtonHTMLAttributes, ElementType, MouseEvent, ReactNode } from "react";
+import type { ElementType, MouseEvent, ReactNode } from "react";
 import { ShieldCheck } from "lucide-react";
 
 import { NoraLogo } from "@/components/ui/NoraLogo";
@@ -19,20 +19,6 @@ export type SidebarItem = {
   icon: IconType;
   active?: boolean;
 };
-
-export function AppShell({
-  children,
-  className,
-}: {
-  children: ReactNode;
-  className?: string;
-}) {
-  return (
-    <main className={cn("app-shell min-h-screen px-4 py-5 sm:px-6 lg:px-8", className)}>
-      {children}
-    </main>
-  );
-}
 
 export function Sidebar({
   items,
@@ -140,31 +126,6 @@ export function StatCard({
   );
 }
 
-export function GradientButton({
-  children,
-  href,
-  className,
-  ...buttonProps
-}: ButtonHTMLAttributes<HTMLButtonElement> & {
-  children: ReactNode;
-  href?: string;
-  className?: string;
-}) {
-  if (href) {
-    return (
-      <Link href={href} className={cn("gradient-button", className)}>
-        {children}
-      </Link>
-    );
-  }
-
-  return (
-    <button className={cn("gradient-button", className)} {...buttonProps}>
-      {children}
-    </button>
-  );
-}
-
 export function RoleCard({
   title,
   description,
@@ -190,28 +151,5 @@ export function RoleCard({
       <span className="block text-sm font-black">{title}</span>
       <span className="mt-2 block text-xs font-semibold leading-5 text-slate-500">{description}</span>
     </button>
-  );
-}
-
-export function FeatureCard({
-  title,
-  description,
-  icon: Icon,
-  href,
-}: {
-  title: string;
-  description: string;
-  icon: IconType;
-  href: string;
-}) {
-  return (
-    <Link href={href} className="feature-glass floating-card group flex h-full flex-col rounded-[20px] p-6">
-      <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
-        <Icon className="h-6 w-6" />
-      </span>
-      <h3 className="mt-6 text-lg font-black tracking-tight text-slate-950">{title}</h3>
-      <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
-      <span className="mt-auto pt-7 text-sm font-bold text-blue-700">Open</span>
-    </Link>
   );
 }

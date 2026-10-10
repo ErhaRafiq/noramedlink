@@ -8,7 +8,7 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-control font-semibold transition duration-200 ease-out " +
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-control font-semibold transition duration-200 ease-out " +
   "disabled:cursor-not-allowed disabled:opacity-60 active:scale-[0.99]";
 
 const variants: Record<Variant, string> = {

@@ -183,6 +183,22 @@
   }
 }
 
+/* Scroll reveal (components/landing/Reveal.tsx): only set by JavaScript, so content is
+   visible by default. */
+[data-reveal] {
+  transition: opacity 0.5s ease-out, transform 0.5s ease-out;
+}
+
+[data-reveal="hidden"] {
+  opacity: 0;
+  transform: translateY(16px);
+}
+
+[data-reveal="shown"] {
+  opacity: 1;
+  transform: none;
+}
+
 @keyframes ambient-drift {
   0%,
   100% {
