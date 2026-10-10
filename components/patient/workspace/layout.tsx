@@ -139,7 +139,7 @@ export function WorkspaceHeader({
               value={searchQuery}
               onChange={(e) => onSearchChange(e.target.value)}
               aria-label="Search reports"
-              placeholder="Search reports, medications, doctors..."
+              placeholder="Search reports by title, file or summary"
               className="w-full h-10 pl-10 pr-4 rounded-xl border border-blue-100 bg-blue-50/50 text-sm text-slate-900 outline-none focus:border-blue-300 focus:bg-white focus:ring-4 focus:ring-blue-100 placeholder:text-slate-400 transition"
             />
           </div>

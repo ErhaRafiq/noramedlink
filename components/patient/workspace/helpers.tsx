@@ -1,26 +1,12 @@
-import {
-  BookOpen,
-  Bone,
-  ClipboardList,
-  Dumbbell,
-  FileText,
-  HeartPulse,
-  Pill,
-  Sparkles,
-} from "lucide-react";
+import { Bone, Droplets, FileText, FlaskConical, HeartPulse, Pill } from "lucide-react";
 
-import {
-  buildMedicalDisclaimer,
-  normalizeReportCategory,
-  REPORT_CATEGORIES,
-  type ReportCategoryId,
-} from "@/lib/patient-dashboard";
-import type { Appointment, DailyVital, MedicalDocument, MedicineReminder } from "@/lib/types";
+import { departmentLabel, toDepartmentSlug, type DepartmentSlug } from "@/lib/departments";
+import { buildMedicalDisclaimer } from "@/lib/patient-dashboard";
+import type { Appointment, DailyVital, MedicineReminder } from "@/lib/types";
 
 export const DISCLAIMER = buildMedicalDisclaimer();
 
-// How many items the dashboard lists before "View all".
-export const REPORTS_PREVIEW = 6;
+// How many risk flags the dashboard lists before "View all".
 export const RISKS_PREVIEW = 4;
 
 // Shown when nothing has been recorded. Never fill in typical values as if they were the patient's.
@@ -68,43 +54,29 @@ export function getUpcomingAppointment(appointments: Appointment[]) {
   );
 }
 
-const CATEGORY_GRADIENTS: Record<ReportCategoryId, string> = {
+const DEPARTMENT_GRADIENTS: Record<DepartmentSlug, string> = {
   heart: "from-rose-400 via-fuchsia-500 to-indigo-500",
-  liver: "from-amber-400 via-orange-500 to-rose-500",
   kidney: "from-cyan-400 via-sky-500 to-blue-500",
-  blood: "from-red-400 via-rose-500 to-orange-500",
-  diabetes: "from-emerald-400 via-teal-500 to-cyan-500",
   ortho: "from-slate-300 via-slate-400 to-slate-500",
-  prescriptions: "from-violet-400 via-fuchsia-500 to-pink-500",
+  lab: "from-red-400 via-rose-500 to-orange-500",
+  medicine: "from-violet-400 via-fuchsia-500 to-pink-500",
   general: "from-blue-400 via-indigo-500 to-cyan-500",
 };
 
-export function getCategoryMeta(category: string) {
-  const normalized = normalizeReportCategory(category);
-  const meta = REPORT_CATEGORIES.find((e) => e.id === normalized) ?? REPORT_CATEGORIES[REPORT_CATEGORIES.length - 1];
-  return { ...meta, style: { gradient: CATEGORY_GRADIENTS[normalized] } };
+/** Label and colour for a report's department (unknown values fall back to General). */
+export function getDepartmentMeta(department: string | null | undefined) {
+  const slug = toDepartmentSlug(department);
+  return { slug, label: departmentLabel(slug), gradient: DEPARTMENT_GRADIENTS[slug] };
 }
 
-export function categoryIcon(category: string) {
-  const n = normalizeReportCategory(category);
-  if (n === "heart") return <HeartPulse className="h-4 w-4" />;
-  if (n === "liver") return <BookOpen className="h-4 w-4" />;
-  if (n === "kidney") return <Dumbbell className="h-4 w-4" />;
-  if (n === "blood") return <ClipboardList className="h-4 w-4" />;
-  if (n === "diabetes") return <Sparkles className="h-4 w-4" />;
-  if (n === "ortho") return <Bone className="h-4 w-4" />;
-  if (n === "prescriptions") return <Pill className="h-4 w-4" />;
+export function departmentIcon(department: string | null | undefined) {
+  const slug = toDepartmentSlug(department);
+  if (slug === "heart") return <HeartPulse className="h-4 w-4" />;
+  if (slug === "kidney") return <Droplets className="h-4 w-4" />;
+  if (slug === "ortho") return <Bone className="h-4 w-4" />;
+  if (slug === "lab") return <FlaskConical className="h-4 w-4" />;
+  if (slug === "medicine") return <Pill className="h-4 w-4" />;
   return <FileText className="h-4 w-4" />;
-}
-
-/** Report count per category, in the fixed category order. */
-export function countReportsByCategory(reports: MedicalDocument[]) {
-  const counts = new Map<string, number>();
-  for (const r of reports) {
-    const cat = normalizeReportCategory(r.category);
-    counts.set(cat, (counts.get(cat) ?? 0) + 1);
-  }
-  return REPORT_CATEGORIES.map((cat) => ({ ...cat, count: counts.get(cat.id) ?? 0 }));
 }
 
 export function getReminderDisplay(reminder: MedicineReminder) {

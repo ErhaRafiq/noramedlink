@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import type {
   Appointment,
   DailyVital,
+  DepartmentTile,
   DoctorOption,
   DoctorSummary,
   HealthRiskPrediction,
@@ -16,7 +17,11 @@ import type {
 } from "@/lib/types";
 
 export type PatientWorkspaceData = {
-  reports: MedicalDocument[];
+  /** Report count per department, across all of the patient's reports. */
+  departmentTiles: DepartmentTile[];
+  /** The newest high-risk reports (up to HIGH_RISK_SHOWN) and how many there are in all. */
+  highRiskReports: MedicalDocument[];
+  highRiskTotal: number;
   vitalsToday: DailyVital | null;
   basicVitals: PatientVitals[];
   doctors: DoctorOption[];
@@ -27,12 +32,14 @@ export type PatientWorkspaceData = {
   doctorSummaries: DoctorSummary[];
 };
 
-// The dashboard loads the newest reports and appointments; paging controls come in U4.
-const REPORTS_LOADED = 100;
+// The report list itself is paged by useReportList; this hook loads the summaries.
 const APPOINTMENTS_LOADED = 20;
+const HIGH_RISK_SHOWN = 5;
 
 const EMPTY: PatientWorkspaceData = {
-  reports: [],
+  departmentTiles: [],
+  highRiskReports: [],
+  highRiskTotal: 0,
   vitalsToday: null,
   basicVitals: [],
   doctors: [],
@@ -62,10 +69,11 @@ export function usePatientWorkspaceData(token: string | null) {
 
   const refresh = useCallback(async () => {
     if (!token) return;
-    const [vitalsToday, reports, doctors, appointments, medications, reminders, riskPredictions, doctorSummaries, basicVitals] =
+    const [vitalsToday, departmentTiles, highRisk, doctors, appointments, medications, reminders, riskPredictions, doctorSummaries, basicVitals] =
       await Promise.all([
         api.patientVitalsToday(token).catch(() => null),
-        api.reports(token, { limit: REPORTS_LOADED }).then((page) => page.items).catch(() => []),
+        api.patientDepartmentTiles(token).catch(() => []),
+        api.reports(token, { limit: HIGH_RISK_SHOWN, validationStatus: "HIGH_RISK" }).catch(() => ({ items: [], total: 0 })),
         api.doctors(token).catch(() => []),
         api.appointmentsV2(token, { limit: APPOINTMENTS_LOADED }).then((page) => page.items).catch(() => []),
         api.medicines(token).catch(() => []),
@@ -75,7 +83,19 @@ export function usePatientWorkspaceData(token: string | null) {
         api.basicVitalsHistory(token).catch(() => []),
       ]);
     if (!mountedRef.current) return;
-    setData({ vitalsToday, reports, doctors, appointments, medications, reminders, riskPredictions, doctorSummaries, basicVitals });
+    setData({
+      vitalsToday,
+      departmentTiles,
+      highRiskReports: highRisk.items,
+      highRiskTotal: highRisk.total,
+      doctors,
+      appointments,
+      medications,
+      reminders,
+      riskPredictions,
+      doctorSummaries,
+      basicVitals,
+    });
   }, [token]);
 
   useEffect(() => {
@@ -85,10 +105,5 @@ export function usePatientWorkspaceData(token: string | null) {
     });
   }, [token, refresh]);
 
-  /** Puts a just-uploaded report at the top without waiting for a full reload. */
-  const addReport = useCallback((report: MedicalDocument) => {
-    setData((current) => ({ ...current, reports: [report, ...current.reports.filter((r) => r.id !== report.id)] }));
-  }, []);
-
-  return { data, isLoading, refresh, addReport };
+  return { data, isLoading, refresh };
 }

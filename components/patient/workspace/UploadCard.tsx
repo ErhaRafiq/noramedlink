@@ -5,7 +5,7 @@ import { AlertCircle, Camera, CheckCircle2, FilePlus2, Loader2, Sparkles, Upload
 
 import { cn } from "@/lib/cn";
 import { UPLOAD_ACCEPT } from "@/lib/image";
-import { REPORT_CATEGORIES } from "@/lib/patient-dashboard";
+import { DEPARTMENTS } from "@/lib/departments";
 import type { FileQueueItem, UploadStep, useUploadQueue } from "@/hooks/patient/use-upload-queue";
 import { DashCard } from "./ui";
 
@@ -96,9 +96,9 @@ export function UploadCard({ upload, onAllUploaded }: { upload: UploadQueue; onA
             />
             <select value={category} onChange={(e) => setCategory(e.target.value)} aria-label="Report category" className="form-field text-sm">
               <option value="all">Auto-detect category</option>
-              {REPORT_CATEGORIES.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
+              {DEPARTMENTS.map((d) => (
+                <option key={d.slug} value={d.slug}>
+                  {d.label}
                 </option>
               ))}
             </select>

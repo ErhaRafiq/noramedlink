@@ -19,13 +19,9 @@ import {
 import { NoraLogo } from "@/components/ui/NoraLogo";
 import { api } from "@/lib/api";
 import { clearSession, getSession } from "@/lib/auth";
-import { REPORT_CATEGORIES, normalizeReportCategory, validationLabel } from "@/lib/patient-dashboard";
+import { DEPARTMENTS, toDepartmentSlug } from "@/lib/departments";
+import { validationLabel } from "@/lib/patient-dashboard";
 import type { MedicalDocument } from "@/lib/types";
-
-const departments = REPORT_CATEGORIES.map((category) => ({
-  id: category.id,
-  name: category.label,
-}));
 
 type ToastState = {
   type: "success" | "error" | "info";
@@ -118,7 +114,7 @@ export function PatientReportDetail({ reportId }: { reportId: number }) {
       .then((data) => {
         setReport(data);
         setEditableText(data.extracted_text ?? data.ocr_cleaned_text ?? "");
-        setDepartment(normalizeReportCategory(data.category ?? data.department_slug ?? "general"));
+        setDepartment(toDepartmentSlug(data.department_slug ?? data.category));
       })
       .catch((error) => {
         notify("error", error instanceof Error ? error.message : "Unable to load report.");
@@ -148,7 +144,7 @@ export function PatientReportDetail({ reportId }: { reportId: number }) {
       });
       setReport(updated);
       setEditableText(updated.extracted_text ?? updated.ocr_cleaned_text ?? "");
-      setDepartment(normalizeReportCategory(updated.category ?? updated.department_slug ?? department));
+      setDepartment(toDepartmentSlug(updated.department_slug ?? updated.category ?? department));
       notify("success", "Report text and department were saved.");
     } catch (error) {
       notify("error", error instanceof Error ? error.message : "Unable to save report.");
@@ -166,7 +162,7 @@ export function PatientReportDetail({ reportId }: { reportId: number }) {
       const updated = await api.regenerateDocumentOcr(token, report.id);
       setReport(updated);
       setEditableText(updated.extracted_text ?? updated.ocr_cleaned_text ?? "");
-      setDepartment(normalizeReportCategory(updated.category ?? updated.department_slug ?? "general"));
+      setDepartment(toDepartmentSlug(updated.department_slug ?? updated.category));
       notify(updated.ocr_status === "FAILED" ? "error" : "success", updated.ocr_status === "FAILED" ? "OCR regeneration failed. The report was kept." : "OCR was regenerated and saved.");
     } catch (error) {
       notify("error", error instanceof Error ? error.message : "Unable to regenerate OCR.");
@@ -362,9 +358,9 @@ export function PatientReportDetail({ reportId }: { reportId: number }) {
                 <div>
                   <label className="text-sm font-bold text-slate-700">Department</label>
                   <select className="form-input" value={department} onChange={(event) => setDepartment(event.target.value)}>
-                    {departments.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.name}
+                    {DEPARTMENTS.map((item) => (
+                      <option key={item.slug} value={item.slug}>
+                        {item.label}
                       </option>
                     ))}
                   </select>

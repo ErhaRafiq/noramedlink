@@ -1,30 +1,30 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { ArrowRight, ChevronRight, Download, Shield } from "lucide-react";
+import { useState } from "react";
+import { ArrowRight, ChevronRight, Download, Shield, X } from "lucide-react";
 
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/cn";
-import { validationLabel, type ReportCategoryId } from "@/lib/patient-dashboard";
-import type { HealthRiskPrediction, MedicalDocument } from "@/lib/types";
-import {
-  categoryIcon,
-  countReportsByCategory,
-  formatDate,
-  getCategoryMeta,
-  REPORTS_PREVIEW,
-  RISKS_PREVIEW,
-  scrollToSection,
-} from "./helpers";
+import { DEPARTMENTS, type DepartmentSlug } from "@/lib/departments";
+import { validationLabel } from "@/lib/patient-dashboard";
+import type { DepartmentTile, HealthRiskPrediction, MedicalDocument } from "@/lib/types";
+import type { useReportList } from "@/hooks/patient/use-report-list";
+import { departmentIcon, formatDate, getDepartmentMeta, RISKS_PREVIEW } from "./helpers";
 import { DashCard } from "./ui";
 
+type ReportList = ReturnType<typeof useReportList>;
+
 export function HealthCategoriesCard({
-  reports,
+  tiles,
+  activeDepartment,
   onSelect,
 }: {
-  reports: MedicalDocument[];
-  onSelect: (category: ReportCategoryId) => void;
+  tiles: DepartmentTile[];
+  activeDepartment: DepartmentSlug | null;
+  onSelect: (department: DepartmentSlug) => void;
 }) {
-  const categories = useMemo(() => countReportsByCategory(reports), [reports]);
+  const counts = new Map(tiles.map((tile) => [tile.slug, tile.total_reports]));
 
   return (
     <section id="reports">
@@ -33,23 +33,28 @@ export function HealthCategoriesCard({
           <h2 className="text-sm font-black text-slate-900">Health Categories</h2>
         </div>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
-          {categories.map((cat) => {
-            const meta = getCategoryMeta(cat.id);
+          {DEPARTMENTS.map((department) => {
+            const meta = getDepartmentMeta(department.slug);
+            const count = counts.get(department.slug) ?? 0;
+            const isActive = activeDepartment === department.slug;
             return (
               <button
-                key={cat.id}
+                key={department.slug}
                 type="button"
-                onClick={() => {
-                  onSelect(cat.id);
-                  scrollToSection("recent-reports");
-                }}
-                className="group rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5 text-left hover:border-blue-200 hover:bg-blue-50/60 hover:-translate-y-0.5 transition-all duration-200"
+                aria-pressed={isActive}
+                onClick={() => onSelect(department.slug)}
+                className={cn(
+                  "group rounded-2xl border p-3.5 text-left transition-all duration-200",
+                  isActive ? "border-blue-300 bg-blue-50" : "border-slate-100 bg-slate-50/80 hover:border-blue-200 hover:bg-blue-50/60",
+                )}
               >
-                <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-md mb-3", `bg-gradient-to-br ${meta.style.gradient}`)}>
-                  {categoryIcon(cat.id)}
+                <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-md mb-3", `bg-gradient-to-br ${meta.gradient}`)}>
+                  {departmentIcon(department.slug)}
                 </div>
-                <p className="text-sm font-bold text-slate-900 truncate">{cat.label}</p>
-                <p className="text-xs text-slate-400 mt-0.5">{cat.count} Documents</p>
+                <p className="text-sm font-bold text-slate-900 truncate">{department.label}</p>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  {count} {count === 1 ? "Document" : "Documents"}
+                </p>
               </button>
             );
           })}
@@ -66,53 +71,67 @@ function validationBadge(status: MedicalDocument["validation_status"]) {
   return { label: "AI summarized", tone: "bg-blue-50 text-blue-600 border border-blue-100" };
 }
 
+function ReportRowSkeleton() {
+  return (
+    <div className="flex items-center gap-3 p-3 rounded-2xl border border-slate-100 bg-white">
+      <Skeleton className="h-9 w-9 rounded-xl" />
+      <div className="flex-1 space-y-2">
+        <Skeleton className="h-3.5 w-2/3" />
+        <Skeleton className="h-3 w-1/3" />
+      </div>
+      <Skeleton className="h-6 w-20 rounded-full" />
+    </div>
+  );
+}
+
 export function RecentReportsCard({
-  totalReports,
-  filteredReports,
-  activeCategory,
-  onShowAll,
+  list,
+  activeDepartment,
+  search,
+  onClearFilters,
   onOpen,
   onDownload,
 }: {
-  totalReports: number;
-  filteredReports: MedicalDocument[];
-  activeCategory: ReportCategoryId | "all";
-  onShowAll: () => void;
+  list: ReportList;
+  activeDepartment: DepartmentSlug | null;
+  search: string;
+  onClearFilters: () => void;
   onOpen: (report: MedicalDocument) => void;
   onDownload: (report: MedicalDocument) => void;
 }) {
-  const [showAll, setShowAll] = useState(false);
-  const visible = showAll ? filteredReports : filteredReports.slice(0, REPORTS_PREVIEW);
-  const canShowMore = activeCategory !== "all" || (!showAll && filteredReports.length > REPORTS_PREVIEW);
+  const filtered = activeDepartment !== null || search.trim() !== "";
+  const showSkeleton = list.isLoading && list.items.length === 0;
 
   return (
     <DashCard id="recent-reports">
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
         <h2 className="text-sm font-black text-slate-900">
-          Recent Reports
-          {activeCategory !== "all" && <span className="font-semibold text-slate-400"> · {getCategoryMeta(activeCategory).label}</span>}
+          {filtered ? "Matching Reports" : "Recent Reports"}
+          {activeDepartment && <span className="font-semibold text-slate-400"> · {getDepartmentMeta(activeDepartment).label}</span>}
+          {!list.isLoading && <span className="font-semibold text-slate-400"> · {list.total}</span>}
         </h2>
-        {canShowMore && (
-          <button
-            type="button"
-            onClick={() => {
-              onShowAll();
-              setShowAll(true);
-            }}
-            className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition"
-          >
-            View all ({totalReports}) <ArrowRight className="h-3 w-3" />
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {list.isLoading && !showSkeleton ? <Spinner className="h-3.5 w-3.5 text-blue-500" label="Updating reports" /> : null}
+          {filtered && (
+            <button type="button" onClick={onClearFilters} className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition">
+              <X className="h-3 w-3" /> Clear filter
+            </button>
+          )}
+        </div>
       </div>
-      <div className="space-y-2">
-        {totalReports === 0 ? (
-          <p className="p-3 text-sm text-slate-500">No reports uploaded yet.</p>
-        ) : filteredReports.length === 0 ? (
-          <p className="p-3 text-sm text-slate-500">No reports match this filter.</p>
+
+      <div className={cn("space-y-2 transition-opacity", list.isLoading && !showSkeleton && "opacity-60")} aria-busy={list.isLoading}>
+        {showSkeleton ? (
+          Array.from({ length: 3 }, (_, i) => <ReportRowSkeleton key={i} />)
+        ) : list.error ? (
+          <p role="alert" className="p-3 text-sm text-rose-600">
+            {list.error}
+          </p>
+        ) : list.items.length === 0 ? (
+          <p className="p-3 text-sm text-slate-500">{filtered ? "No reports match this search." : "No reports uploaded yet."}</p>
         ) : (
-          visible.map((r) => {
-            const meta = getCategoryMeta(r.category);
+          list.items.map((r) => {
+            const meta = getDepartmentMeta(r.department_slug ?? r.category);
             const badge = validationBadge(r.validation_status);
             return (
               <div
@@ -128,8 +147,8 @@ export function RecentReportsCard({
                 }}
                 className="flex cursor-pointer items-center gap-3 p-3 rounded-2xl border border-slate-100 bg-white hover:border-blue-100 hover:bg-blue-50/30 transition group"
               >
-                <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 text-white", `bg-gradient-to-br ${meta.style.gradient}`)}>
-                  {categoryIcon(r.category)}
+                <div className={cn("h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 text-white", `bg-gradient-to-br ${meta.gradient}`)}>
+                  {departmentIcon(meta.slug)}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-bold text-slate-900 truncate">{r.title}</p>
@@ -155,6 +174,18 @@ export function RecentReportsCard({
           })
         )}
       </div>
+
+      {list.hasMore && (
+        <button
+          type="button"
+          onClick={() => void list.loadMore()}
+          disabled={list.isLoadingMore}
+          className="mt-3 w-full py-2.5 rounded-xl border border-blue-100 bg-blue-50/50 text-sm font-semibold text-blue-600 hover:bg-blue-50 transition flex items-center justify-center gap-2 disabled:opacity-70"
+        >
+          {list.isLoadingMore ? <Spinner className="h-4 w-4" /> : <ArrowRight className="h-4 w-4" />}
+          {list.isLoadingMore ? "Loading..." : `Load more (${list.items.length} of ${list.total})`}
+        </button>
+      )}
     </DashCard>
   );
 }

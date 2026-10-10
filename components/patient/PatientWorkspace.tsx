@@ -2,41 +2,39 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import { HeartPulse } from "lucide-react";
 
+import { ErrorState, PageLoader } from "@/components/ui/spinner";
 import { api } from "@/lib/api";
 import { clearSession } from "@/lib/auth";
-import { normalizeReportCategory, type ReportCategoryId } from "@/lib/patient-dashboard";
+import { isDepartmentSlug, type DepartmentSlug } from "@/lib/departments";
 import type { MedicalDocument } from "@/lib/types";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useNotificationPermission, useScheduledNotifications } from "@/hooks/use-browser-notifications";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useScrollSpy } from "@/hooks/use-scroll-spy";
 import { useToast } from "@/hooks/use-toast";
 import { usePatientWorkspaceData } from "@/hooks/patient/use-patient-workspace-data";
+import { useReportList } from "@/hooks/patient/use-report-list";
 import { useUploadQueue } from "@/hooks/patient/use-upload-queue";
 import { AiSummaryCard } from "./workspace/AiSummaryCard";
 import { AppointmentsSection } from "./workspace/AppointmentsSection";
 import { DoctorAccessCard } from "./workspace/DoctorAccessCard";
-import {
-  formatVitalCardValue,
-  getUpcomingAppointment,
-  isReminderPending,
-  isToday,
-  scrollToSection,
-} from "./workspace/helpers";
+import { formatVitalCardValue, getUpcomingAppointment, isReminderPending, isToday, scrollToSection } from "./workspace/helpers";
 import { KpiRow } from "./workspace/KpiRow";
-import { QuickLinks, SettingsStrip, WorkspaceHeader, WorkspaceSidebar } from "./workspace/layout";
+import { NAV_ITEMS, QuickLinks, SettingsStrip, WorkspaceHeader, WorkspaceSidebar } from "./workspace/layout";
 import { MedicineScheduleCard } from "./workspace/MedicineScheduleCard";
 import { RemindersSection } from "./workspace/RemindersSection";
 import { HealthCategoriesCard, RecentReportsCard, RiskFlagsCard } from "./workspace/ReportsSection";
 import { ToastBar } from "./workspace/ui";
 import { UploadCard } from "./workspace/UploadCard";
 import { VitalsSection } from "./workspace/VitalsSection";
+import { WorkspaceSkeleton } from "./workspace/WorkspaceSkeleton";
 
 type PatientView = "dashboard" | "upload" | "records" | "ocr" | "summary" | "profile";
 
-const SEARCH_DEBOUNCE_MS = 200;
-const CRITICAL_FLAGS_SHOWN = 5;
+const SEARCH_DEBOUNCE_MS = 300;
+// Sections the sidebar highlights while scrolling ("dashboard" is the header, the fallback).
+const SPY_SECTIONS = NAV_ITEMS.map((item) => item.id).filter((id) => id !== "dashboard");
 
 export function PatientWorkspace({
   initialDepartment,
@@ -51,18 +49,19 @@ export function PatientWorkspace({
   const user = auth.status === "ready" ? auth.user : null;
 
   const { toast, notify } = useToast();
-  const { data, isLoading, refresh, addReport } = usePatientWorkspaceData(token);
-  const upload = useUploadQueue({ token, notify, onUploaded: addReport });
+  const { data, isLoading, refresh } = usePatientWorkspaceData(token);
   const notifications = useNotificationPermission();
 
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearch = useDebouncedValue(searchQuery, SEARCH_DEBOUNCE_MS);
-  const [activeCategory, setActiveCategory] = useState<ReportCategoryId | "all">(
-    initialDepartment ? normalizeReportCategory(initialDepartment) : "all",
+  const [department, setDepartment] = useState<DepartmentSlug | null>(
+    isDepartmentSlug(initialDepartment) ? (initialDepartment.toLowerCase() as DepartmentSlug) : null,
   );
-  const [activeNav, setActiveNav] = useState("dashboard");
+  const reportList = useReportList({ token, search: debouncedSearch, department });
+  const upload = useUploadQueue({ token, notify, onUploaded: reportList.refresh });
+  const [activeNav, setActiveNav] = useScrollSpy(SPY_SECTIONS, { fallback: "dashboard" });
 
-  const { reports, reminders, riskPredictions, appointments, basicVitals, vitalsToday } = data;
+  const { reminders, riskPredictions, appointments, basicVitals, vitalsToday } = data;
 
   // Pop-ups for today's reminders that are not taken or skipped, while the page is open.
   const popups = useMemo(
@@ -78,25 +77,8 @@ export function PatientWorkspace({
   );
   useScheduledNotifications(popups, notifications.permission === "granted");
 
-  const filteredReports = useMemo(() => {
-    const query = debouncedSearch.trim().toLowerCase();
-    return reports.filter((r) => {
-      const matchesCategory = activeCategory === "all" || normalizeReportCategory(r.category) === activeCategory;
-      if (!matchesCategory) return false;
-      if (!query) return true;
-      const haystack = [r.title, r.original_filename, r.category, r.summary ?? "", r.ai_summary ?? "", r.detected_keywords.join(" ")]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(query);
-    });
-  }, [activeCategory, debouncedSearch, reports]);
-
   const upcomingAppointment = useMemo(() => getUpcomingAppointment(appointments), [appointments]);
-  const criticalFlags = useMemo(() => {
-    const fromReports = reports.filter((r) => r.validation_status === "HIGH_RISK").map((r) => `Possible report risk: ${r.title}`);
-    const fromRisks = riskPredictions.filter((r) => r.risk_level === "High").map((r) => r.risk_title);
-    return [...fromReports, ...fromRisks].slice(0, CRITICAL_FLAGS_SHOWN);
-  }, [reports, riskPredictions]);
+  const criticalFlagCount = data.highRiskTotal + riskPredictions.filter((r) => r.risk_level === "High").length;
   const pendingReminderCount = reminders.filter(isReminderPending).length;
 
   // A detailed reading wins; otherwise show a BP entered today through the simple log.
@@ -106,10 +88,18 @@ export function PatientWorkspace({
     : formatVitalCardValue(vitalsToday);
   const todayVitalsRecordedAt = vitalsToday?.recorded_at ?? basicToday?.created_at ?? null;
 
-  const navigate = useCallback((section: string) => {
-    setActiveNav(section);
-    scrollToSection(section);
-  }, []);
+  const navigate = useCallback(
+    (section: string) => {
+      setActiveNav(section);
+      scrollToSection(section);
+    },
+    [setActiveNav],
+  );
+
+  const refreshAll = useCallback(async () => {
+    reportList.refresh();
+    await refresh();
+  }, [refresh, reportList]);
 
   const markReminder = useCallback(
     async (reminderId: number, action: "taken" | "skip") => {
@@ -130,6 +120,11 @@ export function PatientWorkspace({
     [notify, refresh, token],
   );
 
+  function selectDepartment(slug: DepartmentSlug) {
+    setDepartment((current) => (current === slug ? null : slug));
+    scrollToSection("recent-reports");
+  }
+
   function downloadReport(report: MedicalDocument) {
     if (!report.file_access_url) return;
     const link = document.createElement("a");
@@ -143,28 +138,9 @@ export function PatientWorkspace({
     router.push("/login");
   }
 
-  if (auth.status === "error") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-violet-50 flex items-center justify-center px-4">
-        <p role="alert" className="max-w-md text-center text-sm font-semibold text-rose-700">
-          {auth.message}
-        </p>
-      </div>
-    );
-  }
-
-  if (!token || isLoading) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-violet-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4" role="status">
-          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-500 to-violet-600 flex items-center justify-center shadow-lg shadow-blue-200">
-            <HeartPulse className="h-8 w-8 text-white animate-pulse" />
-          </div>
-          <p className="text-sm font-semibold text-slate-600">Loading your health dashboard...</p>
-        </div>
-      </div>
-    );
-  }
+  if (auth.status === "error") return <ErrorState message={auth.message} onRetry={() => window.location.reload()} />;
+  if (!token) return <PageLoader message="Checking your session..." />;
+  if (isLoading) return <WorkspaceSkeleton />;
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-violet-50">
@@ -174,8 +150,11 @@ export function PatientWorkspace({
         <WorkspaceHeader
           firstName={user?.full_name?.split(" ")[0] ?? ""}
           searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          unreadCount={pendingReminderCount + criticalFlags.length}
+          onSearchChange={(value) => {
+            setSearchQuery(value);
+            if (value.trim()) scrollToSection("recent-reports");
+          }}
+          unreadCount={pendingReminderCount + criticalFlagCount}
           onNavigate={navigate}
         />
 
@@ -187,7 +166,7 @@ export function PatientWorkspace({
             vitalsRecordedAt={todayVitalsRecordedAt}
             reminderCount={reminders.length}
             upcomingAppointment={upcomingAppointment}
-            criticalFlagCount={criticalFlags.length}
+            criticalFlagCount={criticalFlagCount}
             onNavigate={navigate}
           />
 
@@ -196,7 +175,7 @@ export function PatientWorkspace({
           <VitalsSection token={token} history={basicVitals} notify={notify} onSaved={refresh} />
 
           <section className="grid gap-5 xl:grid-cols-2">
-            <UploadCard upload={upload} onAllUploaded={() => void refresh()} />
+            <UploadCard upload={upload} onAllUploaded={() => void refreshAll()} />
             <AiSummaryCard summary={data.doctorSummaries[0]} />
           </section>
 
@@ -208,14 +187,17 @@ export function PatientWorkspace({
             onSeeAll={() => navigate("reminders")}
           />
 
-          <HealthCategoriesCard reports={reports} onSelect={setActiveCategory} />
+          <HealthCategoriesCard tiles={data.departmentTiles} activeDepartment={department} onSelect={selectDepartment} />
 
           <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
             <RecentReportsCard
-              totalReports={reports.length}
-              filteredReports={filteredReports}
-              activeCategory={activeCategory}
-              onShowAll={() => setActiveCategory("all")}
+              list={reportList}
+              activeDepartment={department}
+              search={debouncedSearch}
+              onClearFilters={() => {
+                setDepartment(null);
+                setSearchQuery("");
+              }}
               onOpen={(report) => router.push(`/dashboard/patient/reports/${report.id}`)}
               onDownload={downloadReport}
             />
