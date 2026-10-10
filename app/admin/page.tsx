@@ -18,7 +18,8 @@ import {
 
 import { DashboardCard, Sidebar, StatCard } from "@/components/ui/saas-shell";
 import { api } from "@/lib/api";
-import { clearSession, dashboardPathForRole, getSession } from "@/lib/auth";
+import { clearSession } from "@/lib/auth";
+import { useAuthGuard } from "@/hooks/use-auth-guard";
 import type { AdminActivity, AdminDashboardStats, AdminDoctor, AdminUser } from "@/lib/types";
 
 const adminSidebarItems = [
@@ -37,6 +38,8 @@ function formatDate(value: string) {
 
 export default function AdminPage() {
   const router = useRouter();
+  const auth = useAuthGuard("admin");
+  const token = auth.status === "ready" ? auth.token : null;
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [pendingDoctors, setPendingDoctors] = useState<AdminDoctor[]>([]);
@@ -69,48 +72,27 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
-    const session = getSession();
-    if (!session) {
-      router.replace("/login");
-      return;
-    }
-
-    if (session.user.role !== "admin") {
-      router.replace(dashboardPathForRole(session.user.role));
-      return;
-    }
-
+    if (!token) return;
     const loadTimer = window.setTimeout(() => {
-      void loadDashboard(session.token);
+      void loadDashboard(token);
     }, 0);
-
     return () => window.clearTimeout(loadTimer);
-  }, [loadDashboard, router]);
+  }, [loadDashboard, token]);
 
   const recentUsers = useMemo(() => users.slice(0, 6), [users]);
   const patientCount = users.filter((user) => user.role === "patient").length;
 
   async function updateDoctor(doctorId: number, action: "approve" | "reject") {
-    const session = getSession();
-    if (!session) {
-      router.replace("/login");
-      return;
-    }
-
-    if (session.user.role !== "admin") {
-      router.replace(dashboardPathForRole(session.user.role));
-      return;
-    }
-
+    if (!token || updatingDoctorId !== null) return;
     setUpdatingDoctorId(doctorId);
     setStatusMessage("");
     try {
       if (action === "approve") {
-        await api.approveAdminDoctor(session.token, doctorId);
+        await api.approveAdminDoctor(token, doctorId);
       } else {
-        await api.rejectAdminDoctor(session.token, doctorId);
+        await api.rejectAdminDoctor(token, doctorId);
       }
-      await loadDashboard(session.token);
+      await loadDashboard(token);
       setStatusMessage(action === "approve" ? "Doctor verification approved." : "Doctor verification rejected.");
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Doctor verification update failed.");
@@ -177,8 +159,12 @@ export default function AdminPage() {
             </p>
           ) : null}
 
-          {isLoading ? (
-            <div className="glass-card p-8 text-center text-sm font-semibold text-slate-500">
+          {auth.status === "error" ? (
+            <p role="alert" className="glass-card p-8 text-center text-sm font-semibold text-rose-700">
+              {auth.message}
+            </p>
+          ) : isLoading ? (
+            <div role="status" className="glass-card p-8 text-center text-sm font-semibold text-slate-500">
               <Loader2 className="mx-auto mb-3 h-6 w-6 animate-spin text-teal-600" />
               Loading admin dashboard...
             </div>
