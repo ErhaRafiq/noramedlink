@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -316,14 +317,51 @@ def department_tiles(current_user: User = Depends(require_patient), db: Session 
     return tiles
 
 
+DEPARTMENT_SLUGS = {item["slug"] for item in DEPARTMENTS}
+VALIDATION_STATUSES = {"SAFE", "CAUTION", "HIGH_RISK", "NOT_VALIDATED"}
+SEARCH_MAX_LENGTH = 100
+
+
+def _like_pattern(text: str) -> str:
+    """Case-insensitive "contains" pattern with LIKE wildcards in the user's text escaped."""
+    escaped = text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
 @router.get("", response_model=Page[PatientReportOut])
 def list_reports(
     params: PageParams = Depends(page_params),
+    q: str | None = Query(default=None, max_length=SEARCH_MAX_LENGTH, description="Search title, file name and summary"),
+    department: str | None = Query(default=None, description="Department slug, e.g. heart"),
+    validation_status: str | None = Query(default=None, description="SAFE, CAUTION, HIGH_RISK or NOT_VALIDATED"),
     current_user: User = Depends(require_patient),
     db: Session = Depends(get_db),
 ):
     ensure_medical_departments(db)
-    query = report_query(db, current_user).order_by(PatientReport.upload_date.desc(), PatientReport.id.desc())
+    query = report_query(db, current_user)
+
+    search = (q or "").strip()
+    if search:
+        pattern = _like_pattern(search)
+        query = query.filter(
+            or_(
+                PatientReport.title.ilike(pattern, escape="\\"),
+                PatientReport.original_file_name.ilike(pattern, escape="\\"),
+                PatientReport.summary.ilike(pattern, escape="\\"),
+            )
+        )
+    if department:
+        slug = department.strip().lower()
+        if slug not in DEPARTMENT_SLUGS:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unknown department: {department}.")
+        query = query.filter(PatientReport.department_id == get_department(db, slug).id)
+    if validation_status:
+        wanted = validation_status.strip().upper()
+        if wanted not in VALIDATION_STATUSES:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unknown validation status: {validation_status}.")
+        query = query.filter(PatientReport.validation_status == wanted)
+
+    query = query.order_by(PatientReport.upload_date.desc(), PatientReport.id.desc())
     return paginate(query, params, report_to_out)
 
 

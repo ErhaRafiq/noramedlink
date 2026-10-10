@@ -40,11 +40,14 @@ const API_BASE_URL = "/api/backend";
 /** A failed API call. `status` is the HTTP status, or 0 when the backend could not be reached. */
 export class ApiError extends Error {
   readonly status: number;
+  /** For 429 responses: seconds the server asked us to wait (Retry-After), if given. */
+  readonly retryAfterSeconds: number | null;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, retryAfterSeconds: number | null = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.retryAfterSeconds = retryAfterSeconds;
   }
 }
 
@@ -55,12 +58,24 @@ export function isApiError(error: unknown, status?: number): error is ApiError {
 /** Optional ?limit=&offset= for paginated list endpoints (server default 20, max 100). */
 export type PageQuery = { limit?: number; offset?: number };
 
-function withPage(path: string, page: PageQuery = {}) {
+/** Filters for GET /patient/reports, on top of paging. */
+export type ReportListQuery = PageQuery & {
+  q?: string;
+  department?: string;
+  validationStatus?: "SAFE" | "CAUTION" | "HIGH_RISK" | "NOT_VALIDATED";
+};
+
+function withQuery(path: string, values: Record<string, string | number | undefined>) {
   const params = new URLSearchParams();
-  if (page.limit !== undefined) params.set("limit", String(page.limit));
-  if (page.offset !== undefined) params.set("offset", String(page.offset));
+  for (const [key, value] of Object.entries(values)) {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  }
   const query = params.toString();
   return query ? `${path}?${query}` : path;
+}
+
+function withPage(path: string, page: PageQuery = {}) {
+  return withQuery(path, { limit: page.limit, offset: page.offset });
 }
 
 type RequestOptions = RequestInit & {
@@ -127,7 +142,8 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
         : typeof data === "object" && data && "message" in data
           ? formatApiDetail((data as { message: unknown }).message)
           : "Request failed.";
-    throw new ApiError(detail, response.status);
+    const retryAfter = Number(response.headers.get("Retry-After"));
+    throw new ApiError(detail, response.status, Number.isFinite(retryAfter) && retryAfter > 0 ? retryAfter : null);
   }
 
   return data as T;
@@ -300,8 +316,15 @@ export const api = {
   appointmentsV2(token: string, page?: PageQuery) {
     return apiRequest<Page<Appointment>>(withPage("/appointments", page), { token });
   },
-  reports(token: string, page?: PageQuery) {
-    return apiRequest<Page<MedicalDocument>>(withPage("/patient/reports", page), { token });
+  reports(token: string, query: ReportListQuery = {}, init?: { signal?: AbortSignal }) {
+    const path = withQuery("/patient/reports", {
+      limit: query.limit,
+      offset: query.offset,
+      q: query.q?.trim(),
+      department: query.department,
+      validation_status: query.validationStatus,
+    });
+    return apiRequest<Page<MedicalDocument>>(path, { token, signal: init?.signal });
   },
   reportsByCategory(token: string, category: string, page?: PageQuery) {
     return apiRequest<Page<MedicalDocument>>(withPage(`/patient/reports/department/${encodeURIComponent(category)}`, page), { token });

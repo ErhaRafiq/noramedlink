@@ -803,6 +803,33 @@ def run_tests() -> None:
           stats.get("totalPatients") == scalar("select count(*) from users where lower(role) = 'patient'")
           and stats.get("activeUsers") == scalar("select count(*) from users where is_active"), f"got {stats}")
 
+    print("\n[13b] Report search and filters (server-side)")
+    tiles = call("GET", "/api/backend/patient/reports/tiles", tok_a).json()
+    check("department tiles are exactly the six departments lib/departments.ts mirrors",
+          {t["slug"] for t in tiles} == {"heart", "kidney", "ortho", "general", "medicine", "lab"},
+          f"got {sorted(t['slug'] for t in tiles)}")
+    heart_report = create_record(patient_a, f"{TEST_PREFIX}searchable heart scan")
+    with engine.begin() as conn:
+        conn.execute(text("update patient_reports set validation_status = 'HIGH_RISK', "
+                          "department_id = (select id from medical_departments where name = 'Heart') where id = :id"),
+                     {"id": heart_report})
+    found = call("GET", "/api/backend/patient/reports?q=SEARCHABLE%20heart", tok_a).json()
+    check("q matches the title, case-insensitively", [r["id"] for r in found["items"]] == [heart_report] and found["total"] == 1,
+          f"got {[r['id'] for r in found['items']]}")
+    check("q does not search other patients' reports",
+          call("GET", "/api/backend/patient/reports?q=searchable", tok_b).json()["total"] == 0)
+    wildcard = call("GET", "/api/backend/patient/reports?q=%25", tok_a).json()
+    check("% in q is matched literally, not as a wildcard", wildcard["total"] == 0, f"got total {wildcard['total']}")
+    heart = call("GET", "/api/backend/patient/reports?department=heart", tok_a).json()
+    check("department=heart returns only heart reports",
+          heart["total"] >= 1 and all(r["department_slug"] == "heart" for r in heart["items"]), f"got {heart['total']}")
+    risky = call("GET", "/api/backend/patient/reports?validation_status=HIGH_RISK", tok_a).json()
+    check("validation_status=HIGH_RISK returns only high-risk reports",
+          heart_report in [r["id"] for r in risky["items"]] and all(r["validation_status"] == "HIGH_RISK" for r in risky["items"]))
+    for bad in ("department=liver", "validation_status=STABLE", "q=" + "x" * 101):
+        response = call("GET", f"/api/backend/patient/reports?{bad}", tok_a)
+        check(f"?{bad[:30]} -> 422", response.status_code == 422, f"got {response.status_code}")
+
     print("\n[14] Rate limits")
     limited_patient = create_user("ratelimit", "PATIENT")
     tok_limited = token_for(limited_patient)
