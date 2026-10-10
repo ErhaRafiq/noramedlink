@@ -56,10 +56,11 @@ const features: Array<{
   },
 ];
 
-const previewStats = [
-  { label: "Uploaded Reports", value: "24" },
-  { label: "AI Summaries", value: "18" },
-  { label: "Appointments", value: "03" },
+// Illustrates the workflow; deliberately no numbers, so nothing reads as real usage data.
+const previewSteps = [
+  { label: "Upload", value: "Report photo or PDF" },
+  { label: "Summarize", value: "OCR + AI summary" },
+  { label: "Share", value: "One-time doctor code" },
 ];
 
 const fadeUp: Variants = {
@@ -131,7 +132,7 @@ export function PremiumLanding() {
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-teal-700">
-                      Verification ready
+                      Illustration
                     </p>
                     <h2 className="mt-2 text-2xl font-black tracking-tight text-[#0B1220]">
                       Patient dashboard
@@ -143,10 +144,10 @@ export function PremiumLanding() {
                 </div>
 
                 <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                  {previewStats.map((card) => (
+                  {previewSteps.map((card) => (
                     <div key={card.label} className="rounded-2xl border border-[#DCE8F5] bg-[#F8FBFF] p-4">
                       <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{card.label}</p>
-                      <p className="mt-3 text-2xl font-black text-[#0B1220]">{card.value}</p>
+                      <p className="mt-3 text-sm font-semibold text-[#0B1220]">{card.value}</p>
                     </div>
                   ))}
                 </div>
