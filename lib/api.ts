@@ -22,10 +22,8 @@ import type {
   MedicationSchedule,
   MedicineReminder,
   PatientDashboard,
-  PatientReportCategorySummary,
   PatientSignupPayload,
   PatientVitals,
-  ReminderLog,
   VitalTrendPoint,
   SignupOtpPayload,
   AdminActivity,
@@ -37,6 +35,21 @@ import type {
 // All FastAPI calls go through the same-origin proxy (app/api/backend/[...path]),
 // which forwards to the server-side SERVER_API_URL. NEXT_PUBLIC_API_URL is no longer used.
 const API_BASE_URL = "/api/backend";
+
+/** A failed API call. `status` is the HTTP status, or 0 when the backend could not be reached. */
+export class ApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+export function isApiError(error: unknown, status?: number): error is ApiError {
+  return error instanceof ApiError && (status === undefined || error.status === status);
+}
 
 type RequestOptions = RequestInit & {
   token?: string;
@@ -84,9 +97,10 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
     });
   } catch (error) {
     const detail = error instanceof Error ? ` (${error.message})` : "";
-    throw new Error(
-      `Unable to reach the backend API. Make sure the FastAPI server is running.${detail}`,
-    );
+    if (options.signal?.aborted) {
+      throw error;
+    }
+    throw new ApiError(`Unable to reach the backend API. Make sure the FastAPI server is running.${detail}`, 0);
   }
 
   const contentType = response.headers.get("Content-Type") ?? "";
@@ -101,7 +115,7 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
         : typeof data === "object" && data && "message" in data
           ? formatApiDetail((data as { message: unknown }).message)
           : "Request failed.";
-    throw new Error(detail);
+    throw new ApiError(detail, response.status);
   }
 
   return data as T;
@@ -167,8 +181,8 @@ export const api = {
       body: JSON.stringify(payload),
     });
   },
-  me(token: string) {
-    return apiRequest<AuthUser>("/api/auth/me", { token });
+  me(token: string, init?: { signal?: AbortSignal }) {
+    return apiRequest<AuthUser>("/api/auth/me", { token, signal: init?.signal });
   },
   adminDashboardStats(token: string) {
     return apiRequest<AdminDashboardStats>("/api/admin/dashboard-stats", { token });
