@@ -4,14 +4,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Bell,
   CalendarDays,
   CheckCircle2,
-  CreditCard,
   FileText,
   LayoutDashboard,
   Loader2,
-  Settings,
   ShieldCheck,
   Stethoscope,
   Users,
@@ -26,14 +23,9 @@ import type { AdminActivity, AdminDashboardStats, AdminDoctor, AdminUser } from 
 
 const adminSidebarItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, active: true },
-  { href: "/admin#users", label: "Users", icon: Users },
   { href: "/admin#doctors", label: "Doctors", icon: Stethoscope },
-  { href: "/admin#patients", label: "Patients", icon: UserRound },
-  { href: "/admin#reports", label: "Reports", icon: FileText },
-  { href: "/admin#appointments", label: "Appointments", icon: CalendarDays },
-  { href: "/admin#payments", label: "Payments", icon: CreditCard },
-  { href: "/admin#notifications", label: "Notifications", icon: Bell },
-  { href: "/admin#settings", label: "System Settings", icon: Settings },
+  { href: "/admin#users", label: "Users", icon: Users },
+  { href: "/admin#patients", label: "Account Overview", icon: UserRound },
 ];
 
 function formatDate(value: string) {

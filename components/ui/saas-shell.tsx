@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import type { ButtonHTMLAttributes, ElementType, ReactNode } from "react";
+import { usePathname } from "next/navigation";
+import type { ButtonHTMLAttributes, ElementType, MouseEvent, ReactNode } from "react";
 import { ShieldCheck } from "lucide-react";
 
 import { NoraLogo } from "@/components/ui/NoraLogo";
@@ -44,6 +45,20 @@ export function Sidebar({
   userMeta?: string;
   action?: ReactNode;
 }) {
+  const pathname = usePathname();
+
+  // Same-page "#section" links: scroll to the section ourselves, since a Link to the
+  // current route can update the hash without moving the page.
+  function scrollToSection(event: MouseEvent<HTMLAnchorElement>, href: string) {
+    const [path, hash] = href.split("#");
+    if (!hash || path !== pathname) return;
+    const target = document.getElementById(hash);
+    if (!target) return;
+    event.preventDefault();
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    window.history.replaceState(null, "", `#${hash}`);
+  }
+
   return (
     <aside className="nm-sidebar h-fit lg:sticky lg:top-5">
       <NoraLogo inverse />
@@ -63,6 +78,7 @@ export function Sidebar({
           <Link
             key={item.href}
             href={item.href}
+            onClick={(event) => scrollToSection(event, item.href)}
             className={cn("nm-sidebar-item", item.active && "nm-sidebar-item-active")}
           >
             <item.icon className="h-4 w-4" />
