@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -6,6 +6,7 @@ from dependencies import get_current_user, require_patient
 from models import PatientReport, User
 from schemas import SummarizeRequest, SummaryResponse
 from services.nlp_service import summarize_with_optional_llm
+from rate_limit import AI_LIMIT, limiter
 
 
 router = APIRouter(prefix="/nlp", tags=["nlp"])
@@ -34,7 +35,8 @@ def _check_length(text: str) -> str:
 
 
 @router.post("/summarize", response_model=SummaryResponse)
-async def summarize(payload: SummarizeRequest, current_user: User = Depends(get_current_user)):
+@limiter.limit(AI_LIMIT)
+async def summarize(request: Request, payload: SummarizeRequest, current_user: User = Depends(get_current_user)):
     """Summarize pasted report text. Requires a signed-in user (it was public before)."""
     text = _check_length(payload.text)
     summary, method, warning = await summarize_with_optional_llm(text, payload.category)
@@ -42,7 +44,8 @@ async def summarize(payload: SummarizeRequest, current_user: User = Depends(get_
 
 
 @router.post("/summarize/saved-reports", response_model=SavedReportsSummary)
-async def summarize_saved_reports(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+@limiter.limit(AI_LIMIT)
+async def summarize_saved_reports(request: Request, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     """Summarize the signed-in patient's own saved reports (former Next saved-report mode)."""
     reports = (
         db.query(PatientReport)

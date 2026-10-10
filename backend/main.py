@@ -10,9 +10,12 @@ load_dotenv(BACKEND_DIR / ".env")
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 from database import check_database_connection, ensure_runtime_dirs, run_migrations
+from rate_limit import limiter, rate_limit_exceeded_handler
 from routers import admin, appointments, auth, doctor, medical_ai, nlp, ocr, patient, payments, reminders, reports, vitals, medications, medicine_reminders, dashboard_access, emergency, files
 
 
@@ -44,6 +47,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Rate limits: per-route limits are set with @limiter.limit in the routers; every other
+# route gets the default limit through the middleware. See rate_limit.py.
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # Uploaded files are not served publicly; see routers/files.py (GET /files/...).
 
@@ -79,11 +88,13 @@ async def sqlalchemy_exception_handler(request, exc: SQLAlchemyError):
 
 
 @app.get("/health")
+@limiter.exempt
 def health_check():
     return {"status": "ok", "service": "Nora MedLink API"}
 
 
 @app.get("/health/database")
+@limiter.exempt
 def database_health_check():
     try:
         return check_database_connection()

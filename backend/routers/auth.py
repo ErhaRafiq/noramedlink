@@ -3,7 +3,7 @@ import re
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -22,6 +22,7 @@ from schemas import (
     VerifySignupOtpRequest,
 )
 from services.otp_delivery_service import OtpDeliveryError, send_email_otp, send_sms_otp
+from rate_limit import LOGIN_LIMIT, SIGNUP_LIMIT, enforce_account_limit, ip_key, limiter
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -237,7 +238,8 @@ def signup_payload_json(payload: SignupOtpRequest) -> dict:
 
 
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def signup(payload: SignupOtpRequest, db: Session = Depends(get_db)):
+@limiter.limit(SIGNUP_LIMIT, key_func=ip_key)
+def signup(request: Request, payload: SignupOtpRequest, db: Session = Depends(get_db)):
     email, phone = normalize_signup_payload(payload)
     validate_role_specific_fields(payload)
     ensure_unique_identity(db, email, phone)
@@ -257,7 +259,8 @@ def signup(payload: SignupOtpRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/request-otp")
-def request_signup_otp(payload: SignupOtpRequest, db: Session = Depends(get_db)):
+@limiter.limit(SIGNUP_LIMIT, key_func=ip_key)
+def request_signup_otp(request: Request, payload: SignupOtpRequest, db: Session = Depends(get_db)):
     email, phone = normalize_signup_payload(payload)
     validate_role_specific_fields(payload)
     ensure_unique_identity(db, email, phone)
@@ -296,7 +299,8 @@ def request_signup_otp(payload: SignupOtpRequest, db: Session = Depends(get_db))
 
 
 @router.post("/verify-otp-signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def verify_otp_signup(payload: VerifySignupOtpRequest, db: Session = Depends(get_db)):
+@limiter.limit(SIGNUP_LIMIT, key_func=ip_key)
+def verify_otp_signup(request: Request, payload: VerifySignupOtpRequest, db: Session = Depends(get_db)):
     email, phone = normalize_signup_payload(payload)
     validate_role_specific_fields(payload)
     ensure_unique_identity(db, email, phone)
@@ -348,7 +352,8 @@ def verify_otp_signup(payload: VerifySignupOtpRequest, db: Session = Depends(get
 
 
 @router.post("/signup/patient", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def signup_patient(payload: PatientSignupRequest, db: Session = Depends(get_db)):
+@limiter.limit(SIGNUP_LIMIT, key_func=ip_key)
+def signup_patient(request: Request, payload: PatientSignupRequest, db: Session = Depends(get_db)):
     email = normalize_email(str(payload.email))
     phone = normalize_phone(payload.phone)
     ensure_unique_identity(db, email, phone)
@@ -379,7 +384,8 @@ def signup_patient(payload: PatientSignupRequest, db: Session = Depends(get_db))
 
 
 @router.post("/signup/doctor", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def signup_doctor(payload: DoctorSignupRequest, db: Session = Depends(get_db)):
+@limiter.limit(SIGNUP_LIMIT, key_func=ip_key)
+def signup_doctor(request: Request, payload: DoctorSignupRequest, db: Session = Depends(get_db)):
     email = normalize_email(str(payload.email))
     phone = normalize_phone(payload.phone)
     ensure_unique_identity(db, email, phone)
@@ -410,8 +416,12 @@ def signup_doctor(payload: DoctorSignupRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == normalize_email(str(payload.email))).first()
+@limiter.limit(LOGIN_LIMIT, key_func=ip_key)
+def login(request: Request, payload: LoginRequest, db: Session = Depends(get_db)):
+    email = normalize_email(str(payload.email))
+    # Per-account limit on top of the per-IP one: slows password guessing for one account.
+    enforce_account_limit("login", email)
+    user = db.query(User).filter(User.email == email).first()
     if not user or not user.is_active or not verify_password(payload.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

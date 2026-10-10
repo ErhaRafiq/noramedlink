@@ -1,17 +1,19 @@
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 
 from dependencies import require_patient
 from models import User
 from schemas import OcrOutput
 from services.file_service import save_upload_file, stored_path_to_disk_path
 from services.ocr_space_service import OcrSpaceError, extract_report_with_ocr_space
+from rate_limit import AI_LIMIT, limiter
 
 
 router = APIRouter(prefix="/ocr", tags=["ocr"])
 
 
 @router.post("/extract", response_model=OcrOutput)
-async def extract(file: UploadFile = File(...), current_user: User = Depends(require_patient)):
+@limiter.limit(AI_LIMIT)
+async def extract(request: Request, file: UploadFile = File(...), current_user: User = Depends(require_patient)):
     stored_path, _ = await save_upload_file(file, "ocr-temp", patient_id=current_user.id)
     try:
         result = await extract_report_with_ocr_space(str(stored_path_to_disk_path(stored_path)), file.filename or "")

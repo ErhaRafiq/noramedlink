@@ -10,7 +10,7 @@ active grant exists; appointments assigned to the doctor show the patient's name
 
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -26,6 +26,7 @@ from services.dashboard_access import (
     grant_access_by_otp,
     record_otp_attempt,
 )
+from rate_limit import ACCESS_CODE_LIMIT, limiter
 
 router = APIRouter(tags=["dashboard-access"])
 
@@ -96,7 +97,8 @@ def patient_overview(current_user: User = Depends(require_patient), db: Session 
 
 
 @router.post("/patient/dashboard-otp")
-def issue_dashboard_otp(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+@limiter.limit(ACCESS_CODE_LIMIT)
+def issue_dashboard_otp(request: Request, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     otp = create_dashboard_otp(db, current_user)
     return {"message": "One-time dashboard OTP generated.", "otp": {"code": otp.code, "expiresAt": otp.expires_at}}
 
