@@ -8,10 +8,10 @@ export function NoraLogo({ inverse = false }: { inverse?: boolean }) {
         <span className="absolute h-2.5 w-7 rounded-full bg-white" />
       </span>
       <span>
-        <span className={`block text-lg font-black tracking-tight ${inverse ? "text-white" : "text-[#0B1220]"}`}>
+        <span className={`block text-lg font-semibold tracking-tight ${inverse ? "text-white" : "text-[#0B1220]"}`}>
           Nora MedLink
         </span>
-        <span className={`block text-[10px] font-bold uppercase tracking-[0.18em] ${inverse ? "text-teal-100" : "text-teal-700"}`}>
+        <span className={`block text-[10px] font-medium uppercase tracking-[0.16em] ${inverse ? "text-teal-100" : "text-teal-700"}`}>
           Patient records hub
         </span>
       </span>
