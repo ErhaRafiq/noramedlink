@@ -95,7 +95,7 @@ export function Sidebar({
           <p className="text-xs font-black uppercase tracking-[0.14em]">Secure Access</p>
         </div>
         <p className="mt-2 text-xs font-semibold leading-5 text-slate-300">
-          All actions are protected and audited.
+          Every request is checked against your signed-in role.
         </p>
       </div>
     </aside>
