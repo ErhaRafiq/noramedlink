@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   CalendarDays,
   CheckCircle2,
@@ -36,6 +36,9 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+// The "New Accounts" card lists the latest sign-ups; counts come from dashboard-stats.
+const RECENT_USERS = 6;
+
 export default function AdminPage() {
   const router = useRouter();
   const auth = useAuthGuard("admin");
@@ -55,13 +58,13 @@ export default function AdminPage() {
     try {
       const [statsData, userData, pendingDoctorData, activityData] = await Promise.all([
         api.adminDashboardStats(activeToken),
-        api.adminUsers(activeToken),
+        api.adminUsers(activeToken, { limit: RECENT_USERS }),
         api.adminPendingDoctors(activeToken),
         api.adminRecentActivity(activeToken),
       ]);
 
       setStats(statsData);
-      setUsers(userData);
+      setUsers(userData.items);
       setPendingDoctors(pendingDoctorData);
       setActivity(activityData);
     } catch (error) {
@@ -79,8 +82,6 @@ export default function AdminPage() {
     return () => window.clearTimeout(loadTimer);
   }, [loadDashboard, token]);
 
-  const recentUsers = useMemo(() => users.slice(0, 6), [users]);
-  const patientCount = users.filter((user) => user.role === "patient").length;
 
   async function updateDoctor(doctorId: number, action: "approve" | "reject") {
     if (!token || updatingDoctorId !== null) return;
@@ -237,7 +238,7 @@ export default function AdminPage() {
                     <h2 className="section-title mt-2 text-2xl">New Accounts</h2>
                   </div>
                   <div className="space-y-3">
-                    {recentUsers.map((user) => (
+                    {users.map((user) => (
                       <article key={user.id} className="flex items-center justify-between gap-3 rounded-2xl border border-[#DCE8F5] bg-[#F8FBFF] p-4">
                         <div>
                           <p className="font-black text-slate-950">{user.fullName}</p>
@@ -257,9 +258,9 @@ export default function AdminPage() {
                   <p className="section-eyebrow">Users</p>
                   <h2 className="section-title mt-2 text-2xl">Account Overview</h2>
                   <div className="mt-5 grid gap-3 sm:grid-cols-3">
-                    <SmallMetric label="Patients" value={patientCount} />
+                    <SmallMetric label="Patients" value={stats.totalPatients} />
                     <SmallMetric label="Doctors Pending" value={pendingDoctors.length} />
-                    <SmallMetric label="Active Users" value={users.filter((user) => user.isActive).length} />
+                    <SmallMetric label="Active Users" value={stats.activeUsers} />
                   </div>
                 </DashboardCard>
 

@@ -1,4 +1,5 @@
 from datetime import datetime, time, timedelta, timezone
+from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
@@ -7,6 +8,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import require_admin
 from models import Appointment, DoctorProfile, PatientReport, User
+from pagination import Page, PageParams, page_params, paginate
 
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -74,6 +76,8 @@ def dashboard_stats(
             .filter(Appointment.date >= today_start, Appointment.date < today_end)
             .count()
         ),
+        "totalPatients": db.query(User.id).filter(func.lower(User.role) == "patient").count(),
+        "activeUsers": db.query(User.id).filter(User.is_active.is_(True)).count(),
         "pendingDoctors": (
             db.query(DoctorProfile.id)
             .filter(func.lower(DoctorProfile.verification_status) == "pending")
@@ -82,13 +86,13 @@ def dashboard_stats(
     }
 
 
-@router.get("/users")
+@router.get("/users", response_model=Page[dict[str, Any]])
 def list_users(
+    params: PageParams = Depends(page_params),
     _: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    users = db.query(User).order_by(User.created_at.desc()).all()
-    return [user_out(user) for user in users]
+    return paginate(db.query(User).order_by(User.created_at.desc(), User.id.desc()), params, user_out)
 
 
 @router.get("/doctors/pending")

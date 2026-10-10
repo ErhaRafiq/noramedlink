@@ -73,8 +73,19 @@ export type SignupOtpResponse = {
   expires_in_seconds: number;
 };
 
+/** A page of a paginated list endpoint (backend/pagination.py). */
+export type Page<T> = {
+  items: T[];
+  /** Rows matching the filters, across all pages. */
+  total: number;
+  limit: number;
+  offset: number;
+};
+
 export type AdminDashboardStats = {
   totalUsers: number;
+  totalPatients: number;
+  activeUsers: number;
   activeDoctors: number;
   reportsUploaded: number;
   appointmentsToday: number;

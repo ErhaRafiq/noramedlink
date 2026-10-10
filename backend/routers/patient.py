@@ -1,10 +1,11 @@
 from types import SimpleNamespace
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
+from pagination import Page, PageParams, page_params, paginate
 from dependencies import get_patient_profile, require_patient
 from models import (
     DoctorSummary,
@@ -33,6 +34,7 @@ from schemas import (
 )
 from services.nlp_service import DISCLAIMER
 from services.openai_service import fallback_notice, generate_openai_json, generate_openai_text
+from rate_limit import AI_LIMIT, limiter
 
 
 router = APIRouter(prefix="/patient", tags=["patient"])
@@ -543,11 +545,15 @@ def latest_vitals(current_user: User = Depends(require_patient), db: Session = D
     )
 
 
-@router.get("/medicines", response_model=list[MedicineHistoryOut])
-def list_medicines(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+@router.get("/medicines", response_model=Page[MedicineHistoryOut])
+def list_medicines(
+    params: PageParams = Depends(page_params),
+    current_user: User = Depends(require_patient),
+    db: Session = Depends(get_db),
+):
     profile = get_patient_profile(db, current_user)
-    medicines = patient_medicine_query(db, profile).order_by(MedicineHistory.created_at.desc()).all()
-    return [medicine_to_out(medicine) for medicine in medicines]
+    query = patient_medicine_query(db, profile).order_by(MedicineHistory.created_at.desc(), MedicineHistory.id.desc())
+    return paginate(query, params, medicine_to_out)
 
 
 @router.post("/medicines", response_model=MedicineHistoryOut, status_code=status.HTTP_201_CREATED)
@@ -626,7 +632,8 @@ def list_risk_predictions(current_user: User = Depends(require_patient), db: Ses
 
 
 @router.post("/risk-predictions/generate", response_model=list[HealthRiskPredictionOut])
-async def generate_risk_predictions(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+@limiter.limit(AI_LIMIT)
+async def generate_risk_predictions(request: Request, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     profile = get_patient_profile(db, current_user)
     documents = report_context(db, profile)
     medicines = patient_medicine_query(db, profile).order_by(MedicineHistory.created_at.desc()).all()
@@ -669,7 +676,8 @@ def list_health_tips(current_user: User = Depends(require_patient), db: Session 
 
 
 @router.post("/health-tips/generate", response_model=list[HealthTipOut])
-async def generate_health_tips(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+@limiter.limit(AI_LIMIT)
+async def generate_health_tips(request: Request, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     profile = get_patient_profile(db, current_user)
     documents = report_context(db, profile)
     medicines = patient_medicine_query(db, profile).order_by(MedicineHistory.created_at.desc()).all()
@@ -710,7 +718,8 @@ def list_doctor_summaries(current_user: User = Depends(require_patient), db: Ses
 
 
 @router.post("/doctor-summaries/generate", response_model=DoctorSummaryOut)
-async def generate_doctor_summary(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+@limiter.limit(AI_LIMIT)
+async def generate_doctor_summary(request: Request, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     profile = get_patient_profile(db, current_user)
     documents = report_context(db, profile)
     medicines = patient_medicine_query(db, profile).order_by(MedicineHistory.created_at.desc()).all()
@@ -742,7 +751,9 @@ async def generate_doctor_summary(current_user: User = Depends(require_patient),
 
 
 @router.post("/medicine-safety/check", response_model=MedicineSafetyCheckResponse)
+@limiter.limit(AI_LIMIT)
 async def medicine_safety_check(
+    request: Request,
     payload: MedicineSafetyCheckRequest,
     current_user: User = Depends(require_patient),
     db: Session = Depends(get_db),

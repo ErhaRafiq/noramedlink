@@ -471,7 +471,7 @@ def run_tests() -> None:
     response = call("POST", "/api/backend/reminders", tok_a, {"title": "Take Phase0 Testamol", "due_at": due, "user_id": patient_b})
     check("A adds a free-text reminder (body user_id=B ignored) -> 201", response.status_code == 201, f"got {response.status_code}")
     check("free-text reminder stored under A", scalar("select count(*) from reminders where user_id = :id", id=patient_a) == 1)
-    check("B's reminder list is empty", call("GET", "/api/backend/reminders", tok_b).json() == [])
+    check("B's reminder list is empty", call("GET", "/api/backend/reminders", tok_b).json()["items"] == [])
 
     med_id = created.get("id")
     schedule = {"medicationId": med_id, "reminderTime": due, "frequency": "Once daily"}
@@ -522,10 +522,10 @@ def run_tests() -> None:
     response = call("POST", "/api/backend/appointments", tok_a, {"doctor_name": f"{TEST_PREFIX}doctor", "date": future})
     check("booking by name only (no doctor_id) -> 400", response.status_code == 400, f"got {response.status_code}")
 
-    check("A sees the appointment", [a["id"] for a in call("GET", "/api/backend/appointments", tok_a).json()] == [booked.get("id")])
-    check("B sees no appointments", call("GET", "/api/backend/appointments", tok_b).json() == [])
-    check("the booked doctor sees it", booked.get("id") in [a["id"] for a in call("GET", "/api/backend/appointments", tok_doctor).json()])
-    check("another doctor does not", call("GET", "/api/backend/appointments", tok_doctor_2).json() == [])
+    check("A sees the appointment", [a["id"] for a in call("GET", "/api/backend/appointments", tok_a).json()["items"]] == [booked.get("id")])
+    check("B sees no appointments", call("GET", "/api/backend/appointments", tok_b).json()["items"] == [])
+    check("the booked doctor sees it", booked.get("id") in [a["id"] for a in call("GET", "/api/backend/appointments", tok_doctor).json()["items"]])
+    check("another doctor does not", call("GET", "/api/backend/appointments", tok_doctor_2).json()["items"] == [])
 
     appt = f"/api/backend/appointments/{booked.get('id')}"
     response = call("PUT", appt, tok_a, {"payment_status": "SUCCESS"})
@@ -565,7 +565,7 @@ def run_tests() -> None:
           f"got {response.status_code}")
     check("linked appointment payment status follows",
           scalar("select payment_status from appointments where id = :id", id=booked.get("id", 0)) == "SUCCESS")
-    check("B sees no payments", call("GET", "/api/backend/payments", tok_b).json() == [])
+    check("B sees no payments", call("GET", "/api/backend/payments", tok_b).json()["items"] == [])
 
     print("\n[5g] Home-visit requests: no invented dispatch")
     request = {"patientName": "Phase0 A", "phone": "03000000000", "address": "Test street", "symptoms": "fever",
@@ -773,6 +773,59 @@ def run_tests() -> None:
     check("file no report refers to -> 404 even for its owner", response.status_code == 404, f"got {response.status_code}")
     response = call("GET", f"/api/backend/files/{patient_a}/%2E%2E/%2E%2E/main.py", tok_a)
     check("path traversal is not served", response.status_code in (400, 404), f"got {response.status_code}")
+
+    print("\n[13] Pagination: lists return { items, total, limit, offset }")
+    for i in range(3):
+        create_record(patient_a, f"{TEST_PREFIX}page {i}")
+    a_total = scalar("select count(*) from patient_reports where patient_id = :id", id=patient_a)
+    first = call("GET", "/api/backend/patient/reports", tok_a).json()
+    check("reports list is a page envelope", set(first) == {"items", "total", "limit", "offset"}, f"got keys {sorted(first)}")
+    check("default page: limit 20, offset 0, total = A's reports",
+          first["limit"] == 20 and first["offset"] == 0 and first["total"] == a_total, f"got {first['limit']}/{first['offset']}/{first['total']}")
+    page1 = call("GET", "/api/backend/patient/reports?limit=2&offset=0", tok_a).json()
+    page2 = call("GET", "/api/backend/patient/reports?limit=2&offset=2", tok_a).json()
+    check("limit=2 returns 2 items with the full total", len(page1["items"]) == 2 and page1["total"] == a_total)
+    check("consecutive pages do not overlap",
+          not {r["id"] for r in page1["items"]} & {r["id"] for r in page2["items"]})
+    past_end = call("GET", f"/api/backend/patient/reports?limit=5&offset={a_total}", tok_a).json()
+    check("a page past the end is empty and keeps the total", past_end["items"] == [] and past_end["total"] == a_total)
+    b_page = call("GET", "/api/backend/patient/reports", tok_b).json()
+    check("B's total counts only B's reports",
+          b_page["total"] == scalar("select count(*) from patient_reports where patient_id = :id", id=patient_b))
+    for bad in ("limit=0", "limit=101", "offset=-1", "limit=abc"):
+        response = call("GET", f"/api/backend/patient/reports?{bad}", tok_a)
+        check(f"?{bad} -> 422", response.status_code == 422, f"got {response.status_code}")
+    users_page = call("GET", "/api/backend/api/admin/users?limit=1", tok_admin).json()
+    check("admin users: limit=1 returns one user and the total user count",
+          len(users_page["items"]) == 1 and users_page["total"] == scalar("select count(*) from users"))
+    stats = call("GET", "/api/backend/api/admin/dashboard-stats", tok_admin).json()
+    check("admin stats include patient and active-user counts",
+          stats.get("totalPatients") == scalar("select count(*) from users where lower(role) = 'patient'")
+          and stats.get("activeUsers") == scalar("select count(*) from users where is_active"), f"got {stats}")
+
+    print("\n[14] Rate limits")
+    limited_patient = create_user("ratelimit", "PATIENT")
+    tok_limited = token_for(limited_patient)
+    responses = [call("POST", "/api/backend/patient/dashboard-otp", tok_limited) for _ in range(11)]
+    statuses = [r.status_code for r in responses]
+    check("10 access codes in a minute are allowed", statuses[:10] == [200] * 10, f"got {statuses}")
+    blocked = responses[10]
+    check("the 11th -> 429 with Retry-After and a readable detail",
+          blocked.status_code == 429 and blocked.headers.get("retry-after", "").isdigit()
+          and "Too many requests" in blocked.json().get("detail", ""), f"got {blocked.status_code} {blocked.text[:120]}")
+    response = call("POST", "/api/backend/patient/dashboard-otp", tok_a)
+    check("limits are per user: another patient is not affected", response.status_code == 200, f"got {response.status_code}")
+
+    email = f"{TEST_PREFIX}nobody-{secrets.token_hex(4)}@example.com"
+    attempts = [call("POST", "/api/auth/login", body={"email": email, "password": "wrong-password"}) for _ in range(6)]
+    codes = [r.status_code for r in attempts]
+    check("5 failed logins for one email -> 401 each", codes[:5] == [401] * 5, f"got {codes}")
+    check("6th login attempt for that email -> 429 with Retry-After",
+          codes[5] == 429 and attempts[5].headers.get("retry-after", "").isdigit(), f"got {codes}")
+    other = call("POST", "/api/auth/login", body={"email": f"{TEST_PREFIX}other-{secrets.token_hex(4)}@example.com",
+                                                   "password": "wrong-password"})
+    check("another email from the same client is still allowed (401, not 429)", other.status_code == 401,
+          f"got {other.status_code}")
 
 
 def main() -> int:

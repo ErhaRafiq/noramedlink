@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user, require_patient
 from models import Appointment, DoctorProfile, User
+from pagination import Page, PageParams, page_params, paginate
 from schemas import (
     AppointmentBookingResponse,
     AppointmentCreate,
@@ -122,8 +123,12 @@ def list_doctors(
     return filter_doctors([doctor_to_out(doctor) for doctor in doctors], query, specialty, available_today)
 
 
-@router.get("", response_model=list[AppointmentOut])
-def list_appointments(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+@router.get("", response_model=Page[AppointmentOut])
+def list_appointments(
+    params: PageParams = Depends(page_params),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     query = db.query(Appointment)
     if current_user.role.lower() == "doctor":
         # Matched by id only: matching by name would show one doctor another's patients.
@@ -131,8 +136,7 @@ def list_appointments(current_user: User = Depends(get_current_user), db: Sessio
     else:
         query = query.filter(Appointment.user_id == current_user.id)
 
-    appointments = query.order_by(Appointment.date.desc()).limit(100).all()
-    return [appointment_to_out(appointment) for appointment in appointments]
+    return paginate(query.order_by(Appointment.date.desc(), Appointment.id.desc()), params, appointment_to_out)
 
 
 @router.post("", response_model=AppointmentBookingResponse, status_code=status.HTTP_201_CREATED)

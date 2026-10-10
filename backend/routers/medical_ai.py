@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from database import get_db
+from pagination import Page, PageParams, page_params, paginate
 from dependencies import get_current_user
 from models import MedicalAiAnalysis, User
 from schemas import MedicalAiAnalysisOut
@@ -27,16 +28,18 @@ def analysis_to_out(analysis: MedicalAiAnalysis) -> MedicalAiAnalysisOut:
     )
 
 
-@router.get("", response_model=list[MedicalAiAnalysisOut])
-def list_medical_ai_analyses(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    analyses = (
+@router.get("", response_model=Page[MedicalAiAnalysisOut])
+def list_medical_ai_analyses(
+    params: PageParams = Depends(page_params),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    query = (
         db.query(MedicalAiAnalysis)
         .filter(MedicalAiAnalysis.user_id == current_user.id)
-        .order_by(MedicalAiAnalysis.created_at.desc())
-        .limit(100)
-        .all()
+        .order_by(MedicalAiAnalysis.created_at.desc(), MedicalAiAnalysis.id.desc())
     )
-    return [analysis_to_out(analysis) for analysis in analyses]
+    return paginate(query, params, analysis_to_out)
 
 
 @router.get("/{analysis_id}", response_model=MedicalAiAnalysisOut)

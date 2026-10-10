@@ -116,7 +116,7 @@ export default function DoctorsPage() {
     setIsLoadingAppointments(true);
     try {
       const appointmentData = await api.appointments(appointmentSession.token);
-      setAppointments(appointmentData);
+      setAppointments(appointmentData.items);
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : "Unable to load appointments.");
     } finally {

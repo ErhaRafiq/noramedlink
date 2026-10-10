@@ -27,6 +27,10 @@ export type PatientWorkspaceData = {
   doctorSummaries: DoctorSummary[];
 };
 
+// The dashboard loads the newest reports and appointments; paging controls come in U4.
+const REPORTS_LOADED = 100;
+const APPOINTMENTS_LOADED = 20;
+
 const EMPTY: PatientWorkspaceData = {
   reports: [],
   vitalsToday: null,
@@ -61,9 +65,9 @@ export function usePatientWorkspaceData(token: string | null) {
     const [vitalsToday, reports, doctors, appointments, medications, reminders, riskPredictions, doctorSummaries, basicVitals] =
       await Promise.all([
         api.patientVitalsToday(token).catch(() => null),
-        api.reports(token).catch(() => []),
+        api.reports(token, { limit: REPORTS_LOADED }).then((page) => page.items).catch(() => []),
         api.doctors(token).catch(() => []),
-        api.appointmentsV2(token).catch(() => []),
+        api.appointmentsV2(token, { limit: APPOINTMENTS_LOADED }).then((page) => page.items).catch(() => []),
         api.medicines(token).catch(() => []),
         api.remindersToday(token).catch(() => []),
         api.riskPredictions(token).catch(() => []),

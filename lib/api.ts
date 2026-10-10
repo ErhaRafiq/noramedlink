@@ -30,6 +30,7 @@ import type {
   AdminDashboardStats,
   AdminDoctor,
   AdminUser,
+  Page,
 } from "@/lib/types";
 
 // All FastAPI calls go through the same-origin proxy (app/api/backend/[...path]),
@@ -49,6 +50,17 @@ export class ApiError extends Error {
 
 export function isApiError(error: unknown, status?: number): error is ApiError {
   return error instanceof ApiError && (status === undefined || error.status === status);
+}
+
+/** Optional ?limit=&offset= for paginated list endpoints (server default 20, max 100). */
+export type PageQuery = { limit?: number; offset?: number };
+
+function withPage(path: string, page: PageQuery = {}) {
+  const params = new URLSearchParams();
+  if (page.limit !== undefined) params.set("limit", String(page.limit));
+  if (page.offset !== undefined) params.set("offset", String(page.offset));
+  const query = params.toString();
+  return query ? `${path}?${query}` : path;
 }
 
 type RequestOptions = RequestInit & {
@@ -187,8 +199,8 @@ export const api = {
   adminDashboardStats(token: string) {
     return apiRequest<AdminDashboardStats>("/api/admin/dashboard-stats", { token });
   },
-  adminUsers(token: string) {
-    return apiRequest<AdminUser[]>("/api/admin/users", { token });
+  adminUsers(token: string, page?: PageQuery) {
+    return apiRequest<Page<AdminUser>>(withPage("/api/admin/users", page), { token });
   },
   adminPendingDoctors(token: string) {
     return apiRequest<AdminDoctor[]>("/api/admin/doctors/pending", { token });
@@ -211,14 +223,14 @@ export const api = {
   patientDashboard(token: string) {
     return apiRequest<PatientDashboard>("/patient/dashboard", { token });
   },
-  patientDocuments(token: string) {
-    return apiRequest<MedicalDocument[]>("/patient/reports", { token });
+  patientDocuments(token: string, page?: PageQuery) {
+    return apiRequest<Page<MedicalDocument>>(withPage("/patient/reports", page), { token });
   },
   patientDocument(token: string, documentId: number) {
     return apiRequest<MedicalDocument>(`/patient/reports/${documentId}`, { token, baseUrl: API_BASE_URL });
   },
-  patientDepartmentReports(token: string, department: string) {
-    return apiRequest<MedicalDocument[]>(`/patient/reports/department/${encodeURIComponent(department)}`, { token });
+  patientDepartmentReports(token: string, department: string, page?: PageQuery) {
+    return apiRequest<Page<MedicalDocument>>(withPage(`/patient/reports/department/${encodeURIComponent(department)}`, page), { token });
   },
   patientDepartmentTiles(token: string) {
     return apiRequest<DepartmentTile[]>("/patient/reports/tiles", { token });
@@ -285,14 +297,14 @@ export const api = {
       }),
     });
   },
-  appointmentsV2(token: string) {
-    return apiRequest<Appointment[]>("/appointments", { token });
+  appointmentsV2(token: string, page?: PageQuery) {
+    return apiRequest<Page<Appointment>>(withPage("/appointments", page), { token });
   },
-  reports(token: string) {
-    return apiRequest<MedicalDocument[]>("/patient/reports", { token, baseUrl: API_BASE_URL });
+  reports(token: string, page?: PageQuery) {
+    return apiRequest<Page<MedicalDocument>>(withPage("/patient/reports", page), { token });
   },
-  reportsByCategory(token: string, category: string) {
-    return apiRequest<MedicalDocument[]>(`/patient/reports/department/${encodeURIComponent(category)}`, { token, baseUrl: API_BASE_URL });
+  reportsByCategory(token: string, category: string, page?: PageQuery) {
+    return apiRequest<Page<MedicalDocument>>(withPage(`/patient/reports/department/${encodeURIComponent(category)}`, page), { token });
   },
   uploadReport(token: string, formData: FormData) {
     return apiRequest<MedicalDocument>("/patient/reports/upload", {
@@ -462,8 +474,8 @@ export const api = {
       baseUrl: API_BASE_URL,
     });
   },
-  patientMedicines(token: string) {
-    return apiRequest<MedicineHistory[]>("/patient/medicines", { token });
+  patientMedicines(token: string, page?: PageQuery) {
+    return apiRequest<Page<MedicineHistory>>(withPage("/patient/medicines", page), { token });
   },
   createMedicine(token: string, payload: MedicineHistoryPayload) {
     return apiRequest<MedicineHistory>("/patient/medicines", {
@@ -543,8 +555,8 @@ export const api = {
     const query = searchParams.toString();
     return apiRequest<AppointmentDoctor[]>(`/appointments/doctors${query ? `?${query}` : ""}`);
   },
-  appointments(token: string) {
-    return apiRequest<Appointment[]>("/appointments", { token });
+  appointments(token: string, page?: PageQuery) {
+    return apiRequest<Page<Appointment>>(withPage("/appointments", page), { token });
   },
   createAppointment(
     token: string,

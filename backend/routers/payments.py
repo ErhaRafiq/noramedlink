@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user, require_admin, require_patient
 from models import Appointment, Payment, User
+from pagination import Page, PageParams, page_params, paginate
 from schemas import PaymentCreate, PaymentOut, PaymentUpdate
 
 
@@ -43,16 +44,14 @@ def payment_to_out(payment: Payment) -> PaymentOut:
     )
 
 
-@router.get("", response_model=list[PaymentOut])
-def list_payments(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    payments = (
-        db.query(Payment)
-        .filter(Payment.user_id == current_user.id)
-        .order_by(Payment.created_at.desc())
-        .limit(100)
-        .all()
-    )
-    return [payment_to_out(payment) for payment in payments]
+@router.get("", response_model=Page[PaymentOut])
+def list_payments(
+    params: PageParams = Depends(page_params),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    query = db.query(Payment).filter(Payment.user_id == current_user.id).order_by(Payment.created_at.desc(), Payment.id.desc())
+    return paginate(query, params, payment_to_out)
 
 
 @router.post("", response_model=PaymentOut, status_code=status.HTTP_201_CREATED)

@@ -1,12 +1,13 @@
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
 from database import get_db
 from dependencies import require_patient
 from models import MedicalAiAnalysis, MedicalDepartment, PatientReport, User
+from pagination import Page, PageParams, page_params, paginate
 from schemas import DepartmentTileOut, PatientReportOut, PatientReportUpdateRequest
 from services.file_access import file_access_url
 from services.file_service import save_upload_file, stored_path_to_disk_path
@@ -19,6 +20,7 @@ from services.ocr_space_service import (
     normalize_department_name,
 )
 from services.report_ai_pipeline import run_report_ai_pipeline
+from rate_limit import AI_LIMIT, UPLOAD_LIMIT, limiter
 
 
 router = APIRouter(prefix="/patient/reports", tags=["patient reports"])
@@ -314,38 +316,31 @@ def department_tiles(current_user: User = Depends(require_patient), db: Session 
     return tiles
 
 
-@router.get("", response_model=list[PatientReportOut])
+@router.get("", response_model=Page[PatientReportOut])
 def list_reports(
-    page: int = Query(default=1, ge=1),
-    page_size: int = Query(default=30, ge=1, le=100),
+    params: PageParams = Depends(page_params),
     current_user: User = Depends(require_patient),
     db: Session = Depends(get_db),
 ):
     ensure_medical_departments(db)
-    reports = (
-        report_query(db, current_user)
-        .order_by(PatientReport.upload_date.desc())
-        .offset((page - 1) * page_size)
-        .limit(page_size)
-        .all()
-    )
-    return [report_to_out(report) for report in reports]
+    query = report_query(db, current_user).order_by(PatientReport.upload_date.desc(), PatientReport.id.desc())
+    return paginate(query, params, report_to_out)
 
 
-@router.get("/department/{department}", response_model=list[PatientReportOut])
+@router.get("/department/{department}", response_model=Page[PatientReportOut])
 def reports_by_department(
     department: str,
+    params: PageParams = Depends(page_params),
     current_user: User = Depends(require_patient),
     db: Session = Depends(get_db),
 ):
     department_row = get_department(db, department)
-    reports = (
+    query = (
         report_query(db, current_user)
         .filter(PatientReport.department_id == department_row.id)
-        .order_by(PatientReport.upload_date.desc())
-        .all()
+        .order_by(PatientReport.upload_date.desc(), PatientReport.id.desc())
     )
-    return [report_to_out(report) for report in reports]
+    return paginate(query, params, report_to_out)
 
 
 @router.get("/{report_id}", response_model=PatientReportOut)
@@ -357,7 +352,9 @@ def get_report(report_id: int, current_user: User = Depends(require_patient), db
 
 
 @router.post("/upload", response_model=PatientReportOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit(UPLOAD_LIMIT)
 async def upload_report(
+    request: Request,
     title: str | None = Form(default=None),
     department: str | None = Form(default=None),
     category: str | None = Form(default=None),
@@ -428,7 +425,9 @@ async def upload_report(
 
 
 @router.patch("/{report_id}", response_model=PatientReportOut)
+@limiter.limit(AI_LIMIT)
 async def update_report(
+    request: Request,
     report_id: int,
     payload: PatientReportUpdateRequest,
     current_user: User = Depends(require_patient),
@@ -478,7 +477,9 @@ async def update_report(
 
 
 @router.post("/{report_id}/regenerate-ocr", response_model=PatientReportOut)
+@limiter.limit(AI_LIMIT)
 async def regenerate_report_ocr(
+    request: Request,
     report_id: int,
     current_user: User = Depends(require_patient),
     db: Session = Depends(get_db),

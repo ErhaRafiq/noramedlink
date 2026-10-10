@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from database import get_db
+from pagination import Page, PageParams, page_params, paginate
 from dependencies import get_current_user
 from models import Notification, NotificationToken, Reminder, User
 from schemas import (
@@ -43,16 +44,14 @@ def token_to_out(token: NotificationToken) -> NotificationTokenOut:
     )
 
 
-@router.get("", response_model=list[ReminderOut])
-def list_reminders(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    reminders = (
-        db.query(Reminder)
-        .filter(Reminder.user_id == current_user.id)
-        .order_by(Reminder.due_at.asc())
-        .limit(200)
-        .all()
-    )
-    return [reminder_to_out(reminder) for reminder in reminders]
+@router.get("", response_model=Page[ReminderOut])
+def list_reminders(
+    params: PageParams = Depends(page_params),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    query = db.query(Reminder).filter(Reminder.user_id == current_user.id).order_by(Reminder.due_at.asc(), Reminder.id.asc())
+    return paginate(query, params, reminder_to_out)
 
 
 @router.post("", response_model=ReminderOut, status_code=status.HTTP_201_CREATED)
