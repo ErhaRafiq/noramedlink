@@ -1,152 +1,164 @@
 # Nora MedLink
 
-Nora MedLink is a Final Year Project prototype with a Next.js frontend, a FastAPI backend, PostgreSQL storage, and Tesseract OCR for patient medical report uploads.
+Nora MedLink is a final-year project prototype (BS Data Science, COMSATS Islamabad): an
+AI-assisted healthcare platform with patient health records, report OCR, AI summaries, advisory
+medicine-safety checks, doctor search and booking, and time-limited doctor access to a patient's
+dashboard.
+
+It is an academic prototype, **not** a certified medical device. Every medical feature is
+advisory only.
+
+Contributors and AI coding agents: read [AGENTS.md](AGENTS.md) first. It has the architecture,
+safety, security and UI rules. The phase plan and current state are in
+[docs/claude-code-brief.md](docs/claude-code-brief.md).
 
 ## Stack
 
-- Frontend: Next.js
-- Backend: FastAPI
-- Database: PostgreSQL through SQLAlchemy and psycopg2
-- OCR: Tesseract, pytesseract, Pillow, OpenCV, NumPy
+| Layer | Technology |
+|---|---|
+| Frontend | Next.js 16 (App Router), React 19, Tailwind CSS, Poppins, lucide-react; Three.js on the landing page |
+| Backend | FastAPI, SQLAlchemy 2, Alembic, slowapi (rate limiting) |
+| Database | PostgreSQL (a local SQLite file is used only when no database URL is set) |
+| OCR | OCR.space (optional; see [Reports and OCR](#reports-and-ocr)) |
+| AI | OpenAI or Groq when a key is set, rule-based fallback otherwise; BioBERT for entity extraction |
 
-## PostgreSQL Setup
+The browser never calls FastAPI directly. It calls `/api/backend/...` on the Next.js server,
+which forwards to FastAPI.
 
-Install PostgreSQL locally and create the project database:
+## Prerequisites
+
+- Node.js 20 or later
+- Python 3.11
+- PostgreSQL (any recent version)
+
+## Setup
+
+### 1. Database
+
+Create the database once:
 
 ```sql
 CREATE DATABASE noramedlink;
 ```
 
-Create `backend/.env` from `backend/.env.example` and set your local password:
+The schema is created and kept up to date by Alembic when the backend starts.
 
-```env
-DATABASE_URL=postgresql+psycopg2://postgres:YOUR_PASSWORD@localhost:5432/noramedlink
-SECRET_KEY=change-this-secret
-FRONTEND_ORIGIN=http://localhost:3000
-TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
-```
+### 2. Environment files
 
-Do not commit `.env` files. They are ignored by git.
+Copy the examples and fill in your own values. Never commit the real files.
 
-## Tesseract Setup on Windows
+| Copy | To | Used by |
+|---|---|---|
+| `backend/.env.example` | `backend/.env` | FastAPI (database, JWT secret, AI and OCR keys, rate limits) |
+| `.env.example` | `.env` | Next.js (`SERVER_API_URL`, the FastAPI address for the proxy) |
+| `.env.local.example` | `.env.local` | Nothing required; the browser needs no API URL |
 
-1. Download Tesseract from https://github.com/UB-Mannheim/tesseract/wiki
-2. Install it.
-3. Either add Tesseract to your Windows `PATH`, or set this in `backend/.env`:
+FastAPI reads the root `.env` first and then `backend/.env`, which wins when both set a value.
+The important backend variables:
 
-```env
-TESSERACT_CMD=C:\Program Files\Tesseract-OCR\tesseract.exe
-```
+| Variable | Needed for |
+|---|---|
+| `FASTAPI_DATABASE_URL` (or `DATABASE_URL`) | PostgreSQL, e.g. `postgresql+psycopg2://postgres:YOUR_PASSWORD@localhost:5432/noramedlink` |
+| `JWT_SECRET_KEY` | Signing sign-in tokens. Without it, a random secret is used and everyone is signed out on restart |
+| `ADMIN_INVITE_CODE` | Creating an admin account |
+| `OCR_SPACE_API_KEY` | Reading text from uploaded reports |
+| `OPENAI_API_KEY` or `GROQ_API_KEY` | AI summaries and explanations (rule-based text otherwise) |
+| `RATE_LIMIT_*`, `LOG_LEVEL`, `MAX_UPLOAD_MB` | Optional; defaults are in `backend/.env.example` |
 
-The backend reads `TESSERACT_CMD` and assigns it to `pytesseract.pytesseract.tesseract_cmd`.
-
-## Backend Run Commands
-
-```powershell
-cd backend
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-uvicorn main:app --reload --port 8000
-```
-
-Backend URL:
-
-```text
-http://127.0.0.1:8000
-```
-
-Health check:
-
-```text
-http://127.0.0.1:8000/health
-```
-
-## Frontend Run Commands
-
-Create `.env.local` from `.env.local.example`:
-
-```env
-NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
-```
-
-Run the frontend:
+### 3. Install
 
 ```powershell
 npm install
+
+cd backend
+python -m venv venv
+.\venv\Scripts\activate
+pip install -r requirements-dev.txt   # the app plus dev tools (ruff)
+```
+
+## Run
+
+The app needs two terminals running at the same time.
+
+```powershell
+# Terminal 1: backend (http://127.0.0.1:8000, health check at /health)
+cd backend
+.\venv\Scripts\activate
+uvicorn main:app --port 8000
+
+# Terminal 2: frontend
 npm run dev
 ```
 
-Frontend URL:
+Open **http://localhost:3000**.
 
-```text
-http://localhost:3000
-```
+## Reports and OCR
 
-## Patient Upload and OCR Workflow
+1. The patient uploads a PDF, JPG, PNG or WebP report (up to 10 MB; large photos are shrunk in
+   the browser first) and picks a department.
+2. FastAPI checks the token, the file type and the file's contents, and stores it privately under
+   `backend/uploads/<patient id>/<department>/`. Files are served only to the owner, or to a
+   doctor with an active access grant, through short-lived signed links.
+3. OCR.space reads the text. Rule-based checks set the report's validation status
+   (`SAFE`, `CAUTION`, `HIGH_RISK` or `NOT_VALIDATED`); the AI only writes the explanation.
+4. The patient reviews the text on the report page, corrects it and saves, or re-runs OCR.
 
-1. Patient signs up or logs in.
-2. Patient opens the dashboard and selects Upload Report.
-3. Frontend sends `category`, `title`, `notes`, and the image file as `FormData`.
-4. The browser does not manually set `Content-Type`; it lets the multipart boundary be generated automatically.
-5. FastAPI verifies the bearer token and confirms the user is a patient.
-6. Backend validates JPG, JPEG, or PNG and enforces the 10 MB limit.
-7. File is saved under `backend/uploads/{patient_id}/{category}/` with a unique filename.
-8. OCR service preprocesses the image using OpenCV grayscale conversion, Gaussian blur, and OTSU thresholding.
-9. Tesseract extracts English text from the preprocessed image.
-10. Backend cleans the OCR text, detects medical keywords, detects report type, builds structured sections, and generates a safe summary.
-11. Medical document data is saved in PostgreSQL.
-12. Patient reviews the OCR text, edits it if needed, and saves the corrected text.
-13. Backend updates `ocr_cleaned_text`, regenerates keywords, structured sections, and summary, then saves the result.
+Without `OCR_SPACE_API_KEY`, the upload is still saved with OCR marked as failed, and the patient
+can type the text on the report page.
 
-## Database Workflow
+OCR works best on clear, straight, well-lit printed text. Handwriting, blur, folds, stamps and
+complex tables reduce accuracy, so always check the text before relying on a summary.
 
-FastAPI loads `DATABASE_URL` from `backend/.env`. The schema is managed by Alembic migrations in `backend/migrations/`. On startup, uvicorn runs `alembic upgrade head`, which creates missing tables, columns and indexes. Migrations are additive: they never drop tables, columns or data.
+## API conventions
 
-### Upgrading an existing database
+- **Pagination:** list endpoints take `?limit=` (1–100, default 20) and `&offset=` and return
+  `{ "items": [...], "total": n, "limit": n, "offset": n }`.
+- **Rate limits:** per user when signed in, per IP otherwise. Login also has a per-email limit.
+  Over the limit, the API returns 429 with a `Retry-After` header and a readable `detail`.
+  Defaults: 200/min overall, login 20/min per IP and 5/min per email, signup 5/min, uploads
+  10/min, AI and OCR 10/min, doctor access codes 10/min. Each is configurable in `backend/.env`.
+- **Errors** are always `{ "detail": "..." }`.
 
-If your database already has data (it was created earlier by FastAPI or by Prisma):
+## Development
 
-1. Back it up first:
+| Task | Command (from the repo root unless stated) |
+|---|---|
+| Frontend lint | `npm run lint` |
+| Type-check | `npx tsc --noEmit -p .` |
+| Production build | `npm run build` |
+| Backend lint and format | `cd backend; .\venv\Scripts\python.exe -m ruff check .; .\venv\Scripts\python.exe -m ruff format .` |
+| Acceptance tests | `backend\venv\Scripts\python.exe tests\acceptance_test.py` (both servers running) |
+| Screenshots for review | `npm run screenshots` (dev server running; uses the installed Microsoft Edge) |
+| Regenerate app icons | `backend\venv\Scripts\python.exe scripts\generate-icons.py` |
 
-   ```powershell
-   & "C:\Program Files\PostgreSQL\18\bin\pg_dump.exe" -U postgres -F c -f noramedlink-backup.dump noramedlink
-   ```
+### Acceptance tests
 
-   (Change `18` to your PostgreSQL version. Restore with `pg_restore -U postgres -d noramedlink --clean noramedlink-backup.dump` if needed.)
+`tests/acceptance_test.py` checks the running app over HTTP: 401 without a token, 403 for the
+wrong role or an inactive account, patients isolated from each other, doctors limited to patients
+who granted access, pagination and search, rate limits, and the medicine-safety rules.
 
-2. Start the backend as usual (`uvicorn main:app --port 8000` from `backend/`). Startup runs the migrations; "Application startup complete" means they succeeded.
+It refuses to run unless every database URL points to localhost. It creates temporary users whose
+email starts with `phase0-test-` and deletes only those users and their rows when it finishes, even
+if a check fails. Set `PHASE0_BASE_URL` to test a dev server on another port (default
+`http://localhost:3000`).
 
-To check the state manually from `backend/`: `alembic current` shows the applied revision, and `alembic check` reports any difference between the models and the database.
+## Database migrations
 
-`patient_reports` stores the uploaded file metadata, OCR status, raw OCR text, cleaned OCR text, detected keywords, structured OCR sections, safe summary, and upload date. The older `medical_documents` table is kept read-only: migration 0008 copied its rows into `patient_reports`, the backend refuses to write to it, and it is never dropped.
+On startup the backend runs `alembic upgrade head`. Migrations only add tables, columns and
+indexes; they never drop anything or delete data.
 
-## Test Flow
-
-1. Start PostgreSQL and confirm the `noramedlink` database exists.
-2. Start FastAPI on `http://127.0.0.1:8000`.
-3. Start Next.js on `http://localhost:3000`.
-4. Signup as a patient.
-5. Login.
-6. Open the patient dashboard.
-7. Upload a clear JPG or PNG medical report.
-8. Confirm OCR text appears.
-9. Edit the OCR text.
-10. Save corrected text.
-11. Confirm the document remains available in records and data is stored in PostgreSQL.
-
-## Acceptance Tests
-
-`tests/acceptance_test.py` checks route authentication and ownership: no token gives 401, the wrong role gives 403, one patient cannot read or change another patient's data, and a doctor without an access grant cannot open a patient's dashboard.
-
-It runs against the local Next.js dev server and the local database. It refuses to start unless every database URL points to localhost, creates temporary users whose email starts with `phase0-test-`, and deletes only those users and their rows when it finishes, even if a check fails. With FastAPI and `npm run dev` running, from the repo root:
+Before upgrading a database that already has data, back it up:
 
 ```powershell
-backend\venv\Scripts\python.exe tests\acceptance_test.py
+& "C:\Program Files\PostgreSQL\18\bin\pg_dump.exe" -U postgres -F c -f noramedlink-backup.dump noramedlink
 ```
 
-Set `PHASE0_BASE_URL` to test a dev server on another port (default `http://localhost:3000`).
+(Change `18` to your PostgreSQL version. Restore with
+`pg_restore -U postgres -d noramedlink --clean noramedlink-backup.dump`.)
 
-## OCR Limitations
+From `backend/`, `alembic current` shows the applied revision and `alembic check` reports any
+difference between the models and the database.
 
-Tesseract works best with clear printed text, high contrast, straight images, and minimal shadows. Handwriting, blurred photos, folded paper, low light, stamps over text, and complex table layouts can reduce accuracy. Always review and correct OCR text before relying on summaries.
+`patient_reports` is the single report table. The older `medical_documents` table is kept
+read-only: migration 0008 copied its rows into `patient_reports`, and the backend refuses to write
+to it.

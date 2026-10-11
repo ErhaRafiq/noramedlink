@@ -34,11 +34,12 @@ It is **not** a certified medical device. Every medical feature is advisory only
 
 | Layer | Technology |
 |---|---|
-| Frontend | Next.js 16 (App Router), React 19, Tailwind CSS, lucide-react |
-| Backend | **FastAPI** (the only backend), SQLAlchemy 2 ORM |
+| Frontend | Next.js 16 (App Router), React 19, Tailwind CSS, lucide-react, Poppins (next/font) |
+| 3D | Three.js + @react-three/fiber, on the landing page only |
+| Backend | **FastAPI** (the only backend), SQLAlchemy 2 ORM, slowapi rate limiting, ruff |
 | Database | PostgreSQL; schema managed by **Alembic** migrations |
 | Auth | JWT (HS256) issued by FastAPI, stored in `localStorage` on the client |
-| OCR | Tesseract via pytesseract (system install); OCR.space as an optional fallback |
+| OCR | **OCR.space** only (needs `OCR_SPACE_API_KEY`). There is no Tesseract. Without a key the report is saved with OCR marked failed, and the patient types or corrects the text in the report editor |
 | AI | OpenAI / Groq when keys are set, rule-based fallback otherwise; BioBERT NER |
 
 There is **no** Flutter app, **no** Node gateway and **no** Prisma. Do not create them.
@@ -56,18 +57,29 @@ app/                      Next.js pages (App Router)
   dashboard/patient/      Patient dashboard (renders components/patient/PatientWorkspace.tsx)
   dashboard/doctor/       Doctor dashboard (renders components/dashboard/DoctorDashboard.tsx)
   admin/                  Admin dashboard
-components/               React components
+  icon.svg, favicon.ico, apple-icon.png, manifest.ts   App icons (generated, see section 15)
+components/
+  ui/                     Shared building blocks: Button, Card, fields, Badge, Alert, Skeleton, ...
+  layout/                 SitePage, SiteHeader, PageHeader, DashboardShell
+  landing/ auth/ patient/ dashboard/ admin/ doctors/ ...   Feature components
+hooks/                    Generic hooks (use-*.ts); feature data hooks in hooks/<area>/
 lib/api.ts                The only API client; every call goes to /api/backend/...
 lib/auth.ts               Session helpers (getSession, clearSession, dashboardPathForRole)
 lib/types.ts              Shared TypeScript types matching FastAPI responses
+scripts/                  Icon generator, screenshot capture, phone-overflow finder
 backend/
   main.py                 FastAPI app; runs `alembic upgrade head` at startup
+  config.py               Every environment variable, read once into `settings`
+  logging_config.py       Handler for the backend's "nora.*" loggers
+  rate_limit.py           Rate limits (slowapi) and the 429 response
+  pagination.py           ?limit=&offset= parameters and the Page[T] response
   models.py               SQLAlchemy models: the single source of truth for the schema
   schemas.py              Pydantic request/response models
   dependencies.py         get_current_user, require_patient / require_doctor / require_admin
-  routers/                One router per feature area
-  services/               Business logic (dashboard_access, file_access, OCR, AI, ...)
+  routers/                One router per feature area; thin (parse, check access, call a service)
+  services/               Business logic (medicine_safety, patient_insights, report_service, OCR, AI, ...)
   migrations/versions/    Alembic migrations (0001 baseline ... see `alembic current`)
+  pyproject.toml          ruff lint and format settings
 tests/acceptance_test.py  End-to-end auth, ownership and safety checks over HTTP
 docs/claude-code-brief.md Phase plan, approved decisions, current state, known problems
 ```
@@ -83,13 +95,16 @@ The app needs **two terminals running at the same time**: backend and frontend.
 | Task | Command (run from the repo root unless stated) |
 |---|---|
 | Install frontend | `npm install` |
-| Install backend | `cd backend; python -m venv venv; .\venv\Scripts\activate; pip install -r requirements.txt` |
+| Install backend | `cd backend; python -m venv venv; .\venv\Scripts\activate; pip install -r requirements-dev.txt` (app + dev tools) |
 | Run backend | `cd backend; .\venv\Scripts\activate; uvicorn main:app --port 8000` |
 | Run frontend | `npm run dev`, then open **http://localhost:3000** (not the 192.168.x.x address) |
 | Lint | `npm run lint` |
 | Type-check | `npx tsc --noEmit -p .` |
-| Production build | `npm run build` (stop `npm run dev` first) |
+| Backend lint + format | `cd backend; .\venv\Scripts\python.exe -m ruff check .; .\venv\Scripts\python.exe -m ruff format .` |
+| Production build | `npm run build` (can run while `npm run dev` is running; Next 16 keeps dev output in `.next/dev`) |
 | Acceptance tests | `backend\venv\Scripts\python.exe tests\acceptance_test.py` (both servers running) |
+| Screenshots for review | `npm run screenshots` (dev server running; uses the installed Microsoft Edge) |
+| Phone overflow check | `node scripts/find-overflow.mjs http://localhost:3000/<page>` (lists elements wider than 390px) |
 | Backend smoke tests | `$env:HF_HUB_OFFLINE="1"; backend\venv\Scripts\python.exe backend\test_quick.py` |
 | Migration state | `cd backend; .\venv\Scripts\python.exe -m alembic current` |
 | Schema drift check | `cd backend; .\venv\Scripts\python.exe -m alembic check` (must report no new operations) |
@@ -218,7 +233,9 @@ A change is done only when all of these hold:
 
 - [ ] `npm run lint`: 0 errors (existing warnings may remain; add no new ones)
 - [ ] `npm run build`: passes
+- [ ] `ruff check` and `ruff format --check` in `backend/`: pass (when Python changed)
 - [ ] `tests/acceptance_test.py`: all passing, with new checks for new behaviour
+- [ ] UI changes: no horizontal scroll at 390px wide; loading, empty and error states all handled
 - [ ] `alembic check`: no drift (when models changed)
 - [ ] No invented data, no secrets in output, safety rules respected
 - [ ] A short manual click-through is written for the human to run (agents cannot drive the browser)
@@ -232,3 +249,100 @@ A change is done only when all of these hold:
 - delete a page, a table, a column or any data;
 - change an approved decision recorded in `docs/claude-code-brief.md`;
 - use an external API not already in the project (and never the discontinued RxNav interaction API).
+---
+
+## 15. UI and frontend conventions
+
+The look is a clean, calm clinical UI. **Keep the existing colours and theme**; improve layout,
+spacing and states, not the palette.
+
+**Type and tokens**
+- One font: **Poppins**, loaded with `next/font` in `app/layout.tsx` (`--font-poppins`, Tailwind
+  `font-sans`). Do not add other fonts.
+- Use the Tailwind tokens in `tailwind.config.js`, never new hex values: `brand.blue` #2563EB,
+  `brand.teal` #00BFA6, `brand.navy`, `ink` / `ink-muted` for text, `surface` / `surface-soft` /
+  `surface-page` for backgrounds, `line` for borders. Radius `rounded-card` (16px) and
+  `rounded-control` (12px); shadows `shadow-card`, `shadow-card-hover`, `shadow-focus`.
+- The primary action is the blue→teal gradient (`Button variant="primary"`). One primary
+  action per area; everything else is `secondary` or `ghost`. `danger` is for destructive actions.
+
+**Shared components (use these before writing new markup)**
+- `components/ui`: `Button` / `ButtonLink` (variants `primary | secondary | ghost | danger`,
+  sizes `sm | md | lg`, `loading`, `icon`), `Card` / `CardHeader`, `TextField` / `TextAreaField` /
+  `SelectField` (label, hint, error built in), `Badge`, `Alert`, `EmptyState`, `Skeleton` /
+  `SkeletonCard`, `Spinner` / `PageLoader` / `ErrorState`, `StatCard` / `StatCardSkeleton`,
+  `ConfirmDialog`, `NoraLogo`. `cn()` from `lib/cn.ts` joins class names.
+- `components/layout`: `SitePage` + `SiteHeader` for public pages, `PageContainer` / `PageHeader`
+  for page titles, `DashboardShell` for the doctor and admin dashboards. The patient dashboard
+  uses its own layout in `components/patient/workspace/layout.tsx`.
+- Keep files small: a component over ~250 lines gets split into sections (see
+  `components/patient/workspace/` and `components/admin/AdminSections.tsx`).
+
+**Every async state is visible**
+- Buttons that start a request use `loading` and a verb label ("Saving...", "Approving..."), and
+  related buttons are disabled until it finishes.
+- Page and section data loads show a **skeleton shaped like the content**, not a bare spinner.
+  `PageLoader` is only for the full-page session check.
+- Errors show `ErrorState` or `Alert` with a retry. Empty data shows an honest `EmptyState` (section 7).
+- Destructive actions (reject, delete) go through `ConfirmDialog`.
+- A 429 from the API is an `ApiError` with `retryAfterSeconds`; show its message, do not retry in a loop.
+
+**Hooks**
+- Pages render; hooks fetch. Feature data lives in `hooks/<area>/use-*.ts` (for example
+  `use-report-list`, `use-doctor-dashboard`, `use-admin-dashboard`) and calls only `lib/api.ts`.
+- Protected pages start with `useAuthGuard(role)`: it confirms the session with `/auth/me`,
+  signs out on 401/403 and sends the wrong role to its own dashboard.
+- Generic hooks in `hooks/`: `useDebouncedValue` (search inputs, 200–300 ms),
+  `useThrottledCallback` (scroll and resize handlers, ~100 ms), `usePagination`, `useScrollSpy`,
+  `useMediaQuery` / `usePrefersReducedMotion`, `useAsyncAction`, `useToast`, `useStoredSession`,
+  `useNotificationPermission`.
+- Requests that can be superseded (search, filters) abort the previous one (see `use-report-list`).
+
+**Lists and pagination**
+- Paginated endpoints take `?limit=` (1–100, default 20) and `&offset=`, and return
+  `{ items, total, limit, offset }` (`Page<T>` in `lib/types.ts`). Show "Load more" or pages from
+  `total`; never assume one request returns everything.
+- Search and filters run on the server (for example `GET /patient/reports?q=&department=&validation_status=`).
+  Department slugs come from `lib/departments.ts`, which mirrors the backend list.
+
+**Motion and 3D**
+- Three.js is used **only** in the landing hero (`components/landing/HeroScene.tsx`), loaded with
+  `next/dynamic` and `ssr: false` from a client component (`HeroVisual.tsx`). It pauses when
+  scrolled out of view and is replaced by static art (`HeroFallbackArt.tsx`) under
+  `prefers-reduced-motion`. Do not add 3D elsewhere.
+- `Reveal` keeps content visible without JavaScript; only elements below the fold animate in.
+- Hover and press transitions are 200 ms; the scroll reveal is 500 ms. `prefers-reduced-motion`
+  turns all of it off (`app/globals.css`). Motion never hides information.
+
+**Layout, accessibility, icons**
+- Design for 390px first. Flex and grid children that hold text get `min-w-0`; long emails and
+  names use `break-words` / `truncate`. Check with `scripts/find-overflow.mjs`.
+- Inputs always have a visible label (the field components do this). Keep the focus-visible ring.
+  Loaders use `role="status"` with an `aria-label`.
+- Icons are `lucide-react`. The app icons (`app/favicon.ico`, `app/icon.svg`, `app/apple-icon.png`,
+  `public/icons/*`, used by `app/manifest.ts`) are generated by `scripts/generate-icons.py` from
+  the `NoraLogo` mark; regenerate them, never hand-edit.
+- AI output on screen carries the disclaimer from `buildMedicalDisclaimer()` in
+  `lib/patient-dashboard.ts` (section 6.4).
+
+---
+
+## 16. Backend conventions
+
+- **Settings:** read configuration only from `config.settings` (`backend/config.py`). A new
+  environment variable gets a field and default in `Settings`, a line in `load_settings()`, and a
+  placeholder in `backend/.env.example`. Never call `os.getenv` in app code.
+- **Routers stay thin:** parse the request, check identity and ownership, call a service, build
+  the response. Rules, AI calls and data shaping go in `services/` (for example
+  `services/medicine_safety.py`, `services/patient_insights.py`, `services/report_service.py`).
+  Aim for files under ~400 lines (`services/ocr_space_service.py` is still over).
+- **Rate limits:** endpoints that cost money or protect accounts (login, signup, uploads, OCR, AI,
+  access codes) use `@limiter.limit(...)` from `rate_limit.py` and take `request: Request`.
+  Everything else gets the default limit. Limits are configurable with `RATE_LIMIT_*` variables.
+- **Pagination:** list endpoints that can grow use `page_params` and `paginate()` from
+  `pagination.py` and return `Page[T]`. Validate filter values and return 422 for unknown ones.
+- **Response models:** use plain `str` for emails in output models; `EmailStr` belongs on inputs only.
+- **Logging:** `logging.getLogger("nora.<area>")`. Never log one-time codes, passwords, tokens,
+  phone numbers or medical text (section 8).
+- **Style:** ruff with the settings in `backend/pyproject.toml` (line length 120, import sorting).
+  Format-only changes go in their own commit.
