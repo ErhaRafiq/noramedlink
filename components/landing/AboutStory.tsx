@@ -1,89 +1,61 @@
-"use client";
+import { ArrowRight, GraduationCap, HeartHandshake, ShieldCheck } from "lucide-react";
 
-import Link from "next/link";
-import { motion, type Variants } from "framer-motion";
-import { ArrowLeft, ArrowRight, HeartPulse, ShieldCheck } from "lucide-react";
+import { PageContainer } from "@/components/layout/PageHeader";
+import { ButtonLink } from "@/components/ui/button";
+import { Reveal } from "./Reveal";
 
-import { AmbientBackground } from "@/components/landing/AmbientBackground";
-
-const paragraphs = [
-  "Nora MedLink was created for patients who carry reports, prescriptions, symptoms, and worries, but still struggle to explain their health story clearly.",
-  "Many patients forget important details during appointments. Some lose old reports. Some do not know which symptoms matter. At the same time, doctors often have limited time and incomplete patient history.",
-  "Nora MedLink connects these missing pieces.",
-  "It helps patients save their reports, medicine history, and health information in one place. It uses AI to organize this data, generate clear summaries, highlight possible risks, and support doctors in understanding the patient faster.",
-  "Nora MedLink does not replace doctors. It supports better communication between patients and doctors, so healthcare feels more human, safer, and easier to understand.",
+const STORY = [
+  "Many patients carry a folder of reports, prescriptions and notes, yet still find it hard to explain their health history in a short appointment. Reports get lost, details are forgotten, and doctors see an incomplete picture.",
+  "Nora MedLink keeps that history in one place. It reads uploaded reports, files them by department, writes a plain-language summary, and lets the patient share everything with a doctor for one consultation using a one-time code.",
+  "It does not replace doctors. Summaries and flags are advisory: they help patients ask better questions and help doctors get up to speed faster.",
 ];
 
-const fadeIn: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  show: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.42, ease: "easeOut" },
-  },
-};
+const PRINCIPLES = [
+  { icon: HeartHandshake, title: "The patient decides", text: "A doctor sees a file only with a one-time code the patient gives them, and only for that consultation." },
+  { icon: ShieldCheck, title: "Advisory, never a diagnosis", text: "Every automated summary carries a note to verify it with a clinician. In an emergency, call 1122." },
+  { icon: GraduationCap, title: "An academic prototype", text: "A final-year project in BS Data Science at COMSATS University Islamabad, by Erha Rafiq and Momna Javed." },
+];
 
 export function AboutStory() {
   return (
-    <main className="premium-page text-slate-950">
-      <AmbientBackground />
+    <PageContainer narrow className="py-12 lg:py-16">
+      <Reveal>
+        <p className="section-eyebrow">About Nora MedLink</p>
+        <h1 className="mt-3 text-4xl font-semibold leading-tight tracking-tight text-ink sm:text-5xl">
+          Better health stories make better conversations.
+        </h1>
+      </Reveal>
 
-      <nav className="relative z-10 mx-auto flex max-w-7xl items-center justify-between px-5 py-6 sm:px-6 lg:px-8">
-        <Link href="/" className="secondary-button gap-2 rounded-full px-4 py-2">
-          <ArrowLeft className="h-4 w-4" />
-          Home
-        </Link>
-        <Link href="/signup?role=patient" className="gradient-button rounded-full px-4 py-2">
-          Get Started
-        </Link>
-      </nav>
+      <div className="mt-8 space-y-5">
+        {STORY.map((paragraph) => (
+          <p key={paragraph} className="text-base leading-8 text-slate-600 sm:text-lg">
+            {paragraph}
+          </p>
+        ))}
+      </div>
 
-      <motion.section
-        className="relative z-10 mx-auto grid min-h-[calc(100vh-96px)] max-w-7xl items-center gap-10 px-5 py-16 sm:px-6 lg:grid-cols-[0.9fr_1.1fr] lg:px-8"
-        initial="hidden"
-        animate="show"
-        variants={fadeIn}
-      >
-        <div>
-          <span className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-700 ring-1 ring-cyan-100">
-            <HeartPulse className="h-7 w-7" />
-          </span>
-          <p className="section-eyebrow mt-8">About Nora MedLink</p>
-          <h1 className="mt-5 max-w-3xl text-4xl font-black leading-tight tracking-tight text-slate-950 [text-wrap:balance] sm:text-6xl">
-            Better health stories create better conversations.
-          </h1>
-        </div>
+      <ul className="mt-12 grid gap-4 sm:grid-cols-3">
+        {PRINCIPLES.map(({ icon: Icon, title, text }, index) => (
+          <li key={title}>
+            <Reveal delay={index * 0.05} className="h-full">
+              <div className="h-full rounded-card border border-line bg-white p-5 shadow-card">
+                <Icon className="h-5 w-5 text-brand-blue" aria-hidden />
+                <h2 className="mt-3 text-sm font-semibold text-ink">{title}</h2>
+                <p className="mt-1.5 text-sm leading-6 text-ink-muted">{text}</p>
+              </div>
+            </Reveal>
+          </li>
+        ))}
+      </ul>
 
-        <div className="landing-glass rounded-[28px] p-6 sm:p-9">
-          <div className="mb-7 flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-blue-50 text-blue-700 ring-1 ring-blue-100">
-              <ShieldCheck className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-sm font-black text-slate-950">Human-centered AI healthcare</p>
-              <p className="text-xs font-semibold text-slate-500">Support, awareness, and clarity</p>
-            </div>
-          </div>
-
-          <div className="space-y-5">
-            {paragraphs.map((paragraph, index) => (
-              <p
-                key={paragraph}
-                className={`leading-8 text-slate-600 ${
-                  index === 2 ? "text-2xl font-black tracking-tight text-slate-950" : "text-base font-medium"
-                }`}
-              >
-                {paragraph}
-              </p>
-            ))}
-          </div>
-
-          <Link href="/dashboard/patient" className="gradient-button mt-8 gap-2 px-5 py-3">
-            Open Patient Dashboard
-            <ArrowRight className="h-4 w-4" />
-          </Link>
-        </div>
-      </motion.section>
-    </main>
+      <div className="mt-12 flex flex-col gap-3 sm:flex-row">
+        <ButtonLink href="/signup?role=patient" size="lg" icon={<ArrowRight className="h-4 w-4" />} className="flex-row-reverse">
+          Create your account
+        </ButtonLink>
+        <ButtonLink href="/doctors" variant="secondary" size="lg">
+          Find a doctor
+        </ButtonLink>
+      </div>
+    </PageContainer>
   );
 }
