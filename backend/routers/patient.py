@@ -11,11 +11,11 @@ from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_patient_profile, require_patient
 from models import DoctorSummary, HealthRiskPrediction, PatientReport, User, Vitals
-from routers.auth import user_to_out
 from routers.patient_insights import risk_to_out, summary_to_out
 from routers.patient_medicines import patient_medicine_query
-from routers.reports import report_to_out
 from schemas import DashboardCategory, PatientDashboardOut, VitalsOut
+from services.report_service import report_to_out
+from services.signup_service import user_to_out
 
 router = APIRouter(prefix="/patient", tags=["patient"])
 
