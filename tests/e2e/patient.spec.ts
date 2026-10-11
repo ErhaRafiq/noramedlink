@@ -99,6 +99,8 @@ test.describe("patient dashboard", () => {
     await page.getByRole("button", { name: "Upload 1 File(s)" }).click();
     // No OCR key in this environment: the report is saved and the message says the text was not read.
     await expect(page.getByText("was saved, but its text could not be read")).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText("Saved · text not read")).toBeVisible();
+    await expect(page.getByText(/AI summary ready|AI Summary Generated/)).toHaveCount(0);
     await expect(page.getByRole("button", { name: /^phase0-test e2e upload/ })).toBeVisible();
   });
 

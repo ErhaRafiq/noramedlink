@@ -112,7 +112,6 @@ export type MedicalDocument = {
   department_slug?: string;
   category: string;
   title: string;
-  notes?: string | null;
   original_file_name?: string;
   original_filename: string;
   file_url?: string;

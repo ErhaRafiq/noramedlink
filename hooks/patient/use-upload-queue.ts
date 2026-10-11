@@ -1,13 +1,14 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 
 import { api } from "@/lib/api";
 import { MAX_UPLOAD_BYTES, shrinkLargeImage } from "@/lib/image";
 import type { MedicalDocument } from "@/lib/types";
 import type { Notify } from "@/hooks/use-toast";
 
-export type UploadStep = "idle" | "uploading" | "ocr" | "ai" | "saving" | "done" | "error";
+/** The server stores the file, reads it and summarises it in one request, so there is one busy state. */
+export type UploadStep = "idle" | "uploading" | "done" | "error";
 export type FileQueueItem = {
   id: string;
   file: File;
@@ -15,11 +16,7 @@ export type FileQueueItem = {
   error?: string;
   report?: MedicalDocument;
 };
-export type UploadOptions = { title: string; notes: string; category: string };
-
-// The server does upload, OCR, AI and save in one request; these steps only show progress.
-const STEP_ORDER: UploadStep[] = ["uploading", "ocr", "ai", "saving"];
-const STEP_INTERVAL_MS = 2800;
+export type UploadOptions = { title: string; category: string };
 
 function newId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
@@ -37,13 +34,6 @@ export function useUploadQueue({
 }) {
   const [queue, setQueue] = useState<FileQueueItem[]>([]);
   const [isUploading, setIsUploading] = useState(false);
-  const tickersRef = useRef(new Set<number>());
-
-  useEffect(() => {
-    const tickers = tickersRef.current;
-    return () => tickers.forEach((ticker) => window.clearInterval(ticker));
-  }, []);
-
   const add = useCallback(
     (files: File[]) => {
       const valid: FileQueueItem[] = [];
@@ -71,15 +61,6 @@ export function useUploadQueue({
         setQueue((prev) => prev.map((i) => (i.id === item.id ? { ...i, ...patch } : i)));
 
       update({ step: "uploading" });
-      let stepIndex = 0;
-      const ticker = window.setInterval(() => {
-        stepIndex = Math.min(stepIndex + 1, STEP_ORDER.length - 1);
-        setQueue((prev) =>
-          prev.map((i) => (i.id !== item.id || i.step === "done" || i.step === "error" ? i : { ...i, step: STEP_ORDER[stepIndex] })),
-        );
-      }, STEP_INTERVAL_MS);
-      tickersRef.current.add(ticker);
-
       try {
         const file = await shrinkLargeImage(item.file);
         if (file !== item.file) update({ file });
@@ -87,7 +68,6 @@ export function useUploadQueue({
         const formData = new FormData();
         formData.append("file", file);
         formData.append("title", options.title.trim());
-        formData.append("notes", options.notes.trim());
         // "auto" lets the backend detect the department from the text ("general" would pin it).
         formData.append("category", options.category === "all" ? "auto" : options.category);
         const report = await api.uploadReport(activeToken, formData);
@@ -100,9 +80,6 @@ export function useUploadQueue({
         }
       } catch (err) {
         update({ step: "error", error: err instanceof Error ? err.message : "Upload failed" });
-      } finally {
-        window.clearInterval(ticker);
-        tickersRef.current.delete(ticker);
       }
     },
     [notify, onUploaded],

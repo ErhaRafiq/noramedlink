@@ -6,14 +6,14 @@ import { AlertCircle, Camera, CheckCircle2, FilePlus2, Loader2, Sparkles, Upload
 import { cn } from "@/lib/cn";
 import { UPLOAD_ACCEPT } from "@/lib/image";
 import { DEPARTMENTS } from "@/lib/departments";
-import type { FileQueueItem, UploadStep, useUploadQueue } from "@/hooks/patient/use-upload-queue";
+import { buildMedicalDisclaimer } from "@/lib/patient-dashboard";
+import type { FileQueueItem, useUploadQueue } from "@/hooks/patient/use-upload-queue";
 import { DashCard } from "./ui";
 
 type UploadQueue = ReturnType<typeof useUploadQueue>;
 
 export function UploadCard({ upload, onAllUploaded }: { upload: UploadQueue; onAllUploaded: () => void }) {
   const [title, setTitle] = useState("");
-  const [notes, setNotes] = useState("");
   const [category, setCategory] = useState("all");
   const [dragActive, setDragActive] = useState(false);
 
@@ -26,7 +26,7 @@ export function UploadCard({ upload, onAllUploaded }: { upload: UploadQueue; onA
   }
 
   async function uploadAll() {
-    if (await upload.uploadAll({ title, notes, category })) onAllUploaded();
+    if (await upload.uploadAll({ title, category })) onAllUploaded();
   }
 
   return (
@@ -116,7 +116,6 @@ export function UploadCard({ upload, onAllUploaded }: { upload: UploadQueue; onA
           onClick={() => {
             upload.clear();
             setTitle("");
-            setNotes("");
           }}
           className="w-full mt-3 py-2.5 rounded-xl border border-slate-200 text-sm font-semibold text-slate-500 hover:bg-slate-50 transition"
         >
@@ -127,31 +126,13 @@ export function UploadCard({ upload, onAllUploaded }: { upload: UploadQueue; onA
   );
 }
 
-const STEP_LABELS: Record<UploadStep, string> = {
-  idle: "",
-  uploading: "Uploading...",
-  ocr: "Reading text (OCR)...",
-  ai: "AI analysis...",
-  saving: "Saving report...",
-  done: "Complete",
-  error: "Failed",
-};
-
-const STEP_PROGRESS: Record<UploadStep, string> = {
-  idle: "0%",
-  uploading: "25%",
-  ocr: "50%",
-  ai: "75%",
-  saving: "90%",
-  done: "100%",
-  error: "100%",
-};
-
 function UploadQueueRow({ item, onRemove }: { item: FileQueueItem; onRemove: () => void }) {
   const ext = item.file.name.split(".").pop()?.toUpperCase() ?? "FILE";
   const sizeMb = item.file.size / (1024 * 1024);
   const sizeStr = sizeMb < 1 ? `${(item.file.size / 1024).toFixed(0)} KB` : `${sizeMb.toFixed(1)} MB`;
-  const isActive = item.step === "uploading" || item.step === "ocr" || item.step === "ai" || item.step === "saving";
+  const isActive = item.step === "uploading";
+  const textNotRead = item.report?.ocr_status === "FAILED";
+  const aiSummary = item.report?.summary_source !== undefined && item.report.summary_source !== "rule_based";
 
   return (
     <div
@@ -188,20 +169,23 @@ function UploadQueueRow({ item, onRemove }: { item: FileQueueItem; onRemove: () 
           {isActive && (
             <span className="text-[11px] text-blue-600 font-semibold flex items-center gap-1">
               <Loader2 className="h-3 w-3 animate-spin" />
-              {STEP_LABELS[item.step]}
+              Uploading and reading...
             </span>
           )}
-          {item.step === "done" && <span className="text-[11px] text-emerald-600 font-semibold">AI summary ready</span>}
+          {item.step === "done" &&
+            (textNotRead ? (
+              <span className="text-[11px] text-amber-700 font-semibold">Saved · text not read</span>
+            ) : (
+              <span className="text-[11px] text-emerald-600 font-semibold">Saved · text read</span>
+            ))}
           {item.step === "error" && (
             <span className="text-[11px] text-rose-600 font-semibold truncate max-w-[160px]">{item.error ?? "Upload failed"}</span>
           )}
         </div>
         {isActive && (
           <div className="mt-1.5 h-1 rounded-full bg-blue-100 overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-brand-blue to-brand-teal transition-all duration-700"
-              style={{ width: STEP_PROGRESS[item.step] }}
-            />
+            {/* Indeterminate: the request reports no progress, so no percentage is shown. */}
+            <div className="h-full w-full animate-pulse rounded-full bg-gradient-to-r from-brand-blue to-brand-teal" />
           </div>
         )}
         {item.step === "done" && (
@@ -213,9 +197,12 @@ function UploadQueueRow({ item, onRemove }: { item: FileQueueItem; onRemove: () 
           <div className="mt-3 p-3 rounded-xl bg-white border border-emerald-100 shadow-sm relative">
             <div className="flex items-center gap-1.5 mb-1.5">
               <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
-              <p className="text-xs font-semibold text-slate-800">AI Summary Generated</p>
+              <p className="text-xs font-semibold text-slate-800">{aiSummary ? "AI-generated summary" : "Rule-based summary"}</p>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">{item.report.patient_summary}</p>
+            <p className="mt-1.5 text-[11px] text-ink-muted">
+              {aiSummary ? buildMedicalDisclaimer() : "Advisory only. This is not a diagnosis; verify with a clinician."}
+            </p>
           </div>
         )}
       </div>
