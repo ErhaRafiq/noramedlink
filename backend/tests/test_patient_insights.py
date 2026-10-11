@@ -72,3 +72,19 @@ def test_rule_based_risks_follow_the_report_text():
     predictions = build_risk_predictions(None, [document("creatinine raised, eGFR low")], [])
     assert predictions[0]["risk_title"] == "Possible kidney function follow-up risk"
     assert len(build_risk_predictions(None, [document("glucose cholesterol creatinine rash")], [])) == 3
+
+
+def test_ai_context_has_the_medical_data_but_no_identity():
+    # Privacy: the text sent to the LLM never names the patient or gives a phone number.
+    import inspect
+
+    from services.patient_insights import patient_context_for_ai
+
+    assert "user" not in " ".join(inspect.signature(patient_context_for_ai).parameters)
+    medicine = SimpleNamespace(
+        medicine_name="Metformin", dosage="500 mg", frequency="twice daily", reason="diabetes", side_effects=None
+    )
+    report = SimpleNamespace(**vars(document("HbA1c 8.1")), possible_report_type="Lab report")
+    context = patient_context_for_ai([report], [medicine])
+    assert "HbA1c 8.1" in context and "Metformin" in context
+    assert "Patient:" not in context and "Phone:" not in context

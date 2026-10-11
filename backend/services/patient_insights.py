@@ -211,7 +211,6 @@ def build_doctor_summary(
 
 
 def patient_context_for_ai(
-    current_user: User,
     documents: list[SimpleNamespace],
     medicines: list[MedicineHistory],
     risks: list[HealthRiskPrediction] | None = None,
@@ -239,10 +238,9 @@ def patient_context_for_ai(
         for risk in (risks or [])[:8]
     ]
 
+    # No name, phone or other identifiers: the LLM does not need them (privacy).
     return "\n\n".join(
         [
-            f"Patient: {current_user.full_name}",
-            f"Phone: {current_user.phone or 'not provided'}",
             "Reports:",
             "\n\n".join(report_lines) or "No uploaded reports.",
             "Medicine history:",

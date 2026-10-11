@@ -83,7 +83,7 @@ async def generate_risk_predictions(
             "Use only the supplied reports and medicine history. Do not diagnose. "
             "Return up to 3 items with risk_title, risk_level (Low, Medium, High), reason, and recommendation."
         ),
-        prompt=patient_context_for_ai(current_user, documents, medicines),
+        prompt=patient_context_for_ai(documents, medicines),
     )
     generated = validate_ai_risk_predictions(ai_result.data)
     if not generated:
@@ -127,7 +127,7 @@ async def generate_health_tips(
             "Return exactly 4 items using these categories: Food to prefer, Food to avoid, "
             "Lifestyle advice, When to consult a doctor. Each item needs category, tip_text, and based_on_data."
         ),
-        prompt=patient_context_for_ai(current_user, documents, medicines),
+        prompt=patient_context_for_ai(documents, medicines),
     )
     generated = validate_ai_health_tips(ai_result.data)
     if not generated:
@@ -178,10 +178,13 @@ async def generate_doctor_summary(
             "Do not diagnose or prescribe. Include sections: Patient Overview, Key Medical Findings, "
             "Current Concerns, Medicine History, Possible Risks, Important Notes for Doctor."
         ),
-        prompt=patient_context_for_ai(current_user, documents, medicines, risks),
+        prompt=patient_context_for_ai(documents, medicines, risks),
     )
-    summary_text = ai_result.text or build_doctor_summary(current_user, documents, medicines, risks)
-    if not ai_result.text:
+    if ai_result.text:
+        # The name is added here, after generation, so it is never sent to the LLM.
+        summary_text = f"Patient: {current_user.full_name}\n\n{ai_result.text}"
+    else:
+        summary_text = build_doctor_summary(current_user, documents, medicines, risks)
         summary_text = f"{summary_text}\n\n{fallback_notice(ai_result.error)}".strip()
 
     summary = DoctorSummary(patient_id=profile.user_id, summary_text=summary_text)
