@@ -25,6 +25,8 @@ from routers import (
     nlp,
     ocr,
     patient,
+    patient_insights,
+    patient_medicines,
     payments,
     reminders,
     reports,
@@ -74,6 +76,8 @@ app.include_router(auth.router)
 app.include_router(auth.router, prefix="/api")
 app.include_router(admin.router)
 app.include_router(patient.router)
+app.include_router(patient_medicines.router)
+app.include_router(patient_insights.router)
 app.include_router(reports.router)
 app.include_router(doctor.router)
 app.include_router(ocr.router)
