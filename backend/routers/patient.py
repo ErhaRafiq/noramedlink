@@ -306,13 +306,21 @@ def normalized_medicine_name(name: str) -> str:
     return " ".join(name.strip().lower().split())
 
 
+SAFETY_SEVERITY = {"No data": 0, "Caution": 1, "High Risk": 2}
+
+
+def _raise_status(current: str, candidate: str) -> str:
+    return candidate if SAFETY_SEVERITY[candidate] > SAFETY_SEVERITY[current] else current
+
+
 def check_medicine_safety(
     medicine_name: str, dosage: str | None, known_allergies: str | None, medicines: list[MedicineHistory]
 ):
     requested = normalized_medicine_name(medicine_name)
     allergy_text = (known_allergies or "").lower()
     warnings: list[str] = []
-    status_label = "Safe"
+    # Never "Safe": these rules know only a few interactions (AGENTS.md 6.2).
+    status_label = "No data"
 
     if requested and requested in allergy_text:
         warnings.append("The requested medicine appears in the known allergy text.")
@@ -323,7 +331,7 @@ def check_medicine_safety(
         side_effects = (medicine.side_effects or "").lower()
         if existing == requested:
             warnings.append(f"Duplicate medicine history found: {medicine.medicine_name}.")
-            status_label = "Caution" if status_label != "High Risk" else status_label
+            status_label = _raise_status(status_label, "Caution")
         if (
             requested
             and requested in side_effects
@@ -353,14 +361,17 @@ def check_medicine_safety(
     for pair, reason in caution_pairs:
         if pair.issubset(requested_set):
             warnings.append(reason)
-            status_label = "Caution" if status_label != "High Risk" else status_label
+            status_label = _raise_status(status_label, "Caution")
 
     if dosage and any(term in dosage.lower() for term in ["double", "extra", "repeat"]):
         warnings.append("Dosage wording suggests repeated or extra dosing and should be clarified.")
-        status_label = "Caution" if status_label != "High Risk" else status_label
+        status_label = _raise_status(status_label, "Caution")
 
     if not warnings:
-        warnings.append("No duplicate, allergy, or common interaction warning was found in saved medicine history.")
+        warnings.append(
+            "No duplicate, allergy or listed interaction was found. This check covers only a few common "
+            "interactions, so it does not mean the medicine is safe: ask your doctor or pharmacist."
+        )
 
     reason = " ".join(warnings)
     return status_label, reason, warnings
@@ -424,17 +435,6 @@ def normalize_risk_level(value: object) -> str:
     if isinstance(value, str) and value.strip().lower() in {"low", "medium", "high"}:
         return value.strip().title()
     return "Medium"
-
-
-def normalize_safety_status(value: object) -> str:
-    if isinstance(value, str) and value.strip().lower() in {"safe", "caution", "high risk"}:
-        return value.strip().title()
-    return "Caution"
-
-
-def highest_safety_status(first: str, second: str) -> str:
-    severity = {"Safe": 0, "Caution": 1, "High Risk": 2}
-    return first if severity.get(first, 1) >= severity.get(second, 1) else second
 
 
 def validate_ai_risk_predictions(data: object) -> list[dict[str, str]]:
@@ -791,10 +791,10 @@ async def medicine_safety_check(
     )
     ai_result = await generate_openai_json(
         instructions=(
-            "You generate medicine safety observations for a patient dashboard. "
+            "You explain medicine safety observations for a patient dashboard. "
             "Use only the supplied medicine history and allergy text. Do not prescribe, change dosage, "
-            "or say a medicine is definitely safe. Return JSON with status (Safe, Caution, High Risk), "
-            "reason, and warnings array."
+            "rate the risk, or say a medicine is safe. Return JSON with reason (a short explanation) "
+            "and warnings (an array of points for the patient to raise with their doctor)."
         ),
         prompt="\n".join(
             [
@@ -812,14 +812,14 @@ async def medicine_safety_check(
     )
 
     if isinstance(ai_result.data, dict):
-        ai_status = normalize_safety_status(ai_result.data.get("status"))
+        # The rules above decide the status; the AI only explains and never changes it
+        # (AGENTS.md 6.2). Its text is labelled as AI-generated (6.4).
         ai_reason = clean_ai_text(ai_result.data.get("reason"), "", 800)
         ai_warnings = ai_result.data.get("warnings")
         if isinstance(ai_warnings, list):
-            warnings.extend(str(warning).strip() for warning in ai_warnings if str(warning).strip())
+            warnings.extend(f"AI observation: {str(w).strip()}" for w in ai_warnings if str(w).strip())
         if ai_reason:
-            reason = f"{reason} OpenAI observation: {ai_reason}"
-        status_label = highest_safety_status(status_label, ai_status)
+            reason = f"{reason} AI-generated explanation (advisory, verify with a clinician): {ai_reason}"
     else:
         warnings.append(fallback_notice(ai_result.error))
         reason = annotate_fallback(reason, ai_result.error)

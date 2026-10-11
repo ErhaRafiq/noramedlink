@@ -444,7 +444,8 @@ export type AIChatResponse = {
 };
 
 export type MedicineSafetyCheck = {
-  status: "Safe" | "Caution" | "High Risk";
+  /** Set by deterministic rules only; "No data" means no rule matched, never "safe". */
+  status: "No data" | "Caution" | "High Risk";
   reason: string;
   warnings: string[];
 };

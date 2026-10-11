@@ -376,7 +376,8 @@ class MedicineSafetyCheckRequest(BaseModel):
 
 
 class MedicineSafetyCheckResponse(BaseModel):
-    status: Literal["Safe", "Caution", "High Risk"]
+    # Set by deterministic rules only. "No data" means no rule matched, never "safe".
+    status: Literal["No data", "Caution", "High Risk"]
     reason: str
     warnings: list[str]
 

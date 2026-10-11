@@ -850,6 +850,21 @@ def run_tests() -> None:
           response.status_code == 200
           and scalar("select verification_status from doctor_profiles where id = :id", id=profile_id) == "rejected")
 
+    print("\n[13d] Medicine safety check (deterministic status, AGENTS.md 6.2)")
+    tok_safety = token_for(create_user("safety", "PATIENT"))
+    safety_url = "/api/backend/patient/medicine-safety/check"
+    response = call("POST", safety_url, tok_safety, {"medicine_name": "Paracetamol"})
+    body = response.json() if response.status_code == 200 else {}
+    check("no matching rule -> 'No data', never 'Safe'",
+          body.get("status") == "No data" and "does not mean the medicine is safe" in body.get("reason", ""),
+          f"got {response.status_code} {body.get('status')}")
+    response = call("POST", safety_url, tok_safety, {"medicine_name": "Penicillin", "known_allergies": "penicillin rash"})
+    check("medicine named in the allergy text -> High Risk",
+          response.status_code == 200 and response.json().get("status") == "High Risk", f"got {response.status_code}")
+    response = call("POST", safety_url, tok_safety, {"medicine_name": "Paracetamol", "dosage": "double dose"})
+    check("'double' dosage wording -> Caution",
+          response.status_code == 200 and response.json().get("status") == "Caution", f"got {response.status_code}")
+
     print("\n[14] Rate limits")
     limited_patient = create_user("ratelimit", "PATIENT")
     tok_limited = token_for(limited_patient)
