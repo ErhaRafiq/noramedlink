@@ -98,6 +98,11 @@ def filter_doctors(
     return results
 
 
+def aware(value: datetime) -> datetime:
+    """A date without a time zone is taken as the server's local time (the browser sends ISO with a zone)."""
+    return value.astimezone() if value.tzinfo is None else value
+
+
 def resolve_doctor(payload: AppointmentCreate, db: Session) -> User:
     if not payload.doctor_id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Choose a doctor to book.")
@@ -140,9 +145,7 @@ def create_appointment(
     current_user: User = Depends(require_patient),
     db: Session = Depends(get_db),
 ):
-    appointment_date = payload.date or datetime.now(UTC)
-    if appointment_date.tzinfo is None:
-        appointment_date = appointment_date.astimezone()  # naive input = server local time
+    appointment_date = aware(payload.date) if payload.date else datetime.now(UTC)
     if appointment_date < datetime.now(UTC) - timedelta(minutes=5):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -216,12 +219,13 @@ def update_appointment(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Patients can only cancel an appointment.")
 
     if payload.date is not None:
-        if payload.date < datetime.now(UTC) - timedelta(minutes=5):
+        new_date = aware(payload.date)
+        if new_date < datetime.now(UTC) - timedelta(minutes=5):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Appointment date must be current or future.",
             )
-        appointment.date = payload.date
+        appointment.date = new_date
     if payload.status is not None:
         appointment.status = payload.status.strip().upper()
     if payload.payment_status is not None:

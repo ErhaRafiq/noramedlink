@@ -534,6 +534,14 @@ def run_tests() -> None:
     check("patient setting status COMPLETED -> 403", response.status_code == 403, f"got {response.status_code}")
     response = call("PUT", appt, tok_b, {"status": "CANCELLED"})
     check("B changing A's appointment -> 403", response.status_code == 403, f"got {response.status_code}")
+    later = (datetime.now(timezone.utc) + timedelta(days=3)).replace(microsecond=0)
+    response = call("PUT", appt, tok_a, {"date": later.isoformat()})
+    check("patient reschedules own appointment (date only) -> 200",
+          response.status_code == 200 and response.json().get("status") == "BOOKED", f"got {response.status_code}")
+    response = call("PUT", appt, tok_a, {"date": later.replace(tzinfo=None).isoformat()})
+    check("a date without a time zone is accepted (was a 500)", response.status_code == 200, f"got {response.status_code}")
+    response = call("PUT", appt, tok_a, {"date": later.isoformat(), "status": "BOOKED"})
+    check("patient setting status BOOKED is still refused -> 403", response.status_code == 403, f"got {response.status_code}")
     response = call("PUT", appt, tok_admin, {"payment_status": "SUCCESS"})
     check("admin can change payment status -> 200", response.status_code == 200 and response.json().get("payment_status") == "SUCCESS",
           f"got {response.status_code}")
@@ -615,12 +623,18 @@ def run_tests() -> None:
         check("upload appears on A's /dashboard data", uploaded.get("id") in [r["id"] for r in overview_records])
         response = call("DELETE", f"/api/backend/patient/reports/{uploaded.get('id')}", tok_b)
         check("B deleting A's upload -> 404", response.status_code == 404, f"got {response.status_code}")
+        # B's report gets a value A's reports do not have; A's summary must never contain it.
+        with engine.begin() as conn:
+            conn.execute(text("update patient_reports set extracted_text = 'Creatinine 9.9 mg/dL', "
+                              "formatted_text = 'Creatinine 9.9 mg/dL' where id = :id"), {"id": record_b})
         response = call("POST", "/api/backend/nlp/summarize/saved-reports", tok_a)
         saved = response.json() if response.status_code == 200 else {}
+        findings = saved.get("key_findings", [])
         check("saved-report summary uses only A's reports",
-              response.status_code == 200 and f"{TEST_PREFIX}record A" in saved.get("text", "")
-              and f"{TEST_PREFIX}record B" not in saved.get("text", "") and bool(saved.get("summary")),
-              f"got {response.status_code}")
+              response.status_code == 200 and "Hemoglobin: 10.2" in findings
+              and not any("9.9" in item for item in findings + saved.get("risk_indicators", []))
+              and bool(saved.get("summary")), f"got {response.status_code} {findings}")
+        check("saved-report summary no longer returns the combined report text", "text" not in saved)
         response = call("POST", "/api/backend/nlp/summarize", tok_doctor, {"text": "Hemoglobin 10.2 g/dL, glucose 250 mg/dL."})
         check("doctor can summarize pasted text -> 200", response.status_code == 200 and bool(response.json().get("summary")),
               f"got {response.status_code}")

@@ -58,6 +58,7 @@ export function useMyAppointments(token: string | null) {
     busyId,
     reload: load,
     cancel: (id: number) => update(id, { status: "CANCELLED" }),
-    reschedule: (id: number, isoDate: string) => update(id, { date: isoDate, status: "BOOKED" }),
+    // Only the date: patients may not set a status other than CANCELLED (the API answers 403).
+    reschedule: (id: number, isoDate: string) => update(id, { date: isoDate }),
   };
 }
