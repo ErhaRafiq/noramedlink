@@ -43,11 +43,7 @@ def appointment_to_out(appointment: Appointment) -> AppointmentOut:
 
 def can_access_appointment(user: User, appointment: Appointment) -> bool:
     role = user.role.lower()
-    return (
-        role == "admin"
-        or appointment.user_id == user.id
-        or (role == "doctor" and appointment.doctor_id == user.id)
-    )
+    return role == "admin" or appointment.user_id == user.id or (role == "doctor" and appointment.doctor_id == user.id)
 
 
 def verified_doctors_query(db: Session):
@@ -212,7 +208,11 @@ def update_appointment(
     role = current_user.role.lower()
     if payload.payment_status is not None and role != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only an admin can change payment status.")
-    if payload.status is not None and role == "patient" and payload.status.strip().upper() not in PATIENT_SETTABLE_STATUSES:
+    if (
+        payload.status is not None
+        and role == "patient"
+        and payload.status.strip().upper() not in PATIENT_SETTABLE_STATUSES
+    ):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Patients can only cancel an appointment.")
 
     if payload.date is not None:

@@ -35,7 +35,7 @@ def relative_upload_path(file_url: str | None) -> str | None:
     value = (file_url or "").replace("\\", "/").lstrip("/")
     if not value.startswith(UPLOADS_PREFIX):
         return None
-    return value[len(UPLOADS_PREFIX):]
+    return value[len(UPLOADS_PREFIX) :]
 
 
 def file_access_url(file_url: str | None, viewer_id: int) -> str | None:

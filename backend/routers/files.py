@@ -48,10 +48,14 @@ def get_file(
     # Identify the viewer: a valid signed link, else a Bearer token.
     if sig is not None or exp is not None or uid is not None:
         if exp is None or uid is None or sig is None or not verify_signed_link(relative, exp, uid, sig):
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This file link is invalid or has expired.")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="This file link is invalid or has expired."
+            )
         viewer = db.get(User, uid)
         if viewer is None or not viewer.is_active:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="This file link is invalid or has expired.")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="This file link is invalid or has expired."
+            )
     else:
         viewer = get_current_user(authorization=authorization, db=db)
 

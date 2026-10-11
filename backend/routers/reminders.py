@@ -49,12 +49,18 @@ def list_reminders(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Reminder).filter(Reminder.user_id == current_user.id).order_by(Reminder.due_at.asc(), Reminder.id.asc())
+    query = (
+        db.query(Reminder)
+        .filter(Reminder.user_id == current_user.id)
+        .order_by(Reminder.due_at.asc(), Reminder.id.asc())
+    )
     return paginate(query, params, reminder_to_out)
 
 
 @router.post("", response_model=ReminderOut, status_code=status.HTTP_201_CREATED)
-def create_reminder(payload: ReminderCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_reminder(
+    payload: ReminderCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
     reminder = Reminder(
         user_id=current_user.id,
         title=payload.title.strip(),

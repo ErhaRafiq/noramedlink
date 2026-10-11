@@ -71,16 +71,12 @@ def dashboard_stats(
         ),
         "reportsUploaded": reports_uploaded,
         "appointmentsToday": (
-            db.query(Appointment.id)
-            .filter(Appointment.date >= today_start, Appointment.date < today_end)
-            .count()
+            db.query(Appointment.id).filter(Appointment.date >= today_start, Appointment.date < today_end).count()
         ),
         "totalPatients": db.query(User.id).filter(func.lower(User.role) == "patient").count(),
         "activeUsers": db.query(User.id).filter(User.is_active.is_(True)).count(),
         "pendingDoctors": (
-            db.query(DoctorProfile.id)
-            .filter(func.lower(DoctorProfile.verification_status) == "pending")
-            .count()
+            db.query(DoctorProfile.id).filter(func.lower(DoctorProfile.verification_status) == "pending").count()
         ),
     }
 

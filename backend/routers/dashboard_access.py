@@ -55,7 +55,9 @@ def patient_overview(current_user: User = Depends(require_patient), db: Session 
         .order_by(Appointment.date.asc())
         .first()
     )
-    medications = db.query(Medication).filter(Medication.user_id == user_id).order_by(Medication.created_at.desc()).all()
+    medications = (
+        db.query(Medication).filter(Medication.user_id == user_id).order_by(Medication.created_at.desc()).all()
+    )
     reminders = (
         db.query(Reminder)
         .filter(Reminder.user_id == user_id, Reminder.due_at >= now)
@@ -192,7 +194,12 @@ def doctor_overview(current_user: User = Depends(require_doctor), db: Session = 
         record_counts[record.patient_id] = record_counts.get(record.patient_id, 0) + 1
 
     return {
-        "doctor": {"id": current_user.id, "name": current_user.full_name, "email": current_user.email, "role": "DOCTOR"},
+        "doctor": {
+            "id": current_user.id,
+            "name": current_user.full_name,
+            "email": current_user.email,
+            "role": "DOCTOR",
+        },
         "stats": {
             "appointments": len(appointments),
             "patients": len(access_ids),

@@ -126,7 +126,9 @@ class Appointment(Base):
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     doctor_name: Mapped[str] = mapped_column(String(180), nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    doctor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    doctor_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
     status: Mapped[str] = mapped_column(String(40), default="BOOKED", nullable=False)
     payment_status: Mapped[str] = mapped_column(String(40), default="PENDING", nullable=False)
@@ -146,7 +148,9 @@ class EmergencyBooking(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
-    doctor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    doctor_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     patient_name: Mapped[str] = mapped_column(String(160), nullable=False)
     phone: Mapped[str] = mapped_column(String(40), nullable=False)
     address: Mapped[str] = mapped_column(Text, nullable=False)
@@ -194,9 +198,7 @@ class Payment(Base):
 class Vitals(Base):
     __tablename__ = "vitals"
     # Index names from the retired Prisma schema, so existing databases match.
-    __table_args__ = (
-        Index("vitals_user_id_created_at_idx", "user_id", "created_at"),
-    )
+    __table_args__ = (Index("vitals_user_id_created_at_idx", "user_id", "created_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -209,9 +211,7 @@ class PatientVital(Base):
     """Detailed daily vitals (Prisma model PatientVital)."""
 
     __tablename__ = "patient_vitals"
-    __table_args__ = (
-        Index("patient_vitals_patient_id_recorded_at_idx", "patient_id", "recorded_at"),
-    )
+    __table_args__ = (Index("patient_vitals_patient_id_recorded_at_idx", "patient_id", "recorded_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
@@ -289,9 +289,7 @@ class ReminderLog(Base):
 class Reminder(Base):
     __tablename__ = "reminders"
     # Index names from the retired Prisma schema, so existing databases match.
-    __table_args__ = (
-        Index("reminders_user_id_due_at_idx", "user_id", "due_at"),
-    )
+    __table_args__ = (Index("reminders_user_id_due_at_idx", "user_id", "due_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -313,9 +311,7 @@ class MedicalDocument(Base):
 
     __tablename__ = "medical_documents"
     # Index names from the retired Prisma schema, so existing databases match.
-    __table_args__ = (
-        Index("medical_documents_user_id_created_at_idx", "user_id", "created_at"),
-    )
+    __table_args__ = (Index("medical_documents_user_id_created_at_idx", "user_id", "created_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -479,9 +475,7 @@ class PatientReport(Base):
 class MedicalAiAnalysis(Base):
     __tablename__ = "medical_ai_analyses"
     # Index names from the retired Prisma schema, so existing databases match.
-    __table_args__ = (
-        Index("medical_ai_analyses_user_id_created_at_idx", "user_id", "created_at"),
-    )
+    __table_args__ = (Index("medical_ai_analyses_user_id_created_at_idx", "user_id", "created_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -545,9 +539,7 @@ class MedicineHistory(Base):
 class HealthRiskPrediction(Base):
     __tablename__ = "health_risk_predictions"
     # Index names from the retired Prisma schema, so existing databases match.
-    __table_args__ = (
-        Index("health_risk_predictions_patient_id_created_at_idx", "patient_id", "created_at"),
-    )
+    __table_args__ = (Index("health_risk_predictions_patient_id_created_at_idx", "patient_id", "created_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -563,9 +555,7 @@ class HealthRiskPrediction(Base):
 class HealthTip(Base):
     __tablename__ = "health_tips"
     # Index names from the retired Prisma schema, so existing databases match.
-    __table_args__ = (
-        Index("health_tips_patient_id_created_at_idx", "patient_id", "created_at"),
-    )
+    __table_args__ = (Index("health_tips_patient_id_created_at_idx", "patient_id", "created_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -580,9 +570,7 @@ class HealthTip(Base):
 class DoctorSummary(Base):
     __tablename__ = "doctor_summaries"
     # Index names from the retired Prisma schema, so existing databases match.
-    __table_args__ = (
-        Index("doctor_summaries_patient_id_generated_at_idx", "patient_id", "generated_at"),
-    )
+    __table_args__ = (Index("doctor_summaries_patient_id_generated_at_idx", "patient_id", "generated_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
@@ -618,9 +606,7 @@ class DashboardOtpAttempt(Base):
     The OTP code itself is never stored here."""
 
     __tablename__ = "dashboard_otp_attempts"
-    __table_args__ = (
-        Index("dashboard_otp_attempts_actor_id_created_at_idx", "actor_id", "created_at"),
-    )
+    __table_args__ = (Index("dashboard_otp_attempts_actor_id_created_at_idx", "actor_id", "created_at"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
     actor_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)

@@ -1,4 +1,5 @@
 """Quick test of non-BioBERT components."""
+
 import os
 import sys
 
@@ -50,6 +51,7 @@ try:
     from sqlalchemy import text
 
     from database import engine
+
     with engine.connect() as conn:
         r = conn.execute(text("SELECT 1"))
         print("    OK - connected:", r.fetchone())

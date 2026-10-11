@@ -24,7 +24,9 @@ class SavedReportsSummary(SummaryResponse):
 def _check_length(text: str) -> str:
     text = text.strip()
     if len(text) < MIN_TEXT:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Enter at least 20 characters of medical report text.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Enter at least 20 characters of medical report text."
+        )
     if len(text) > MAX_TEXT:
         raise HTTPException(
             status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
@@ -44,7 +46,9 @@ async def summarize(request: Request, payload: SummarizeRequest, current_user: U
 
 @router.post("/summarize/saved-reports", response_model=SavedReportsSummary)
 @limiter.limit(AI_LIMIT)
-async def summarize_saved_reports(request: Request, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+async def summarize_saved_reports(
+    request: Request, current_user: User = Depends(require_patient), db: Session = Depends(get_db)
+):
     """Summarize the signed-in patient's own saved reports (former Next saved-report mode)."""
     reports = (
         db.query(PatientReport)
@@ -69,7 +73,9 @@ async def summarize_saved_reports(request: Request, current_user: User = Depends
         )
     combined = "\n\n".join(sections)
     if len(combined) < MIN_TEXT:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="No readable saved report text found for this patient yet.")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="No readable saved report text found for this patient yet."
+        )
     text = combined[:MAX_TEXT]
     summary, method, warning = await summarize_with_optional_llm(text, "medical-report")
     return SavedReportsSummary(summary=summary, method=method, warning=warning, text=text)

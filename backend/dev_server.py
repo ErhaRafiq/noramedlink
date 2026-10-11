@@ -38,10 +38,7 @@ def main() -> None:
     except ImportError:
         pass
 
-    configured_database_url = (
-        os.environ.get("FASTAPI_DATABASE_URL")
-        or os.environ.get("DATABASE_URL")
-    )
+    configured_database_url = os.environ.get("FASTAPI_DATABASE_URL") or os.environ.get("DATABASE_URL")
     if configured_database_url:
         os.environ["FASTAPI_DATABASE_URL"] = configured_database_url
     else:

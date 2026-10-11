@@ -21,7 +21,9 @@ router = APIRouter(prefix="/patient/medicine-reminders", tags=["medicine-reminde
 DUE_WINDOW = timedelta(minutes=30)
 
 
-def display_status(reminder_time: datetime, taken_at: datetime | None, skipped_at: datetime | None, now: datetime) -> str:
+def display_status(
+    reminder_time: datetime, taken_at: datetime | None, skipped_at: datetime | None, now: datetime
+) -> str:
     """TAKEN / SKIPPED win; otherwise UPCOMING before the time, DUE_NOW for 30 minutes
     after it, then MISSED (same rules as the former lib/patient-reminders.ts)."""
     if taken_at:
@@ -93,7 +95,11 @@ def create_medicine_reminder(
     )
     db.add(reminder)
     db.flush()
-    db.add(ReminderLog(reminder_id=reminder.id, patient_id=current_user.id, scheduled_for=reminder_time, status=initial_status))
+    db.add(
+        ReminderLog(
+            reminder_id=reminder.id, patient_id=current_user.id, scheduled_for=reminder_time, status=initial_status
+        )
+    )
     # notifications.reminder_id points at the free-text reminders table, so it is left
     # empty here (the Next route wrongly stored the medicine reminder's id in it).
     db.add(

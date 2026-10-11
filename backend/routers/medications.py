@@ -32,10 +32,7 @@ def medication_to_out(medication: Medication) -> MedicationScheduleOut:
 @router.get("", response_model=list[MedicationScheduleOut])
 def list_medications(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     medications = (
-        db.query(Medication)
-        .filter(Medication.user_id == current_user.id)
-        .order_by(Medication.created_at.desc())
-        .all()
+        db.query(Medication).filter(Medication.user_id == current_user.id).order_by(Medication.created_at.desc()).all()
     )
     return [medication_to_out(m) for m in medications]
 

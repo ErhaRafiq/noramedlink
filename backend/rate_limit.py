@@ -47,9 +47,7 @@ ACCESS_CODE_LIMIT = _env("RATE_LIMIT_ACCESS_CODE", "10/minute")  # per patient, 
 
 RATE_LIMIT_ENABLED = _env("RATE_LIMIT_ENABLED", "true").lower() not in {"0", "false", "no", "off"}
 STORAGE_URI = _env("RATE_LIMIT_STORAGE_URI", "memory://")
-TRUSTED_PROXY_IPS = {
-    ip.strip() for ip in _env("TRUSTED_PROXY_IPS", "127.0.0.1,::1").split(",") if ip.strip()
-}
+TRUSTED_PROXY_IPS = {ip.strip() for ip in _env("TRUSTED_PROXY_IPS", "127.0.0.1,::1").split(",") if ip.strip()}
 
 
 def client_ip(request: Request) -> str:

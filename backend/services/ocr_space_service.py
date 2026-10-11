@@ -359,7 +359,9 @@ async def call_ocr_space(file_path: Path, file_name: str) -> tuple[str, float | 
                     files={"file": (file_name or file_path.name, input_file, content_type)},
                 )
     except httpx.TimeoutException as exc:
-        raise OcrSpaceError("OCR.Space timed out while reading the report. Try again with a clearer or smaller file.", 504) from exc
+        raise OcrSpaceError(
+            "OCR.Space timed out while reading the report. Try again with a clearer or smaller file.", 504
+        ) from exc
     except httpx.RequestError as exc:
         raise OcrSpaceError("Unable to reach OCR.Space. Check internet connectivity and try again.", 502) from exc
 

@@ -228,11 +228,15 @@ def build_health_tips(documents: list[SimpleNamespace], medicines: list[Medicine
     heart = context_has(context, ["cholesterol", "ldl", "triglyceride", "lipid", "blood pressure", "hypertension"])
 
     if sugar:
-        prefer = "Prefer fiber-rich meals, vegetables, lentils, whole grains in moderate portions, and unsweetened drinks."
+        prefer = (
+            "Prefer fiber-rich meals, vegetables, lentils, whole grains in moderate portions, and unsweetened drinks."
+        )
         avoid = "Limit sugary drinks, desserts, large refined-carb portions, and frequent fried snacks."
     elif kidney:
         prefer = "Prefer balanced home-cooked meals, doctor-approved fluids, and fresh foods with moderate salt."
-        avoid = "Avoid excess salt, self-prescribed painkillers, and high-protein dieting unless a clinician recommends it."
+        avoid = (
+            "Avoid excess salt, self-prescribed painkillers, and high-protein dieting unless a clinician recommends it."
+        )
     elif heart:
         prefer = "Prefer vegetables, fruits, oats, lentils, nuts in small portions, and lean proteins."
         avoid = "Limit deep-fried foods, high-salt packaged meals, trans fats, and sugary drinks."
@@ -251,7 +255,12 @@ def build_health_tips(documents: list[SimpleNamespace], medicines: list[Medicine
     ]
 
 
-def build_doctor_summary(current_user: User, documents: list[SimpleNamespace], medicines: list[MedicineHistory], risks: list[HealthRiskPrediction]):
+def build_doctor_summary(
+    current_user: User,
+    documents: list[SimpleNamespace],
+    medicines: list[MedicineHistory],
+    risks: list[HealthRiskPrediction],
+):
     latest_reports = documents[:5]
     report_findings = [
         f"- {document.title}: {document.possible_report_type or 'Medical report'}; summary: {document.ai_summary or 'No AI summary yet'}"
@@ -261,15 +270,12 @@ def build_doctor_summary(current_user: User, documents: list[SimpleNamespace], m
         f"- {medicine.medicine_name}, {medicine.dosage}, {medicine.frequency}, reason: {medicine.reason}"
         for medicine in medicines[:8]
     ] or ["- No medicine history saved yet."]
-    risk_lines = [
-        f"- {risk.risk_title} ({risk.risk_level}): {risk.reason}"
-        for risk in risks[:5]
-    ] or ["- No generated risk predictions yet."]
-    concern_lines = [
-        f"- {document.notes}"
-        for document in latest_reports
-        if document.notes
-    ] or ["- No separate symptom notes saved with reports."]
+    risk_lines = [f"- {risk.risk_title} ({risk.risk_level}): {risk.reason}" for risk in risks[:5]] or [
+        "- No generated risk predictions yet."
+    ]
+    concern_lines = [f"- {document.notes}" for document in latest_reports if document.notes] or [
+        "- No separate symptom notes saved with reports."
+    ]
 
     return "\n".join(
         [
@@ -300,7 +306,9 @@ def normalized_medicine_name(name: str) -> str:
     return " ".join(name.strip().lower().split())
 
 
-def check_medicine_safety(medicine_name: str, dosage: str | None, known_allergies: str | None, medicines: list[MedicineHistory]):
+def check_medicine_safety(
+    medicine_name: str, dosage: str | None, known_allergies: str | None, medicines: list[MedicineHistory]
+):
     requested = normalized_medicine_name(medicine_name)
     allergy_text = (known_allergies or "").lower()
     warnings: list[str] = []
@@ -316,7 +324,11 @@ def check_medicine_safety(medicine_name: str, dosage: str | None, known_allergie
         if existing == requested:
             warnings.append(f"Duplicate medicine history found: {medicine.medicine_name}.")
             status_label = "Caution" if status_label != "High Risk" else status_label
-        if requested and requested in side_effects and any(term in side_effects for term in ["allergy", "rash", "swelling", "breathing"]):
+        if (
+            requested
+            and requested in side_effects
+            and any(term in side_effects for term in ["allergy", "rash", "swelling", "breathing"])
+        ):
             warnings.append(f"Possible allergy or reaction noted previously for {medicine.medicine_name}.")
             status_label = "High Risk"
 
@@ -437,7 +449,9 @@ def validate_ai_risk_predictions(data: object) -> list[dict[str, str]]:
             {
                 "risk_title": clean_ai_text(item.get("risk_title"), "Clinical follow-up observation", 180),
                 "risk_level": normalize_risk_level(item.get("risk_level")),
-                "reason": clean_ai_text(item.get("reason"), "OpenAI identified a follow-up observation from saved patient data."),
+                "reason": clean_ai_text(
+                    item.get("reason"), "OpenAI identified a follow-up observation from saved patient data."
+                ),
                 "recommendation": clean_ai_text(
                     item.get("recommendation"),
                     "Review the observation with a qualified doctor before making care decisions.",
@@ -457,12 +471,20 @@ def validate_ai_health_tips(data: object) -> list[dict[str, str]]:
         if not isinstance(item, dict):
             continue
         category = item.get("category")
-        category_text = category if isinstance(category, str) and category in allowed_categories else TIP_CATEGORIES[min(len(tips), 3)]
+        category_text = (
+            category
+            if isinstance(category, str) and category in allowed_categories
+            else TIP_CATEGORIES[min(len(tips), 3)]
+        )
         tips.append(
             {
                 "category": category_text,
-                "tip_text": clean_ai_text(item.get("tip_text"), "Keep reports updated and discuss changes with a doctor."),
-                "based_on_data": clean_ai_text(item.get("based_on_data"), "Based on saved reports and medicine history.", 320),
+                "tip_text": clean_ai_text(
+                    item.get("tip_text"), "Keep reports updated and discuss changes with a doctor."
+                ),
+                "based_on_data": clean_ai_text(
+                    item.get("based_on_data"), "Based on saved reports and medicine history.", 320
+                ),
             }
         )
     return tips
@@ -504,7 +526,9 @@ def dashboard(current_user: User = Depends(require_patient), db: Session = Depen
     for department_id, count, last_updated in category_rows:
         department_name = "General"
         if department_id:
-            matching_report = next((report for report in reports if report.department_id == department_id and report.department), None)
+            matching_report = next(
+                (report for report in reports if report.department_id == department_id and report.department), None
+            )
             if matching_report and matching_report.department:
                 department_name = matching_report.department.name
         categories.append(DashboardCategory(category=department_name, document_count=count, last_updated=last_updated))
@@ -527,12 +551,7 @@ def dashboard(current_user: User = Depends(require_patient), db: Session = Depen
 @router.get("/vitals/latest", response_model=VitalsOut | None)
 def latest_vitals(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     profile = get_patient_profile(db, current_user)
-    vital = (
-        db.query(Vitals)
-        .filter(Vitals.user_id == profile.user_id)
-        .order_by(Vitals.created_at.desc())
-        .first()
-    )
+    vital = db.query(Vitals).filter(Vitals.user_id == profile.user_id).order_by(Vitals.created_at.desc()).first()
     if not vital:
         return None
     return VitalsOut(
@@ -556,7 +575,9 @@ def list_medicines(
 
 
 @router.post("/medicines", response_model=MedicineHistoryOut, status_code=status.HTTP_201_CREATED)
-def create_medicine(payload: MedicineHistoryCreate, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+def create_medicine(
+    payload: MedicineHistoryCreate, current_user: User = Depends(require_patient), db: Session = Depends(get_db)
+):
     profile = get_patient_profile(db, current_user)
     medicine = MedicineHistory(
         patient_id=profile.user_id,
@@ -632,7 +653,9 @@ def list_risk_predictions(current_user: User = Depends(require_patient), db: Ses
 
 @router.post("/risk-predictions/generate", response_model=list[HealthRiskPredictionOut])
 @limiter.limit(AI_LIMIT)
-async def generate_risk_predictions(request: Request, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+async def generate_risk_predictions(
+    request: Request, current_user: User = Depends(require_patient), db: Session = Depends(get_db)
+):
     profile = get_patient_profile(db, current_user)
     documents = report_context(db, profile)
     medicines = patient_medicine_query(db, profile).order_by(MedicineHistory.created_at.desc()).all()
@@ -650,10 +673,7 @@ async def generate_risk_predictions(request: Request, current_user: User = Depen
         if generated:
             generated[0]["reason"] = annotate_fallback(generated[0]["reason"], ai_result.error)
 
-    predictions = [
-        HealthRiskPrediction(patient_id=profile.user_id, **prediction)
-        for prediction in generated
-    ]
+    predictions = [HealthRiskPrediction(patient_id=profile.user_id, **prediction) for prediction in generated]
     db.add_all(predictions)
     db.commit()
     for prediction in predictions:
@@ -676,7 +696,9 @@ def list_health_tips(current_user: User = Depends(require_patient), db: Session 
 
 @router.post("/health-tips/generate", response_model=list[HealthTipOut])
 @limiter.limit(AI_LIMIT)
-async def generate_health_tips(request: Request, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+async def generate_health_tips(
+    request: Request, current_user: User = Depends(require_patient), db: Session = Depends(get_db)
+):
     profile = get_patient_profile(db, current_user)
     documents = report_context(db, profile)
     medicines = patient_medicine_query(db, profile).order_by(MedicineHistory.created_at.desc()).all()
@@ -718,7 +740,9 @@ def list_doctor_summaries(current_user: User = Depends(require_patient), db: Ses
 
 @router.post("/doctor-summaries/generate", response_model=DoctorSummaryOut)
 @limiter.limit(AI_LIMIT)
-async def generate_doctor_summary(request: Request, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+async def generate_doctor_summary(
+    request: Request, current_user: User = Depends(require_patient), db: Session = Depends(get_db)
+):
     profile = get_patient_profile(db, current_user)
     documents = report_context(db, profile)
     medicines = patient_medicine_query(db, profile).order_by(MedicineHistory.created_at.desc()).all()
@@ -781,7 +805,8 @@ async def medicine_safety_check(
                 "\n".join(
                     f"- {medicine.medicine_name}, {medicine.dosage}, {medicine.frequency}, reason: {medicine.reason}, side effects: {medicine.side_effects or 'none'}"
                     for medicine in medicines[:12]
-                ) or "No saved medicine history.",
+                )
+                or "No saved medicine history.",
             ]
         ),
     )

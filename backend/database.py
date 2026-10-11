@@ -40,10 +40,9 @@ def _normalize_database_url(configured_url: str) -> str:
 
 
 def get_database_url() -> str:
-    configured_url = (
-        os.getenv("FASTAPI_DATABASE_URL", "").strip().strip('"').strip("'")
-        or os.getenv("DATABASE_URL", "").strip().strip('"').strip("'")
-    )
+    configured_url = os.getenv("FASTAPI_DATABASE_URL", "").strip().strip('"').strip("'") or os.getenv(
+        "DATABASE_URL", ""
+    ).strip().strip('"').strip("'")
     if not configured_url:
         logger.warning("No PostgreSQL URL configured; using local SQLite fallback for development only.")
         return _sqlite_url_for_path(DEFAULT_SQLITE_PATH)

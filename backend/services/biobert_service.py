@@ -220,7 +220,11 @@ async def extract_medical_entities(
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     cleaned_text = " ".join((text or "").split())
     if not cleaned_text:
-        return [], {"model": BIOBERT_MODEL, "source": "none", "warning": "No OCR text was available for entity extraction."}
+        return [], {
+            "model": BIOBERT_MODEL,
+            "source": "none",
+            "warning": "No OCR text was available for entity extraction.",
+        }
 
     try:
         entities = await asyncio.to_thread(_run_biobert, cleaned_text)

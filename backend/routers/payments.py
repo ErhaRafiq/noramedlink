@@ -49,19 +49,27 @@ def list_payments(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = db.query(Payment).filter(Payment.user_id == current_user.id).order_by(Payment.created_at.desc(), Payment.id.desc())
+    query = (
+        db.query(Payment)
+        .filter(Payment.user_id == current_user.id)
+        .order_by(Payment.created_at.desc(), Payment.id.desc())
+    )
     return paginate(query, params, payment_to_out)
 
 
 @router.post("", response_model=PaymentOut, status_code=status.HTTP_201_CREATED)
-def create_payment(payload: PaymentCreate, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+def create_payment(
+    payload: PaymentCreate, current_user: User = Depends(require_patient), db: Session = Depends(get_db)
+):
     method = payload.method.strip().upper()
     if method not in PAYMENT_METHODS:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported payment method.")
 
     phone = payload.phone.strip() if payload.phone else None
     if method in WALLET_METHODS and not phone:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number is required for wallet payments.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number is required for wallet payments."
+        )
 
     appointment = None
     if payload.appointment_id:

@@ -220,9 +220,7 @@ async def generate_openai_text(instructions: str, prompt: str) -> OpenAIResult:
 
 async def generate_openai_json(instructions: str, prompt: str) -> OpenAIResult:
     result = await generate_openai_text(
-        instructions=(
-            f"{instructions}\n\nReturn valid JSON only. Do not wrap it in markdown fences."
-        ),
+        instructions=(f"{instructions}\n\nReturn valid JSON only. Do not wrap it in markdown fences."),
         prompt=prompt,
     )
     if not result.text:

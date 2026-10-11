@@ -52,10 +52,7 @@ def as_utc(value: datetime) -> datetime:
 
 
 def admin_invite_code() -> str:
-    return (
-        os.getenv("ADMIN_INVITE_CODE", "").strip()
-        or os.getenv("ADMIN_SIGNUP_CODE", "").strip()
-    )
+    return os.getenv("ADMIN_INVITE_CODE", "").strip() or os.getenv("ADMIN_SIGNUP_CODE", "").strip()
 
 
 def user_to_out(user: User) -> UserOut:
@@ -117,7 +114,9 @@ def validate_role_specific_fields(payload: SignupOtpRequest) -> None:
     if role == "patient":
         cnic = (payload.cnic or "").strip()
         if not cnic:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="CNIC number is required for patient signup.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST, detail="CNIC number is required for patient signup."
+            )
         if not re.fullmatch(r"(?:\d{5}-\d{7}-\d|\d{13})", cnic):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

@@ -44,7 +44,9 @@ def ensure_otp_attempts_allowed(db: Session, actor_id: int) -> None:
         if oldest.tzinfo is None:  # SQLite returns naive datetimes (stored as UTC)
             oldest = oldest.replace(tzinfo=UTC)
         retry_after = max(60, int((oldest + ATTEMPT_WINDOW - _now()).total_seconds()))
-        logger.warning("Dashboard OTP attempts blocked for user %s (%s failures in 15 minutes)", actor_id, len(failures))
+        logger.warning(
+            "Dashboard OTP attempts blocked for user %s (%s failures in 15 minutes)", actor_id, len(failures)
+        )
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=(
@@ -141,7 +143,9 @@ def grant_access_by_otp(
         access.expires_at = expires_at
         access.ended_at = None
     else:
-        db.add(PatientDashboardAccess(doctor_id=doctor_id, patient_id=patient.id, status="ACTIVE", expires_at=expires_at))
+        db.add(
+            PatientDashboardAccess(doctor_id=doctor_id, patient_id=patient.id, status="ACTIVE", expires_at=expires_at)
+        )
     if commit:
         db.commit()
     return Grant(patient=patient, expires_at=expires_at)
@@ -176,6 +180,8 @@ def end_access(db: Session, doctor_id: int, patient_id: int) -> None:
             PatientDashboardAccess.patient_id == patient_id,
             func.upper(PatientDashboardAccess.status) == "ACTIVE",
         )
-        .update({PatientDashboardAccess.status: "ENDED", PatientDashboardAccess.ended_at: _now()}, synchronize_session=False)
+        .update(
+            {PatientDashboardAccess.status: "ENDED", PatientDashboardAccess.ended_at: _now()}, synchronize_session=False
+        )
     )
     db.commit()

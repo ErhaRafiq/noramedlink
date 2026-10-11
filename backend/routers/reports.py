@@ -204,9 +204,13 @@ async def analyze_report_result(ocr_result: dict[str, Any], department_name: str
                 "doctor_notes": ["Verify OCR text against the uploaded report."],
                 "confidence_level": "Low",
                 "missing_data": ["AI analysis could not complete."],
-                "summary": str(ocr_result.get("summary") or "Report uploaded. Verify OCR text against the source file."),
+                "summary": str(
+                    ocr_result.get("summary") or "Report uploaded. Verify OCR text against the source file."
+                ),
             },
-            "summary_text": str(ocr_result.get("summary") or "Report uploaded. Verify OCR text against the source file."),
+            "summary_text": str(
+                ocr_result.get("summary") or "Report uploaded. Verify OCR text against the source file."
+            ),
             "summary_source": "rule_based",
             "summary_warning": str(exc),
             "llm_self_check": {"passed": False, "confidence_level": "Low", "notes": [str(exc)], "source": "rule_based"},
@@ -244,7 +248,9 @@ def apply_ocr_result(
     analysis = dict_field(ocr_result.get("analysis"))
     structured_payload["department"] = final_department_name
     structured_payload["department_slug"] = department_slug(final_department_name)
-    final_summary = (summary if summary is not None else str(analysis.get("summary_text") or ocr_result.get("summary") or "")).strip()
+    final_summary = (
+        summary if summary is not None else str(analysis.get("summary_text") or ocr_result.get("summary") or "")
+    ).strip()
     structured_payload["summary"] = final_summary
 
     report.extracted_text = str(ocr_result.get("cleaned_text") or "")
@@ -284,11 +290,7 @@ def create_report_ai_analysis(report: PatientReport) -> MedicalAiAnalysis:
 def department_tiles(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     ensure_medical_departments(db)
     departments = db.query(MedicalDepartment).order_by(MedicalDepartment.id.asc()).all()
-    reports = (
-        report_query(db, current_user)
-        .order_by(PatientReport.upload_date.desc())
-        .all()
-    )
+    reports = report_query(db, current_user).order_by(PatientReport.upload_date.desc()).all()
     reports_by_department: dict[int, list[PatientReport]] = {}
     for report in reports:
         if report.department_id is not None:
@@ -330,7 +332,9 @@ def _like_pattern(text: str) -> str:
 @router.get("", response_model=Page[PatientReportOut])
 def list_reports(
     params: PageParams = Depends(page_params),
-    q: str | None = Query(default=None, max_length=SEARCH_MAX_LENGTH, description="Search title, file name and summary"),
+    q: str | None = Query(
+        default=None, max_length=SEARCH_MAX_LENGTH, description="Search title, file name and summary"
+    ),
     department: str | None = Query(default=None, description="Department slug, e.g. heart"),
     validation_status: str | None = Query(default=None, description="SAFE, CAUTION, HIGH_RISK or NOT_VALIDATED"),
     current_user: User = Depends(require_patient),
@@ -352,12 +356,17 @@ def list_reports(
     if department:
         slug = department.strip().lower()
         if slug not in DEPARTMENT_SLUGS:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unknown department: {department}.")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unknown department: {department}."
+            )
         query = query.filter(PatientReport.department_id == get_department(db, slug).id)
     if validation_status:
         wanted = validation_status.strip().upper()
         if wanted not in VALIDATION_STATUSES:
-            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=f"Unknown validation status: {validation_status}.")
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Unknown validation status: {validation_status}.",
+            )
         query = query.filter(PatientReport.validation_status == wanted)
 
     query = query.order_by(PatientReport.upload_date.desc(), PatientReport.id.desc())
@@ -539,7 +548,9 @@ async def regenerate_report_ocr(
         db.refresh(report)
         return report_to_out(report)
 
-    final_department = str(ocr_result.get("department_name") or (report.department.name if report.department else "General"))
+    final_department = str(
+        ocr_result.get("department_name") or (report.department.name if report.department else "General")
+    )
     report.department = get_department(db, final_department)
     analysis = await analyze_report_result(ocr_result, final_department)
     summary = str(analysis.get("summary_text") or ocr_result.get("summary") or "")

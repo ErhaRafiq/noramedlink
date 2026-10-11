@@ -132,12 +132,7 @@ def today_vitals(current_user: User = Depends(require_patient), db: Session = De
 
     # Fall back to the simple log. Only blood pressure and sugar are known there;
     # the other values stay null rather than being filled with typical numbers.
-    legacy = (
-        db.query(Vitals)
-        .filter(Vitals.user_id == current_user.id)
-        .order_by(Vitals.created_at.desc())
-        .first()
-    )
+    legacy = db.query(Vitals).filter(Vitals.user_id == current_user.id).order_by(Vitals.created_at.desc()).first()
     if not legacy:
         return None
     pressure = _parse_blood_pressure(legacy.blood_pressure)

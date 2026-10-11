@@ -41,9 +41,7 @@ def _fallback_summary_json(
     medicines = [item["text"] for item in entities if item.get("label") == "Medicine"][:8]
     lab_values = [item["text"] for item in entities if item.get("label") == "Lab Value"][:8]
     rule_warnings = [
-        str(item.get("message") or "")
-        for item in validation.get("warnings", [])
-        if item.get("severity") != "SAFE"
+        str(item.get("message") or "") for item in validation.get("warnings", []) if item.get("severity") != "SAFE"
     ][:6]
     preview = " ".join(text.split())[:260]
 
@@ -66,7 +64,9 @@ def _fallback_summary_json(
 
     return {
         "patient_overview": f"Uploaded {department.lower()} report. Use only as a support summary pending doctor review.",
-        "key_findings": lab_values or list(structured_fields.keys())[:6] or ["No structured clinical fields were confidently extracted."],
+        "key_findings": lab_values
+        or list(structured_fields.keys())[:6]
+        or ["No structured clinical fields were confidently extracted."],
         "detected_diseases": disease_terms or ["No disease entity was confidently detected."],
         "medicines": medicines or ["No medicine entity was confidently detected."],
         "risks_alerts": rule_warnings or ["No rule-based alert detected."],
@@ -172,7 +172,9 @@ async def _self_check_summary(
         notes = result.data.get("notes")
         return {
             "passed": bool(result.data.get("passed", False)),
-            "confidence_level": str(result.data.get("confidence_level") or summary_json.get("confidence_level") or "Moderate"),
+            "confidence_level": str(
+                result.data.get("confidence_level") or summary_json.get("confidence_level") or "Moderate"
+            ),
             "notes": _string_list(notes, ["LLM self-check completed."]),
             "source": "openai",
         }

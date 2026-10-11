@@ -1,4 +1,5 @@
 """Troubleshooting script: tests each component of the OCR pipeline."""
+
 import asyncio
 import os
 import sys
@@ -11,6 +12,7 @@ def test_biobert():
     print("=== Testing BioBERT ===")
     try:
         from services.biobert_service import _load_pipeline
+
         ner = _load_pipeline()
         test = ner("Patient has diabetes and takes metformin 500mg")
         print(f"  BioBERT OK: found {len(test)} entities")
@@ -26,6 +28,7 @@ def test_biobert_fallback():
     print("\n=== Testing BioBERT Fallback (rule-based) ===")
     try:
         from services.biobert_service import fallback_entities
+
         entities = fallback_entities(
             "Patient has diabetes, fever, takes metformin and aspirin",
             {"glucose": "350", "hemoglobin": "8.2"},
@@ -41,6 +44,7 @@ def test_rule_validation():
     print("\n=== Testing Rule Validation ===")
     try:
         from services.rule_validation_service import validate_medical_rules
+
         result = validate_medical_rules(
             "Glucose 350 mg/dL. Blood pressure 180/120. Patient takes warfarin and aspirin.",
             {},
@@ -65,6 +69,7 @@ def test_ocr_space_service():
             detect_keywords,
             extract_structured_data,
         )
+
         sample = "Patient Name: John Doe\nAge: 45\nGender: Male\nHemoglobin: 10.2 g/dL\nGlucose: 250 mg/dL\nCreatinine: 2.1 mg/dL"
         cleaned = clean_ocr_text(sample)
         dept = detect_department(cleaned)
@@ -88,6 +93,7 @@ def test_ocr_space_api_key():
         from pathlib import Path
 
         from dotenv import load_dotenv
+
         load_dotenv(Path(__file__).resolve().parent / ".env")
         load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
 
@@ -102,6 +108,7 @@ def test_openai_service():
     print("\n=== Testing OpenAI Service (availability check) ===")
     try:
         from services.openai_service import configured_model, openai_unavailable_message
+
         unavailable = openai_unavailable_message()
         model = configured_model()
         if unavailable:
@@ -116,6 +123,7 @@ def test_nlp_service():
     print("\n=== Testing NLP Service (rule-based only) ===")
     try:
         from services.nlp_service import build_rule_based_summary
+
         summary = build_rule_based_summary(
             "Hemoglobin 10.2 g/dL. Glucose 250 mg/dL. Patient has diabetes.",
             "lab",
@@ -170,6 +178,7 @@ async def test_full_pipeline():
 
     except Exception as ex:
         import traceback
+
         print(f"  Full pipeline FAILED: {ex}")
         traceback.print_exc()
 
@@ -180,6 +189,7 @@ def test_database():
         from sqlalchemy import text
 
         from database import engine
+
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1"))
             print(f"  Database connection OK: {result.fetchone()}")
