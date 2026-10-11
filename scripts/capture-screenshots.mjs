@@ -31,6 +31,8 @@ const PAGES = [
   { name: "patient-dashboard", path: "/dashboard/patient", as: "patient" },
   { name: "doctor-dashboard", path: "/dashboard/doctor", as: "doctor" },
   { name: "admin", path: "/admin", as: "admin" },
+  // Set REPORT_ID to a report owned by the test patient to capture its detail page.
+  ...(process.env.REPORT_ID ? [{ name: "report-detail", path: `/dashboard/patient/reports/${process.env.REPORT_ID}`, as: "patient" }] : []),
 ];
 
 const VIEWPORTS = [
