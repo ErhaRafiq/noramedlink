@@ -1,6 +1,6 @@
-from services.ocr_service import detect_keywords, detect_report_type
+from services.ocr_service import detect_report_type
+from services.ocr_space_service import detect_keywords
 from services.openai_service import fallback_notice, generate_openai_text
-
 
 DISCLAIMER = "This is not a medical diagnosis. Please consult a doctor."
 

@@ -4,7 +4,6 @@ from services.biobert_service import extract_medical_entities
 from services.openai_service import fallback_notice, generate_openai_json, generate_openai_text
 from services.rule_validation_service import validate_medical_rules
 
-
 SUMMARY_SCHEMA_KEYS = [
     "patient_overview",
     "key_findings",

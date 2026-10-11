@@ -1,12 +1,12 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from database import get_db
-from pagination import Page, PageParams, page_params, paginate
 from dependencies import get_current_user
 from models import Notification, NotificationToken, Reminder, User
+from pagination import Page, PageParams, page_params, paginate
 from schemas import (
     NotificationTokenOut,
     NotificationTokenUpsert,
@@ -14,7 +14,6 @@ from schemas import (
     ReminderOut,
     ReminderUpdate,
 )
-
 
 router = APIRouter(prefix="/reminders", tags=["reminders"])
 
@@ -122,7 +121,7 @@ def upsert_fcm_token(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     token = db.query(NotificationToken).filter(NotificationToken.token == payload.token.strip()).first()
     if token:
         token.user_id = current_user.id

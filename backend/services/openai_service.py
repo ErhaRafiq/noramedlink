@@ -190,7 +190,8 @@ async def generate_openai_text(instructions: str, prompt: str) -> OpenAIResult:
     for provider, model, base_url in attempts:
         api_key = os.getenv("OPENAI_API_KEY") if provider == "openai" else os.getenv("GROQ_API_KEY")
 
-        def create_response():
+        # Bind this attempt's values now, so the closure never sees a later iteration's.
+        def create_response(api_key=api_key, base_url=base_url, model=model):
             client = OpenAI(api_key=api_key, base_url=base_url)  # type: ignore[misc]
             return client.chat.completions.create(
                 model=model,

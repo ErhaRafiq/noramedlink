@@ -4,10 +4,9 @@ from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import get_current_user, require_patient
 from models import PatientReport, User
+from rate_limit import AI_LIMIT, limiter
 from schemas import SummarizeRequest, SummaryResponse
 from services.nlp_service import summarize_with_optional_llm
-from rate_limit import AI_LIMIT, limiter
-
 
 router = APIRouter(prefix="/nlp", tags=["nlp"])
 

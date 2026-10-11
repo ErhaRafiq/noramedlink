@@ -1,0 +1,37 @@
+# Tooling for the FastAPI backend. Run from backend/:
+#   venv\Scripts\python.exe -m ruff check .     (lint)
+#   venv\Scripts\python.exe -m ruff format .    (format)
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+extend-exclude = ["venv", "uploads", "migrations/versions"]
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I import order, B bugbear, UP pyupgrade, SIM simplify,
+# C4 comprehensions, RUF ruff-specific.
+select = ["E", "W", "F", "I", "B", "UP", "SIM", "C4", "RUF"]
+ignore = [
+  "B008",   # Depends()/Query() in argument defaults is the FastAPI idiom
+  "E501",   # long lines: the formatter handles what it can; strings stay readable
+  "RUF001", # ambiguous unicode in strings (medical text uses en dashes, micro signs)
+  "RUF002",
+  "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# .env must be loaded before the app modules that read settings at import time.
+"main.py" = ["E402"]
+# Standalone scripts that extend sys.path before importing app modules.
+"test_quick.py" = ["E402"]
+# Migration helpers favour explicit, step-by-step code over shorter idioms.
+"migrations/*" = ["SIM103", "C408"]
+
+[tool.ruff.lint.isort]
+known-first-party = [
+  "auth", "config", "database", "dependencies", "logging_config", "main", "models", "pagination",
+  "rate_limit", "routers", "schemas", "services",
+]
+
+[tool.ruff.format]
+quote-style = "double"

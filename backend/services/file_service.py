@@ -7,7 +7,6 @@ from PIL import Image, UnidentifiedImageError
 
 from database import get_upload_root_path
 
-
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".pdf"}
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"}
 DEFAULT_MAX_UPLOAD_MB = 10
@@ -49,7 +48,7 @@ def validate_stored_file(path: Path, suffix: str) -> None:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="The uploaded report appears corrupted or is not a readable file.",
-        )
+        ) from None
 
 
 async def save_upload_file(file: UploadFile, category: str, patient_id: int | str | None = None) -> tuple[str, str]:

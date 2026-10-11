@@ -3,7 +3,6 @@ from fastapi import APIRouter, Depends
 from dependencies import require_doctor
 from models import User
 
-
 router = APIRouter(prefix="/doctor", tags=["doctor"])
 
 

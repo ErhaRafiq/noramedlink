@@ -1,7 +1,6 @@
 import re
 from typing import Any
 
-
 STATUS_ORDER = {"SAFE": 0, "CAUTION": 1, "HIGH_RISK": 2}
 
 HIGH_RISK_PAIRS = [

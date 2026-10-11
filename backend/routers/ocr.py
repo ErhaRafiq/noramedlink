@@ -2,11 +2,10 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 
 from dependencies import require_patient
 from models import User
+from rate_limit import AI_LIMIT, limiter
 from schemas import OcrOutput
 from services.file_service import save_upload_file, stored_path_to_disk_path
 from services.ocr_space_service import OcrSpaceError, extract_report_with_ocr_space
-from rate_limit import AI_LIMIT, limiter
-
 
 router = APIRouter(prefix="/ocr", tags=["ocr"])
 

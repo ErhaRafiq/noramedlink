@@ -4,7 +4,6 @@ from services.ocr_space_service import (
     build_ocr_result,
     clean_ocr_text,
     detect_department,
-    detect_keywords,
 )
 
 

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
@@ -9,6 +9,7 @@ from database import get_db
 from dependencies import require_patient
 from models import MedicalAiAnalysis, MedicalDepartment, PatientReport, User
 from pagination import Page, PageParams, page_params, paginate
+from rate_limit import AI_LIMIT, UPLOAD_LIMIT, limiter
 from schemas import DepartmentTileOut, PatientReportOut, PatientReportUpdateRequest
 from services.file_access import file_access_url
 from services.file_service import save_upload_file, stored_path_to_disk_path
@@ -21,8 +22,6 @@ from services.ocr_space_service import (
     normalize_department_name,
 )
 from services.report_ai_pipeline import run_report_ai_pipeline
-from rate_limit import AI_LIMIT, UPLOAD_LIMIT, limiter
-
 
 router = APIRouter(prefix="/patient/reports", tags=["patient reports"])
 
@@ -261,7 +260,7 @@ def apply_ocr_result(
     report.summary_source = str(analysis.get("summary_source") or "rule_based")
     report.ocr_confidence = ocr_result.get("confidence")
     report.ocr_status = "COMPLETED" if report.extracted_text.strip() else "NEEDS_REVIEW"
-    report.updated_at = datetime.now(timezone.utc)
+    report.updated_at = datetime.now(UTC)
 
 
 def create_report_ai_analysis(report: PatientReport) -> MedicalAiAnalysis:
@@ -417,7 +416,7 @@ async def upload_report(
         file_url=stored_path,
         file_type=file_type,
         ocr_status="PENDING",
-        upload_date=datetime.now(timezone.utc),
+        upload_date=datetime.now(UTC),
     )
 
     try:
@@ -506,7 +505,7 @@ async def update_report(
     if payload.structured_data_json is not None:
         report.structured_data_json = payload.structured_data_json
 
-    report.updated_at = datetime.now(timezone.utc)
+    report.updated_at = datetime.now(UTC)
     if payload.extracted_text is not None:
         db.add(create_report_ai_analysis(report))
     db.commit()
@@ -535,7 +534,7 @@ async def regenerate_report_ocr(
     except OcrSpaceError as exc:
         report.ocr_status = "FAILED"
         report.summary = str(exc)
-        report.updated_at = datetime.now(timezone.utc)
+        report.updated_at = datetime.now(UTC)
         db.commit()
         db.refresh(report)
         return report_to_out(report)

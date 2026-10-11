@@ -7,7 +7,7 @@ gets a 2-hour grant; the doctor can end it early. Ported from lib/patient-access
 import logging
 import secrets
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import func, or_
@@ -42,7 +42,7 @@ def ensure_otp_attempts_allowed(db: Session, actor_id: int) -> None:
     if len(failures) >= MAX_FAILED_ATTEMPTS:
         oldest = failures[0].created_at
         if oldest.tzinfo is None:  # SQLite returns naive datetimes (stored as UTC)
-            oldest = oldest.replace(tzinfo=timezone.utc)
+            oldest = oldest.replace(tzinfo=UTC)
         retry_after = max(60, int((oldest + ATTEMPT_WINDOW - _now()).total_seconds()))
         logger.warning("Dashboard OTP attempts blocked for user %s (%s failures in 15 minutes)", actor_id, len(failures))
         raise HTTPException(
@@ -71,7 +71,7 @@ class Grant:
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def create_dashboard_otp(db: Session, patient: User) -> PatientDashboardOtp:

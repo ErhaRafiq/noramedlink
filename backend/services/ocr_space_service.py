@@ -8,7 +8,6 @@ from typing import Any
 import httpx
 from dotenv import load_dotenv
 
-
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
 
@@ -163,7 +162,7 @@ def detect_keywords(text: str) -> list[str]:
 
 def detect_department(text: str, fallback: str | None = None) -> str:
     normalized = normalize_for_matching(text)
-    scores: dict[str, int] = {department: 0 for department in DEPARTMENT_KEYWORDS}
+    scores: dict[str, int] = dict.fromkeys(DEPARTMENT_KEYWORDS, 0)
 
     for department, keywords in DEPARTMENT_KEYWORDS.items():
         for keyword in keywords:

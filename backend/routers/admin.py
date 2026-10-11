@@ -1,4 +1,4 @@
-from datetime import datetime, time, timedelta, timezone
+from datetime import UTC, datetime, time, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -10,17 +10,16 @@ from dependencies import require_admin
 from models import Appointment, DoctorProfile, PatientReport, User
 from pagination import Page, PageParams, page_params, paginate
 
-
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def today_bounds() -> tuple[datetime, datetime]:
     now = utc_now()
-    start = datetime.combine(now.date(), time.min, tzinfo=timezone.utc)
+    start = datetime.combine(now.date(), time.min, tzinfo=UTC)
     return start, start + timedelta(days=1)
 
 

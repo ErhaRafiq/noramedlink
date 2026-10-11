@@ -2,11 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from database import get_db
-from pagination import Page, PageParams, page_params, paginate
 from dependencies import get_current_user
 from models import MedicalAiAnalysis, User
+from pagination import Page, PageParams, page_params, paginate
 from schemas import MedicalAiAnalysisOut
-
 
 router = APIRouter(prefix="/medical-ai-analyses", tags=["medical-ai-analyses"])
 

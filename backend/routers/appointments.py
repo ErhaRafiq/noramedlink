@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import func
@@ -16,7 +16,6 @@ from schemas import (
     AppointmentUpdate,
 )
 from services.dashboard_access import ensure_otp_attempts_allowed, grant_access_by_otp, record_otp_attempt
-
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
@@ -145,10 +144,10 @@ def create_appointment(
     current_user: User = Depends(require_patient),
     db: Session = Depends(get_db),
 ):
-    appointment_date = payload.date or datetime.now(timezone.utc)
+    appointment_date = payload.date or datetime.now(UTC)
     if appointment_date.tzinfo is None:
         appointment_date = appointment_date.astimezone()  # naive input = server local time
-    if appointment_date < datetime.now(timezone.utc) - timedelta(minutes=5):
+    if appointment_date < datetime.now(UTC) - timedelta(minutes=5):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Appointment date must be current or future.",
@@ -217,7 +216,7 @@ def update_appointment(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Patients can only cancel an appointment.")
 
     if payload.date is not None:
-        if payload.date < datetime.now(timezone.utc) - timedelta(minutes=5):
+        if payload.date < datetime.now(UTC) - timedelta(minutes=5):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Appointment date must be current or future.",

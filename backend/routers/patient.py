@@ -5,20 +5,21 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
-from pagination import Page, PageParams, page_params, paginate
 from dependencies import get_patient_profile, require_patient
 from models import (
     DoctorSummary,
     HealthRiskPrediction,
     HealthTip,
     MedicineHistory,
-    PatientReport,
     PatientProfile,
+    PatientReport,
     User,
     Vitals,
 )
-from routers.reports import report_to_out
+from pagination import Page, PageParams, page_params, paginate
+from rate_limit import AI_LIMIT, limiter
 from routers.auth import user_to_out
+from routers.reports import report_to_out
 from schemas import (
     DashboardCategory,
     DoctorSummaryOut,
@@ -34,8 +35,6 @@ from schemas import (
 )
 from services.nlp_service import DISCLAIMER
 from services.openai_service import fallback_notice, generate_openai_json, generate_openai_text
-from rate_limit import AI_LIMIT, limiter
-
 
 router = APIRouter(prefix="/patient", tags=["patient"])
 

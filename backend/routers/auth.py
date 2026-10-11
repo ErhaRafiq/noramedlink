@@ -1,7 +1,7 @@
 import os
 import re
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy import or_
@@ -12,6 +12,7 @@ from auth import create_access_token, hash_password, verify_password
 from database import get_db
 from dependencies import get_current_user
 from models import DoctorProfile, PatientProfile, SignupOtp, User
+from rate_limit import LOGIN_LIMIT, SIGNUP_LIMIT, enforce_account_limit, ip_key, limiter
 from schemas import (
     DoctorSignupRequest,
     LoginRequest,
@@ -22,8 +23,6 @@ from schemas import (
     VerifySignupOtpRequest,
 )
 from services.otp_delivery_service import OtpDeliveryError, send_email_otp, send_sms_otp
-from rate_limit import LOGIN_LIMIT, SIGNUP_LIMIT, enforce_account_limit, ip_key, limiter
-
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -43,13 +42,13 @@ def normalize_phone(phone: str) -> str:
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def as_utc(value: datetime) -> datetime:
     if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
 
 
 def admin_invite_code() -> str:

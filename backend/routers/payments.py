@@ -9,7 +9,6 @@ from models import Appointment, Payment, User
 from pagination import Page, PageParams, page_params, paginate
 from schemas import PaymentCreate, PaymentOut, PaymentUpdate
 
-
 router = APIRouter(prefix="/payments", tags=["payments"])
 
 WALLET_METHODS = {"JAZZCASH", "EASYPAISA", "NAYAPAY"}

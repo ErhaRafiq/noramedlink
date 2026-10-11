@@ -2,7 +2,6 @@ import os
 import sys
 from pathlib import Path
 
-
 BACKEND_DIR = Path(__file__).resolve().parent
 LOCAL_DEPS_DIR = BACKEND_DIR / ".testdeps"
 DEV_DATABASE_PATH = BACKEND_DIR / "runtime-dev.db"

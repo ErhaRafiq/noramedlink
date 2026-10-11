@@ -11,7 +11,7 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 BACKEND = Path(__file__).resolve().parents[1]
@@ -77,7 +77,7 @@ EXPECTED_OCR = {"SCANNED_OCR_SPACE": "COMPLETED", "SCANNED_LOCAL": "COMPLETED", 
                 "NEEDS_REVIEW": "PENDING"}
 # A real-length embedded image on Prisma databases (TEXT column); a short one fits FastAPI's VARCHAR(500).
 DATA_IMAGE = "data:image/png;base64," + ("iVBORw0KGgo" * (300 if mode == "prisma" else 30))
-t0 = datetime(2026, 5, 1, 10, 0, tzinfo=timezone.utc)
+t0 = datetime(2026, 5, 1, 10, 0, tzinfo=UTC)
 
 with engine.begin() as conn:
     def user(label):

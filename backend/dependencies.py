@@ -21,10 +21,11 @@ def get_current_user(
         payload = decode_access_token(token)
         user_id = int(payload["sub"])
     except (KeyError, TypeError, ValueError):
+        # Do not chain the decode error: its details are not for the client.
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token.",
-        )
+        ) from None
 
     user = db.get(User, user_id)
     if not user:

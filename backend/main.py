@@ -16,7 +16,25 @@ from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
 from database import check_database_connection, ensure_runtime_dirs, run_migrations
 from rate_limit import limiter, rate_limit_exceeded_handler
-from routers import admin, appointments, auth, doctor, medical_ai, nlp, ocr, patient, payments, reminders, reports, vitals, medications, medicine_reminders, dashboard_access, emergency, files
+from routers import (
+    admin,
+    appointments,
+    auth,
+    dashboard_access,
+    doctor,
+    emergency,
+    files,
+    medical_ai,
+    medications,
+    medicine_reminders,
+    nlp,
+    ocr,
+    patient,
+    payments,
+    reminders,
+    reports,
+    vitals,
+)
 
 
 @asynccontextmanager

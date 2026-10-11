@@ -8,7 +8,7 @@ A doctor sees a patient's medical data (vitals, records, medications) only while
 active grant exists; appointments assigned to the doctor show the patient's name.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from dependencies import require_doctor, require_patient
 from models import Appointment, EmergencyBooking, Medication, PatientReport, Reminder, User, Vitals
-from services.file_access import file_access_url
+from rate_limit import ACCESS_CODE_LIMIT, limiter
 from services.dashboard_access import (
     active_grants,
     create_dashboard_otp,
@@ -26,7 +26,7 @@ from services.dashboard_access import (
     grant_access_by_otp,
     record_otp_attempt,
 )
-from rate_limit import ACCESS_CODE_LIMIT, limiter
+from services.file_access import file_access_url
 
 router = APIRouter(tags=["dashboard-access"])
 
@@ -47,7 +47,7 @@ def _vitals(v: Vitals) -> dict:
 def patient_overview(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     """Data for the /dashboard page (former /api/dashboard)."""
     user_id = current_user.id
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     vitals = db.query(Vitals).filter(Vitals.user_id == user_id).order_by(Vitals.created_at.desc()).limit(5).all()
     upcoming = (
         db.query(Appointment)

@@ -5,7 +5,7 @@ reminders/[id]/mark-taken and reminders/[id]/skip. Separate from /reminders, the
 free-text reminders used by /dashboard.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -29,7 +29,7 @@ def display_status(reminder_time: datetime, taken_at: datetime | None, skipped_a
     if skipped_at:
         return "SKIPPED"
     if reminder_time.tzinfo is None:  # SQLite returns naive datetimes (stored as UTC)
-        reminder_time = reminder_time.replace(tzinfo=timezone.utc)
+        reminder_time = reminder_time.replace(tzinfo=UTC)
     elapsed = now - reminder_time
     if elapsed >= DUE_WINDOW:
         return "MISSED"
@@ -82,7 +82,7 @@ def create_medicine_reminder(
     reminder_time = payload.reminder_time
     if reminder_time.tzinfo is None:
         reminder_time = reminder_time.astimezone()  # naive input = server local time, as before
-    initial_status = display_status(reminder_time, None, None, datetime.now(timezone.utc))
+    initial_status = display_status(reminder_time, None, None, datetime.now(UTC))
 
     reminder = MedicineReminder(
         medication_id=medication.id,
@@ -112,7 +112,7 @@ def create_medicine_reminder(
 
 @router.get("/today", response_model=list[MedicineReminderOut])
 def todays_medicine_reminders(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     local_now = now.astimezone()  # "today" is the server's local day, as before
     start_of_day = local_now.replace(hour=0, minute=0, second=0, microsecond=0)
     end_of_day = start_of_day + timedelta(days=1)
@@ -141,7 +141,7 @@ def todays_medicine_reminders(current_user: User = Depends(require_patient), db:
 
 
 def _record(db: Session, reminder: MedicineReminder, user: User, new_status: str) -> MedicineReminderOut:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     reminder.status = new_status
     if new_status == "TAKEN":
         reminder.taken_at = now

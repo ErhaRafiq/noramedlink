@@ -1,7 +1,7 @@
 """Troubleshooting script: tests each component of the OCR pipeline."""
+import asyncio
 import os
 import sys
-import asyncio
 
 sys.path.insert(0, os.path.dirname(__file__))
 os.chdir(os.path.dirname(__file__))
@@ -59,11 +59,11 @@ def test_ocr_space_service():
     print("\n=== Testing OCR Space Service (text processing only) ===")
     try:
         from services.ocr_space_service import (
+            build_ocr_result,
             clean_ocr_text,
             detect_department,
             detect_keywords,
             extract_structured_data,
-            build_ocr_result,
         )
         sample = "Patient Name: John Doe\nAge: 45\nGender: Male\nHemoglobin: 10.2 g/dL\nGlucose: 250 mg/dL\nCreatinine: 2.1 mg/dL"
         cleaned = clean_ocr_text(sample)
@@ -85,8 +85,9 @@ def test_ocr_space_service():
 def test_ocr_space_api_key():
     print("\n=== Testing OCR Space API Key ===")
     try:
-        from dotenv import load_dotenv
         from pathlib import Path
+
+        from dotenv import load_dotenv
         load_dotenv(Path(__file__).resolve().parent / ".env")
         load_dotenv(Path(__file__).resolve().parents[1] / ".env", override=False)
 
@@ -100,7 +101,7 @@ def test_ocr_space_api_key():
 def test_openai_service():
     print("\n=== Testing OpenAI Service (availability check) ===")
     try:
-        from services.openai_service import openai_unavailable_message, configured_model
+        from services.openai_service import configured_model, openai_unavailable_message
         unavailable = openai_unavailable_message()
         model = configured_model()
         if unavailable:
@@ -147,7 +148,7 @@ async def test_full_pipeline():
             department_name=department_name,
         )
 
-        print(f"  Pipeline OK!")
+        print("  Pipeline OK!")
         print(f"    Entities: {len(analysis.get('entities', []))}")
         print(f"    Validation status: {analysis.get('validation_status', 'UNKNOWN')}")
         print(f"    Summary source: {analysis.get('summary_source', 'UNKNOWN')}")
@@ -176,8 +177,9 @@ async def test_full_pipeline():
 def test_database():
     print("\n=== Testing Database Connection ===")
     try:
-        from database import engine, Base
         from sqlalchemy import text
+
+        from database import engine
         with engine.connect() as conn:
             result = conn.execute(text("SELECT 1"))
             print(f"  Database connection OK: {result.fetchone()}")

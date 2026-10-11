@@ -1,11 +1,10 @@
 import os
 import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -16,8 +15,8 @@ def get_jwt_secret() -> str:
         return configured_secret
 
     if not hasattr(get_jwt_secret, "_runtime_secret"):
-        setattr(get_jwt_secret, "_runtime_secret", secrets.token_urlsafe(48))
-    return getattr(get_jwt_secret, "_runtime_secret")
+        get_jwt_secret._runtime_secret = secrets.token_urlsafe(48)
+    return get_jwt_secret._runtime_secret
 
 
 def get_jwt_algorithm() -> str:
@@ -34,7 +33,7 @@ def hash_password(password: str) -> str:
 
 def create_access_token(subject: str, extra_claims: dict[str, Any] | None = None) -> str:
     expire_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     payload: dict[str, Any] = {
         "sub": subject,
         "iat": now,

@@ -3,7 +3,6 @@ import os
 import smtplib
 from email.message import EmailMessage
 
-
 logger = logging.getLogger("nora.otp")
 
 

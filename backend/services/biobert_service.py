@@ -4,7 +4,6 @@ import re
 from functools import lru_cache
 from typing import Any
 
-
 BIOBERT_MODEL = os.getenv("BIOBERT_MODEL", "d4data/biomedical-ner-all")
 
 LABEL_MAP = {
