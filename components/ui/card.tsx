@@ -5,7 +5,7 @@ import { cn } from "@/lib/cn";
 export function Card({ className, interactive = false, ...props }: ComponentProps<"section"> & { interactive?: boolean }) {
   return (
     <section
-      className={cn("rounded-card border border-line bg-white p-5 shadow-card sm:p-6", interactive && "floating-card", className)}
+      className={cn("min-w-0 scroll-mt-24 rounded-card border border-line bg-white p-5 shadow-card sm:p-6", interactive && "floating-card", className)}
       {...props}
     />
   );
