@@ -7,30 +7,24 @@ import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/cn";
 import type { ToastState } from "@/hooks/use-toast";
 
+/** The dashboard card: same look as the shared Card component. */
 export function DashCard({ children, className, id }: { children: ReactNode; className?: string; id?: string }) {
   return (
-    <div
-      id={id}
-      className={cn(
-        "rounded-3xl bg-white/80 backdrop-blur-xl border border-blue-100/70 shadow-[0_12px_40px_rgba(30,64,175,0.08)] p-5",
-        className,
-      )}
-    >
+    <div id={id} className={cn("min-w-0 scroll-mt-24 rounded-card border border-line bg-white p-5 shadow-card sm:p-6", className)}>
       {children}
     </div>
   );
 }
 
 export function MiniVital({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+  const missing = value === "Not recorded";
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2">
-        <div className="h-6 w-6 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-          <Icon className="h-3 w-3 text-blue-500" />
-        </div>
-        <span className="text-xs font-semibold text-slate-500">{label}</span>
-      </div>
-      <span className="text-xs font-black text-slate-900">{value}</span>
+    <div className="flex items-center justify-between gap-3">
+      <span className="flex items-center gap-2 text-xs text-ink-muted">
+        <Icon className="h-3.5 w-3.5 text-slate-400" aria-hidden />
+        {label}
+      </span>
+      <span className={cn("text-xs font-semibold", missing ? "text-slate-400" : "text-ink")}>{value}</span>
     </div>
   );
 }
@@ -43,18 +37,18 @@ export function ToastBar({ toast }: { toast: ToastState }) {
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
-          className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50"
+          className="fixed bottom-5 left-1/2 z-50 -translate-x-1/2 px-4"
           role="status"
           aria-live="polite"
         >
           <div
             className={cn(
-              "rounded-full px-5 py-3 text-sm font-semibold shadow-xl backdrop-blur-xl border",
+              "rounded-control border px-4 py-3 text-sm font-medium shadow-card-hover",
               toast.type === "success"
-                ? "bg-emerald-50 text-emerald-800 border-emerald-100"
+                ? "border-emerald-100 bg-emerald-50 text-emerald-900"
                 : toast.type === "error"
-                  ? "bg-rose-50 text-rose-800 border-rose-100"
-                  : "bg-blue-50 text-blue-800 border-blue-100",
+                  ? "border-rose-100 bg-rose-50 text-rose-900"
+                  : "border-blue-100 bg-blue-50 text-blue-900",
             )}
           >
             {toast.message}

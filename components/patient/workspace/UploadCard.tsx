@@ -32,8 +32,8 @@ export function UploadCard({ upload, onAllUploaded }: { upload: UploadQueue; onA
   return (
     <DashCard>
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-black text-slate-900">Upload &amp; Understand with AI</h2>
-        <span className="text-[11px] bg-blue-50 text-blue-600 font-bold px-2.5 py-1 rounded-full border border-blue-100">Max 10 MB each</span>
+        <h2 className="text-base font-semibold text-ink">Upload &amp; Understand with AI</h2>
+        <span className="text-[11px] bg-blue-50 text-blue-600 font-semibold px-2.5 py-1 rounded-full border border-blue-100">Max 10 MB each</span>
       </div>
 
       <div
@@ -48,10 +48,10 @@ export function UploadCard({ upload, onAllUploaded }: { upload: UploadQueue; onA
           upload.add(Array.from(e.dataTransfer.files));
         }}
         className={cn(
-          "rounded-2xl border-2 border-dashed p-6 text-center transition-all",
+          "rounded-card border-2 border-dashed p-6 text-center transition-colors",
           dragActive
             ? "border-blue-400 bg-blue-50"
-            : "border-blue-100 bg-gradient-to-br from-blue-50/60 to-violet-50/40 hover:border-blue-300 hover:bg-blue-50/80",
+            : "border-line bg-surface-soft hover:border-blue-300 hover:bg-blue-50/50",
         )}
       >
         <input type="file" multiple accept={UPLOAD_ACCEPT} onChange={addFromInput} className="hidden" id="report-upload" />
@@ -61,10 +61,10 @@ export function UploadCard({ upload, onAllUploaded }: { upload: UploadQueue; onA
             <Upload className="h-6 w-6 text-blue-500" />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-700">Drag &amp; drop files here</p>
+            <p className="text-sm font-semibold text-slate-700">Drag &amp; drop files here</p>
             <p className="text-[11px] text-slate-400 mt-0.5">PDF, JPG, PNG, WEBP — multiple files supported; large photos are shrunk</p>
           </div>
-          <span className="px-4 py-2 rounded-xl bg-white border border-blue-200 text-sm font-bold text-blue-600 hover:bg-blue-50 transition shadow-sm">
+          <span className="px-4 py-2 rounded-xl bg-white border border-blue-200 text-sm font-semibold text-blue-600 hover:bg-blue-50 transition shadow-sm">
             Choose Files
           </span>
         </label>
@@ -177,12 +177,12 @@ function UploadQueueRow({ item, onRemove }: { item: FileQueueItem; onRemove: () 
         ) : item.step === "error" ? (
           <AlertCircle className="h-4 w-4" />
         ) : (
-          <span className="text-[9px] font-black">{ext}</span>
+          <span className="text-[9px] font-semibold">{ext}</span>
         )}
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-bold text-slate-900 truncate">{item.file.name}</p>
+        <p className="text-sm font-semibold text-ink truncate">{item.file.name}</p>
         <div className="flex items-center gap-2 mt-0.5">
           <span className="text-xs text-slate-400">{sizeStr}</span>
           {isActive && (
@@ -199,7 +199,7 @@ function UploadQueueRow({ item, onRemove }: { item: FileQueueItem; onRemove: () 
         {isActive && (
           <div className="mt-1.5 h-1 rounded-full bg-blue-100 overflow-hidden">
             <div
-              className="h-full rounded-full bg-gradient-to-r from-blue-500 to-violet-500 transition-all duration-700"
+              className="h-full rounded-full bg-gradient-to-r from-brand-blue to-brand-teal transition-all duration-700"
               style={{ width: STEP_PROGRESS[item.step] }}
             />
           </div>
@@ -213,7 +213,7 @@ function UploadQueueRow({ item, onRemove }: { item: FileQueueItem; onRemove: () 
           <div className="mt-3 p-3 rounded-xl bg-white border border-emerald-100 shadow-sm relative">
             <div className="flex items-center gap-1.5 mb-1.5">
               <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
-              <p className="text-xs font-bold text-slate-800">AI Summary Generated</p>
+              <p className="text-xs font-semibold text-slate-800">AI Summary Generated</p>
             </div>
             <p className="text-xs text-slate-600 leading-relaxed">{item.report.patient_summary}</p>
           </div>

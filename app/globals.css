@@ -53,6 +53,11 @@
     border-radius: 8px;
   }
 
+  /* Jumping to a section keeps its heading clear of the sticky headers. */
+  section[id] {
+    scroll-margin-top: 6rem;
+  }
+
   ::selection {
     background: rgba(37, 99, 235, 0.16);
     color: #0f172a;
@@ -94,7 +99,7 @@
 
   .primary-button {
     @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-control px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-200 ease-out hover:shadow-md hover:brightness-105 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60;
-    background: linear-gradient(135deg, #2563eb 0%, #8b5cf6 100%);
+    background: linear-gradient(135deg, var(--primary-start) 0%, var(--primary-end) 100%);
   }
 
   .secondary-button {

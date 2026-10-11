@@ -65,7 +65,7 @@ export function AppointmentsSection({
     <section id="appointments">
       <DashCard>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-black text-slate-900">Book an Appointment</h2>
+          <h2 className="text-base font-semibold text-ink">Book an Appointment</h2>
           <CalendarDays className="h-5 w-5 text-violet-500" />
         </div>
         <form className="space-y-3" onSubmit={handleSubmit}>
@@ -112,9 +112,9 @@ export function AppointmentsSection({
           <div className="mt-4 space-y-2.5">
             {appointments.slice(0, APPOINTMENTS_PREVIEW).map((a) => (
               <div key={a.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <p className="text-sm font-bold text-slate-900">{a.doctor_name}</p>
+                <p className="text-sm font-semibold text-ink">{a.doctor_name}</p>
                 <p className="text-xs text-slate-500 mt-0.5">{formatDateTime(a.date)}</p>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{a.status}</span>
+                <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">{a.status}</span>
               </div>
             ))}
           </div>

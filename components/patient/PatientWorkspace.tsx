@@ -143,10 +143,11 @@ export function PatientWorkspace({
   if (isLoading) return <WorkspaceSkeleton />;
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-violet-50">
+    <div className="flex min-h-screen bg-surface-page">
       <WorkspaceSidebar activeNav={activeNav} onNavigate={navigate} userName={user?.full_name ?? null} />
 
-      <div className="flex-1 xl:ml-[280px] min-h-screen flex flex-col">
+      {/* min-w-0: lets the column shrink to the screen instead of growing to fit the scrolling section pills. */}
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col xl:ml-[264px]">
         <WorkspaceHeader
           firstName={user?.full_name?.split(" ")[0] ?? ""}
           searchQuery={searchQuery}
@@ -154,11 +155,11 @@ export function PatientWorkspace({
             setSearchQuery(value);
             if (value.trim()) scrollToSection("recent-reports");
           }}
-          unreadCount={pendingReminderCount + criticalFlagCount}
+          attentionCount={pendingReminderCount + criticalFlagCount}
           onNavigate={navigate}
         />
 
-        <main className="flex-1 p-4 xl:p-6 space-y-5">
+        <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 p-4 sm:p-6 xl:p-8">
           <QuickLinks />
 
           <KpiRow

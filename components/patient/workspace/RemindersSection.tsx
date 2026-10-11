@@ -92,7 +92,7 @@ export function RemindersSection({
     <section id="reminders">
       <DashCard>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-black text-slate-900">Create Reminder</h2>
+          <h2 className="text-base font-semibold text-ink">Create Reminder</h2>
           <Bell className="h-5 w-5 text-rose-500" />
         </div>
         <form className="space-y-3" onSubmit={handleReminderSubmit}>
@@ -132,7 +132,7 @@ export function RemindersSection({
         </form>
 
         <div className="mt-5 pt-5 border-t border-slate-100">
-          <h3 className="text-sm font-black text-slate-900 mb-3">Add Medication</h3>
+          <h3 className="text-sm font-semibold text-ink mb-3">Add Medication</h3>
           <form className="space-y-3" onSubmit={handleMedicationSubmit}>
             <div className="grid gap-3 sm:grid-cols-2">
               <input

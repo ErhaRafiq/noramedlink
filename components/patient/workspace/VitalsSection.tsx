@@ -55,12 +55,12 @@ export function VitalsSection({
     <section id="vitals" className="grid gap-5 xl:grid-cols-[0.8fr_1.2fr]">
       <DashCard>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-black text-slate-900">Add Vitals</h2>
+          <h2 className="text-base font-semibold text-ink">Add Vitals</h2>
           <Activity className="h-5 w-5 text-blue-500" />
         </div>
         <form className="space-y-3" onSubmit={handleSubmit}>
           <div>
-            <label htmlFor="vitals-bp" className="text-xs font-bold text-slate-600">Blood pressure</label>
+            <label htmlFor="vitals-bp" className="text-xs font-semibold text-slate-600">Blood pressure</label>
             <input
               id="vitals-bp"
               value={form.bloodPressure}
@@ -70,7 +70,7 @@ export function VitalsSection({
             />
           </div>
           <div>
-            <label htmlFor="vitals-sugar" className="text-xs font-bold text-slate-600">Sugar level</label>
+            <label htmlFor="vitals-sugar" className="text-xs font-semibold text-slate-600">Sugar level</label>
             <input
               id="vitals-sugar"
               value={form.sugarLevel}
@@ -86,14 +86,14 @@ export function VitalsSection({
         </form>
       </DashCard>
       <DashCard>
-        <h2 className="text-sm font-black text-slate-900">Vitals History</h2>
+        <h2 className="text-base font-semibold text-ink">Vitals History</h2>
         <p className="text-[11px] text-slate-400 mt-0.5 mb-3">
           Your latest readings. Your doctor sees them during an unlocked consultation.
         </p>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
-              <tr className="border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <tr className="border-b border-slate-100 text-[11px] font-semibold uppercase tracking-wider text-slate-400">
                 <th className="py-2 pr-4">Date</th>
                 <th className="py-2 pr-4">Blood pressure</th>
                 <th className="py-2">Sugar level</th>
@@ -108,8 +108,8 @@ export function VitalsSection({
                 history.map((v) => (
                   <tr key={v.id} className="border-b border-slate-50 last:border-0">
                     <td className="py-2 pr-4 text-slate-500">{formatDateTime(v.created_at)}</td>
-                    <td className="py-2 pr-4 font-bold text-slate-900">{v.blood_pressure}</td>
-                    <td className="py-2 font-bold text-slate-900">{v.sugar_level}</td>
+                    <td className="py-2 pr-4 font-semibold text-ink">{v.blood_pressure}</td>
+                    <td className="py-2 font-semibold text-ink">{v.sugar_level}</td>
                   </tr>
                 ))
               )}

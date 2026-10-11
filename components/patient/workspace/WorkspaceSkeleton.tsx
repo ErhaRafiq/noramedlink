@@ -3,8 +3,8 @@ import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
 /** Placeholder with the dashboard's shape while its data loads. */
 export function WorkspaceSkeleton() {
   return (
-    <div role="status" aria-label="Loading your health dashboard" className="flex min-h-screen bg-gradient-to-br from-blue-50 via-white to-violet-50">
-      <div className="hidden xl:block fixed inset-y-0 left-0 w-[280px] border-r border-blue-100/70 bg-white/95 p-5">
+    <div role="status" aria-label="Loading your health dashboard" className="flex min-h-screen bg-surface-page">
+      <div className="hidden xl:block fixed inset-y-0 left-0 w-[264px] border-r border-line bg-white p-5">
         <Skeleton className="h-10 w-40" />
         <div className="mt-8 space-y-3">
           {Array.from({ length: 8 }, (_, i) => (
@@ -12,7 +12,7 @@ export function WorkspaceSkeleton() {
           ))}
         </div>
       </div>
-      <div className="flex-1 xl:ml-[280px] p-4 xl:p-6 space-y-5">
+      <div className="min-w-0 flex-1 xl:ml-[264px] p-4 sm:p-6 xl:p-8 space-y-5">
         <div className="flex items-center justify-between rounded-2xl bg-white/80 p-4">
           <div className="space-y-2">
             <Skeleton className="h-5 w-48" />

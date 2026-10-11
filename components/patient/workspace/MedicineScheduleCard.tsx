@@ -28,7 +28,7 @@ export function MedicineScheduleCard({
       <DashCard>
         <div className="flex items-center justify-between mb-1">
           <div>
-            <h2 className="text-sm font-black text-slate-900">Today&apos;s Medicine Schedule</h2>
+            <h2 className="text-base font-semibold text-ink">Today&apos;s Medicine Schedule</h2>
             <ReminderPopupStatus permission={permission} onEnable={onEnablePopups} />
           </div>
           <button type="button" onClick={onSeeAll} className="text-xs font-semibold text-blue-600 hover:text-blue-700 flex items-center gap-1 transition">
@@ -44,13 +44,13 @@ export function MedicineScheduleCard({
               const name = r.medication?.medicine_name ?? "Medication";
               return (
                 <div key={r.id} className="flex items-center gap-4 p-3 rounded-2xl bg-slate-50 border border-slate-100 hover:border-blue-100 transition">
-                  <p className="text-[11px] font-black text-slate-500 w-14 flex-shrink-0 text-center">{formatTime(r.reminder_time)}</p>
+                  <p className="text-[11px] font-semibold text-slate-500 w-14 flex-shrink-0 text-center">{formatTime(r.reminder_time)}</p>
                   <div className="h-7 w-px bg-slate-200 flex-shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-slate-900 truncate">{name}</p>
+                    <p className="text-sm font-semibold text-ink truncate">{name}</p>
                     <p className="text-xs text-slate-400">{r.frequency}</p>
                   </div>
-                  <span className={cn("text-[11px] font-black px-3 py-1 rounded-full flex-shrink-0", display.tone)}>{display.label}</span>
+                  <span className={cn("text-[11px] font-semibold px-3 py-1 rounded-full flex-shrink-0", display.tone)}>{display.label}</span>
                   <div className="flex gap-1.5">
                     <button
                       type="button"

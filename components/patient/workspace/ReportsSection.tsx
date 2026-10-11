@@ -30,7 +30,7 @@ export function HealthCategoriesCard({
     <section id="reports">
       <DashCard>
         <div className="flex items-center justify-between mb-5">
-          <h2 className="text-sm font-black text-slate-900">Health Categories</h2>
+          <h2 className="text-base font-semibold text-ink">Health Categories</h2>
         </div>
         <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 xl:grid-cols-6">
           {DEPARTMENTS.map((department) => {
@@ -51,7 +51,7 @@ export function HealthCategoriesCard({
                 <div className={cn("h-10 w-10 rounded-xl flex items-center justify-center text-white shadow-md mb-3", `bg-gradient-to-br ${meta.gradient}`)}>
                   {departmentIcon(department.slug)}
                 </div>
-                <p className="text-sm font-bold text-slate-900 truncate">{department.label}</p>
+                <p className="text-sm font-semibold text-ink truncate">{department.label}</p>
                 <p className="text-xs text-slate-400 mt-0.5">
                   {count} {count === 1 ? "Document" : "Documents"}
                 </p>
@@ -105,7 +105,7 @@ export function RecentReportsCard({
   return (
     <DashCard id="recent-reports">
       <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
-        <h2 className="text-sm font-black text-slate-900">
+        <h2 className="text-base font-semibold text-ink">
           {filtered ? "Matching Reports" : "Recent Reports"}
           {activeDepartment && <span className="font-semibold text-slate-400"> · {getDepartmentMeta(activeDepartment).label}</span>}
           {!list.isLoading && <span className="font-semibold text-slate-400"> · {list.total}</span>}
@@ -151,12 +151,12 @@ export function RecentReportsCard({
                   {departmentIcon(meta.slug)}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-slate-900 truncate">{r.title}</p>
+                  <p className="text-sm font-semibold text-ink truncate">{r.title}</p>
                   <p className="text-xs text-slate-400">
                     {meta.label} · {formatDate(r.upload_date)}
                   </p>
                 </div>
-                <span className={cn("text-[11px] font-bold px-2.5 py-1 rounded-full flex-shrink-0", badge.tone)}>{badge.label}</span>
+                <span className={cn("text-[11px] font-semibold px-2.5 py-1 rounded-full flex-shrink-0", badge.tone)}>{badge.label}</span>
                 <button
                   type="button"
                   onClick={(event) => {
@@ -197,7 +197,7 @@ export function RiskFlagsCard({ risks }: { risks: HealthRiskPrediction[] }) {
   return (
     <DashCard id="insights">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="text-sm font-black text-slate-900">Risk &amp; Health Flags</h2>
+        <h2 className="text-base font-semibold text-ink">Risk &amp; Health Flags</h2>
         {!showAll && risks.length > RISKS_PREVIEW && (
           <button type="button" onClick={() => setShowAll(true)} className="text-xs font-semibold text-rose-500 hover:text-rose-600 flex items-center gap-1 transition">
             View all ({risks.length}) <ArrowRight className="h-3 w-3" />
@@ -232,10 +232,10 @@ function RiskRow({ title, reason, level }: { title: string; reason: string; leve
     <div className="p-3.5 rounded-2xl border border-rose-50 bg-rose-50/40 hover:border-rose-100 transition">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-bold text-slate-900">{title}</p>
+          <p className="text-sm font-semibold text-ink">{title}</p>
           <p className="text-xs text-slate-500 mt-0.5">{reason}</p>
         </div>
-        <span className={cn("text-[11px] font-black px-2.5 py-1 rounded-full border flex-shrink-0", badgeCls)}>{level}</span>
+        <span className={cn("text-[11px] font-semibold px-2.5 py-1 rounded-full border flex-shrink-0", badgeCls)}>{level}</span>
       </div>
     </div>
   );
