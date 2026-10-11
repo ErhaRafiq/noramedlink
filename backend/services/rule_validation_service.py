@@ -1,6 +1,8 @@
 import re
 from typing import Any
 
+from services.lab_ranges import check_lab_ranges, creatinine_mg_dl, glucose_mg_dl, read_value
+
 STATUS_ORDER = {"SAFE": 0, "CAUTION": 1, "HIGH_RISK": 2}
 
 HIGH_RISK_PAIRS = [
@@ -68,6 +70,27 @@ def _field_value(fields: dict[str, Any], keys: list[str]) -> tuple[float | None,
             if parsed is not None:
                 return parsed, f"{key}: {value}"
     return None, None
+
+
+def _converted_field(fields: dict[str, Any], keys: list[str], convert) -> tuple[float | None, str | None]:
+    """A structured field's value, converted using the unit written right after the number."""
+    for key in keys:
+        raw = fields.get(key)
+        if raw is None:
+            continue
+        match = re.match(r"\s*[<>]?\s*(\d+(?:\.\d+)?)\s*([a-zA-Zµμ%/^\d.]{0,14})", str(raw))
+        if match:
+            return round(convert(float(match.group(1)), match.group(2).lower()), 2), f"{key}: {raw}"
+    return None, None
+
+
+def _lab_value(fields, keys, text, aliases, convert) -> tuple[float | None, str | None]:
+    value, evidence = _converted_field(fields, keys, convert)
+    if value is None:
+        reading = read_value(text, aliases, convert)
+        if reading:
+            value, evidence = reading.value, reading.evidence
+    return value, evidence
 
 
 def _medicine_names(entities: list[dict[str, Any]], text: str) -> list[str]:
@@ -140,9 +163,11 @@ def validate_medical_rules(
             warnings.append(_warning("MEDICINE_COMBINATION_CAUTION", "CAUTION", message, ", ".join(sorted(pair))))
             status = _highest_status(status, "CAUTION")
 
-    glucose, glucose_evidence = _field_value(fields, ["glucose", "blood_sugar", "rbs", "fbs"])
-    if glucose is None:
-        glucose, glucose_evidence = _value_near(source_text, ["glucose", "blood sugar", "sugar", "rbs", "fbs"])
+    # mmol/L values are converted to mg/dL (unit written after the number).
+    glucose, glucose_evidence = _lab_value(
+        fields, ["glucose", "blood_sugar", "rbs", "fbs"], source_text,
+        ["glucose", "blood sugar", "sugar", "rbs", "fbs"], glucose_mg_dl,
+    )  # fmt: skip
     if glucose is not None and glucose >= 200:
         warnings.append(
             _warning(
@@ -190,9 +215,8 @@ def validate_medical_rules(
             )
             status = _highest_status(status, severity)
 
-    creatinine, creatinine_evidence = _field_value(fields, ["creatinine"])
-    if creatinine is None:
-        creatinine, creatinine_evidence = _value_near(source_text, ["creatinine"])
+    # umol/L values are converted to mg/dL; before, "Creatinine 88 umol/L" (normal) raised an alert.
+    creatinine, creatinine_evidence = _lab_value(fields, ["creatinine"], source_text, ["creatinine"], creatinine_mg_dl)
     if creatinine is not None and creatinine > 1.3:
         warnings.append(
             _warning(
@@ -217,6 +241,10 @@ def validate_medical_rules(
             )
         )
         status = _highest_status(status, "HIGH_RISK" if egfr < 30 else "CAUTION")
+
+    for lab_warning in check_lab_ranges(source_text):
+        warnings.append(lab_warning)
+        status = _highest_status(status, lab_warning["severity"])
 
     if not _has_allergy_data(source_text, entity_rows):
         warnings.append(
@@ -255,6 +283,7 @@ def validate_medical_rules(
             "high_glucose",
             "hypertension_indicators",
             "kidney_risk_indicators",
+            "lab_reference_ranges",
             "missing_allergy_data",
             "incomplete_ocr_text",
         ],
