@@ -28,7 +28,7 @@ The project is roughly 30% implemented. Your job is to take it further in **phas
 | Frontend | Next.js 16 (App Router), React 19, Tailwind |
 | Backend | **FastAPI** in `backend/` using **SQLAlchemy**: the only backend. Next.js keeps a same-origin proxy (`app/api/backend/[...path]`), thin auth proxies (`app/api/auth/login`, `signup`) and `app/api/drug-check` (OpenFDA, not used by any page yet) |
 | Database | PostgreSQL. Schema = SQLAlchemy models + **Alembic** migrations (`backend/migrations/`, head `0008`), applied by `alembic upgrade head` at startup. Migrations are additive. **No Prisma** (removed in Phase 1) |
-| OCR | Tesseract via pytesseract in FastAPI, OCR.space fallback (no `tesseract.js`) |
+| OCR | **OCR.space** in FastAPI (`OCR_SPACE_API_KEY`); no Tesseract anywhere (no `pytesseract`, no `tesseract.js`). Without a key, uploads are saved with OCR marked failed and the patient types the text |
 | AI | OpenAI and Groq via env keys, rule-based fallback when no key, BioBERT NER (`d4data/biomedical-ner-all`) |
 | Auth | JWT (HS256) issued by FastAPI, stored in `localStorage` on the client; FastAPI role dependencies (`require_patient`, `require_doctor`, admin) on every protected endpoint |
 | Tests | `tests/acceptance_test.py`: route authentication, ownership and access-grant checks against the local stack (see README) |
@@ -119,7 +119,7 @@ These are project requirements (scope limitations LI-1 and LI-5), not suggestion
   - `dashboard/access-otp`: patient only
   - `doctor/access/unlock`, `doctor/access/end`: doctor only
 - Signup/login OTP routes (`request-otp`, `verify-otp-signup`) stay public: users have no token before signing up.
-- `eng.traineddata` stays where it is. *(Phase 1: removed once `tesseract.js` was dropped; OCR runs in FastAPI with the system Tesseract.)*
+- `eng.traineddata` stays where it is. *(Phase 1: removed once `tesseract.js` was dropped. Correction: OCR runs in FastAPI through OCR.space only; the backend has no Tesseract code.)*
 - Tests may create temporary `phase0-test-` users in the dev database, on these conditions:
   - Before creating anything, confirm `DATABASE_URL` points to localhost (parse and check the hostname only; never print the value).
   - Cleanup runs in a teardown/finally block, so it happens even when tests fail.
