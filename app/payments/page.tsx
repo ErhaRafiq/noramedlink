@@ -1,20 +1,29 @@
+import type { Metadata } from "next";
 import { Suspense } from "react";
-import PaymentsClient from "./payments-client";
+
+import { SitePage } from "@/components/layout/SitePage";
+import { PaymentsView } from "@/components/payments/PaymentsView";
+import { PageContainer } from "@/components/layout/PageHeader";
+import { SkeletonCard } from "@/components/ui/skeleton";
+
+export const metadata: Metadata = {
+  title: "Payments",
+  description: "Record a consultation payment for the clinic to confirm.",
+};
 
 export default function PaymentsPage() {
   return (
-    <Suspense
-      fallback={
-        <main className="app-shell px-4 py-8 sm:px-6 lg:px-8">
-          <section className="mx-auto max-w-5xl">
-            <div className="glass-card p-8 text-sm text-slate-600">
-              Loading wallet checkout...
-            </div>
-          </section>
-        </main>
-      }
-    >
-      <PaymentsClient />
-    </Suspense>
+    <SitePage>
+      {/* PaymentsView reads ?appointmentId= from the URL, which needs a Suspense boundary. */}
+      <Suspense
+        fallback={
+          <PageContainer narrow>
+            <SkeletonCard lines={6} />
+          </PageContainer>
+        }
+      >
+        <PaymentsView />
+      </Suspense>
+    </SitePage>
   );
 }
