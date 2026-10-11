@@ -88,11 +88,16 @@ export function useUploadQueue({
         formData.append("file", file);
         formData.append("title", options.title.trim());
         formData.append("notes", options.notes.trim());
-        formData.append("category", options.category === "all" ? "general" : options.category);
+        // "auto" lets the backend detect the department from the text ("general" would pin it).
+        formData.append("category", options.category === "all" ? "auto" : options.category);
         const report = await api.uploadReport(activeToken, formData);
         onUploaded(report);
         update({ step: "done", report });
-        notify("success", `${report.title} uploaded. OCR and AI summary were saved.`);
+        if (report.ocr_status === "FAILED") {
+          notify("info", `${report.title} was saved, but its text could not be read. Open the report to type it in.`);
+        } else {
+          notify("success", `${report.title} uploaded and its text was read.`);
+        }
       } catch (err) {
         update({ step: "error", error: err instanceof Error ? err.message : "Upload failed" });
       } finally {
