@@ -12,10 +12,7 @@ class OtpDeliveryError(Exception):
 
 
 def send_email_otp(email: str, otp: str) -> None:
-    if settings.otp_dev_mode:
-        logger.warning("Development signup OTP for %s: %s", email, otp)
-        return
-
+    """Emails the signup code. The code is never logged (AGENTS.md section 8)."""
     smtp_host = settings.smtp_host
     smtp_port = settings.smtp_port
     smtp_user = settings.smtp_username
@@ -23,12 +20,9 @@ def send_email_otp(email: str, otp: str) -> None:
     smtp_from = settings.smtp_from_email
     smtp_from_name = settings.smtp_from_name
     use_tls = settings.smtp_use_tls
-    allow_console = settings.otp_console_fallback
 
     if not smtp_host or not smtp_from:
-        if allow_console:
-            logger.warning("Development signup OTP for %s: %s", email, otp)
-            return
+        logger.warning("Signup code not sent: SMTP_HOST and SMTP_FROM_EMAIL are not configured.")
         raise OtpDeliveryError("Email OTP provider is not configured.")
 
     message = EmailMessage()

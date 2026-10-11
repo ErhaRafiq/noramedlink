@@ -75,8 +75,6 @@ class Settings:
 
     # Signup OTP delivery
     otp_expiry_minutes: int = 5
-    otp_dev_mode: bool = False
-    otp_console_fallback: bool = True
     smtp_host: str = ""
     smtp_port: int = 587
     smtp_username: str = ""
@@ -134,8 +132,6 @@ def load_settings() -> Settings:
         admin_invite_code=env_str("ADMIN_INVITE_CODE") or env_str("ADMIN_SIGNUP_CODE"),
         frontend_origin=env_str("FRONTEND_ORIGIN", d.frontend_origin),
         otp_expiry_minutes=env_int("OTP_EXPIRY_MINUTES", d.otp_expiry_minutes),
-        otp_dev_mode=env_bool("OTP_DEV_MODE", d.otp_dev_mode),
-        otp_console_fallback=env_bool("SIGNUP_OTP_ALLOW_CONSOLE_FALLBACK", d.otp_console_fallback),
         smtp_host=env_str("SMTP_HOST"),
         smtp_port=env_int("SMTP_PORT", d.smtp_port),
         smtp_username=env_str("SMTP_USERNAME"),

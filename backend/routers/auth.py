@@ -13,7 +13,6 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from auth import hash_password, verify_password
-from config import settings
 from database import get_db
 from dependencies import get_current_user
 from models import DoctorProfile, PatientProfile, SignupOtp, User
@@ -98,13 +97,8 @@ def request_signup_otp(request: Request, payload: SignupOtpRequest, db: Session 
         db.rollback()
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
 
-    message = (
-        "OTP sent successfully. Please check backend terminal in development mode."
-        if settings.otp_dev_mode
-        else "OTP sent successfully. Please check your email."
-    )
     return {
-        "message": message,
+        "message": "OTP sent successfully. Please check your email.",
         "expires_in_seconds": OTP_EXPIRY_MINUTES * 60,
     }
 
