@@ -126,30 +126,3 @@ export function StatCard({
   );
 }
 
-export function RoleCard({
-  title,
-  description,
-  selected,
-  onClick,
-}: {
-  title: string;
-  description: string;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "min-h-[122px] rounded-[18px] border p-4 text-left transition",
-        selected
-          ? "border-teal-300 bg-teal-50 text-teal-950 shadow-[0_12px_30px_rgba(0,191,166,0.12)] ring-4 ring-teal-100"
-          : "border-[#DCE8F5] bg-white text-slate-700 hover:border-teal-200 hover:bg-[#F8FBFF]",
-      )}
-    >
-      <span className="block text-sm font-black">{title}</span>
-      <span className="mt-2 block text-xs font-semibold leading-5 text-slate-500">{description}</span>
-    </button>
-  );
-}
