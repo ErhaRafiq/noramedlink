@@ -104,6 +104,7 @@ The app needs **two terminals running at the same time**: backend and frontend.
 | Production build | `npm run build` (can run while `npm run dev` is running; Next 16 keeps dev output in `.next/dev`) |
 | Backend unit tests | `cd backend; .\venv\Scripts\python.exe -m pytest` (no database, no network; `backend/tests/`) |
 | Acceptance tests | `backend\venv\Scripts\python.exe tests\acceptance_test.py` (both servers running) |
+| Browser (e2e) tests | `npm run test:e2e` (both servers running; report in `test-results/e2e-report`) |
 | Screenshots for review | `npm run screenshots` (dev server running; uses the installed Microsoft Edge) |
 | Phone overflow check | `node scripts/find-overflow.mjs http://localhost:3000/<page>` (lists elements wider than 390px) |
 | Backend smoke tests | `$env:HF_HUB_OFFLINE="1"; backend\venv\Scripts\python.exe backend\test_quick.py` |
@@ -200,6 +201,11 @@ Test data belongs in tests, never in UI fallbacks.
 - Safety logic (red-flag rules, interaction rules, state transitions) needs unit tests with
   explicit cases, including the cases listed in the brief. Unit tests live in `backend/tests/`
   (pytest): no database, no network, and `conftest.py` blanks every AI and OCR key.
+- Browser tests live in `tests/e2e/` (Playwright, installed Edge, desktop and 390px projects).
+  `tests/e2e/fixtures.py` creates and removes their `phase0-test-` users with the acceptance
+  suite's guard and cleanup. Select elements by role and label, as a user would. Pages and flows
+  that change get a test; tests that would reach OCR.space or an LLM skip when a key is set.
+  Never run the e2e and acceptance suites at the same time (each cleans up the other's users).
 
 ---
 
@@ -309,9 +315,9 @@ spacing and states, not the palette.
 
 **Motion and 3D**
 - Three.js is used **only** in the landing hero (`components/landing/HeroScene.tsx`), loaded with
-  `next/dynamic` and `ssr: false` from a client component (`HeroVisual.tsx`). It pauses when
-  scrolled out of view and is replaced by static art (`HeroFallbackArt.tsx`) under
-  `prefers-reduced-motion`. Do not add 3D elsewhere.
+  `next/dynamic` and `ssr: false` from a client component (`HeroVisual.tsx`). It renders a
+  single still frame under `prefers-reduced-motion` and while scrolled out of view; static art
+  (`HeroFallbackArt.tsx`) shows while it loads and when WebGL is unavailable. Do not add 3D elsewhere.
 - `Reveal` keeps content visible without JavaScript; only elements below the fold animate in.
 - Hover and press transitions are 200 ms; the scroll reveal is 500 ms. `prefers-reduced-motion`
   turns all of it off (`app/globals.css`). Motion never hides information.

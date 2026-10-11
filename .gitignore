@@ -70,3 +70,7 @@ next-env.d.ts
 
 # Visual review output (npm run screenshots)
 /screenshots
+
+# Playwright output (tests/e2e)
+/test-results/
+/playwright-report/

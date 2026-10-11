@@ -9,7 +9,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "screenshots": "node scripts/capture-screenshots.mjs screenshots http://localhost:3000"
+    "screenshots": "node scripts/capture-screenshots.mjs screenshots http://localhost:3000",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@react-three/fiber": "^9.8.1",

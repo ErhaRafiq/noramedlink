@@ -129,6 +129,7 @@ complex tables reduce accuracy, so always check the text before relying on a sum
 | Backend lint and format | `cd backend; .\venv\Scripts\python.exe -m ruff check .; .\venv\Scripts\python.exe -m ruff format .` |
 | Backend unit tests | `cd backend; .\venv\Scripts\python.exe -m pytest` (no database or network needed) |
 | Acceptance tests | `backend\venv\Scripts\python.exe tests\acceptance_test.py` (both servers running) |
+| Browser (e2e) tests | `npm run test:e2e` (both servers running; uses the installed Microsoft Edge) |
 | Screenshots for review | `npm run screenshots` (dev server running; uses the installed Microsoft Edge) |
 | Regenerate app icons | `backend\venv\Scripts\python.exe scripts\generate-icons.py` |
 
@@ -142,6 +143,19 @@ It refuses to run unless every database URL points to localhost. It creates temp
 email starts with `phase0-test-` and deletes only those users and their rows when it finishes, even
 if a check fails. Set `PHASE0_BASE_URL` to test a dev server on another port (default
 `http://localhost:3000`).
+
+### Browser tests
+
+`tests/e2e/` drives the real pages in Microsoft Edge, on a desktop window and at phone width
+(390px): the landing page, sign in and sign up, the patient dashboard (search, vitals, upload,
+doctor access code), the report page, the doctor unlocking a patient file with that code, the
+doctor directory and booking, and the admin approving or rejecting a doctor. Every page checked at
+phone width must not scroll sideways.
+
+`tests/e2e/fixtures.py` creates the test users before the run and deletes them afterwards, with
+the same localhost guard and `phase0-test-` cleanup as the acceptance tests. Run one suite at a
+time. Set `E2E_BASE_URL` to test another port. Failures leave a screenshot and trace under
+`test-results/e2e/`.
 
 ## Database migrations
 
