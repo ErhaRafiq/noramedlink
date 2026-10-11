@@ -127,6 +127,7 @@ complex tables reduce accuracy, so always check the text before relying on a sum
 | Type-check | `npx tsc --noEmit -p .` |
 | Production build | `npm run build` |
 | Backend lint and format | `cd backend; .\venv\Scripts\python.exe -m ruff check .; .\venv\Scripts\python.exe -m ruff format .` |
+| Backend unit tests | `cd backend; .\venv\Scripts\python.exe -m pytest` (no database or network needed) |
 | Acceptance tests | `backend\venv\Scripts\python.exe tests\acceptance_test.py` (both servers running) |
 | Screenshots for review | `npm run screenshots` (dev server running; uses the installed Microsoft Edge) |
 | Regenerate app icons | `backend\venv\Scripts\python.exe scripts\generate-icons.py` |

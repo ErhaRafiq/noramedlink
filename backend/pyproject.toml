@@ -33,3 +33,9 @@ known-first-party = [
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.pytest.ini_options]
+# Unit tests only: no database, no network. tests/acceptance_test.py (repo root) covers the running app.
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

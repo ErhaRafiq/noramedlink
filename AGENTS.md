@@ -102,6 +102,7 @@ The app needs **two terminals running at the same time**: backend and frontend.
 | Type-check | `npx tsc --noEmit -p .` |
 | Backend lint + format | `cd backend; .\venv\Scripts\python.exe -m ruff check .; .\venv\Scripts\python.exe -m ruff format .` |
 | Production build | `npm run build` (can run while `npm run dev` is running; Next 16 keeps dev output in `.next/dev`) |
+| Backend unit tests | `cd backend; .\venv\Scripts\python.exe -m pytest` (no database, no network; `backend/tests/`) |
 | Acceptance tests | `backend\venv\Scripts\python.exe tests\acceptance_test.py` (both servers running) |
 | Screenshots for review | `npm run screenshots` (dev server running; uses the installed Microsoft Edge) |
 | Phone overflow check | `node scripts/find-overflow.mjs http://localhost:3000/<page>` (lists elements wider than 390px) |
@@ -197,7 +198,8 @@ Test data belongs in tests, never in UI fallbacks.
 - **Never call paid or external services in tests** (OpenAI, Groq, OCR.space). Tests that would
   must skip when a key is configured.
 - Safety logic (red-flag rules, interaction rules, state transitions) needs unit tests with
-  explicit cases, including the cases listed in the brief.
+  explicit cases, including the cases listed in the brief. Unit tests live in `backend/tests/`
+  (pytest): no database, no network, and `conftest.py` blanks every AI and OCR key.
 
 ---
 
@@ -233,7 +235,7 @@ A change is done only when all of these hold:
 
 - [ ] `npm run lint`: 0 errors (existing warnings may remain; add no new ones)
 - [ ] `npm run build`: passes
-- [ ] `ruff check` and `ruff format --check` in `backend/`: pass (when Python changed)
+- [ ] `ruff check`, `ruff format --check` and `pytest` in `backend/`: pass (when Python changed)
 - [ ] `tests/acceptance_test.py`: all passing, with new checks for new behaviour
 - [ ] UI changes: no horizontal scroll at 390px wide; loading, empty and error states all handled
 - [ ] `alembic check`: no drift (when models changed)
