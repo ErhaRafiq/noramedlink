@@ -415,6 +415,10 @@ class SummaryResponse(BaseModel):
     summary: str
     method: Literal["openai", "rule_based"]
     warning: str | None = None
+    # From services/report_breakdown.py: values found, rule alerts (deterministic), next steps.
+    key_findings: list[str] = Field(default_factory=list)
+    risk_indicators: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
 
 
 class AppointmentCreate(BaseModel):

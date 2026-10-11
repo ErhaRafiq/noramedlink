@@ -7,6 +7,7 @@ from models import PatientReport, User
 from rate_limit import AI_LIMIT, limiter
 from schemas import SummarizeRequest, SummaryResponse
 from services.nlp_service import summarize_with_optional_llm
+from services.report_breakdown import build_breakdown
 
 router = APIRouter(prefix="/nlp", tags=["nlp"])
 
@@ -14,11 +15,6 @@ MIN_TEXT = 20
 MAX_TEXT = 20000
 # Placeholder the old Next scan route stored when no OCR provider was configured.
 UNUSABLE_TEXT = "AI scanning is not configured yet. Add a backend OCR provider to enable automatic text extraction."
-
-
-class SavedReportsSummary(SummaryResponse):
-    # The combined report text, so the page can show its local rule-based breakdown.
-    text: str
 
 
 def _check_length(text: str) -> str:
@@ -41,10 +37,10 @@ async def summarize(request: Request, payload: SummarizeRequest, current_user: U
     """Summarize pasted report text. Requires a signed-in user (it was public before)."""
     text = _check_length(payload.text)
     summary, method, warning = await summarize_with_optional_llm(text, payload.category)
-    return SummaryResponse(summary=summary, method=method, warning=warning)
+    return SummaryResponse(summary=summary, method=method, warning=warning, **build_breakdown(text))
 
 
-@router.post("/summarize/saved-reports", response_model=SavedReportsSummary)
+@router.post("/summarize/saved-reports", response_model=SummaryResponse)
 @limiter.limit(AI_LIMIT)
 async def summarize_saved_reports(
     request: Request, current_user: User = Depends(require_patient), db: Session = Depends(get_db)
@@ -78,4 +74,4 @@ async def summarize_saved_reports(
         )
     text = combined[:MAX_TEXT]
     summary, method, warning = await summarize_with_optional_llm(text, "medical-report")
-    return SavedReportsSummary(summary=summary, method=method, warning=warning, text=text)
+    return SummaryResponse(summary=summary, method=method, warning=warning, **build_breakdown(text))

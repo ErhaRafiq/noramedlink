@@ -4,16 +4,9 @@ import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { buildMedicalDisclaimer } from "@/lib/patient-dashboard";
+import type { SummaryResponse } from "@/lib/types";
 
-export type SummaryView = {
-  summary: string;
-  key_findings: string[];
-  risk_indicators: string[];
-  recommendations: string[];
-  warning?: string | null;
-};
-
-function ResultList({ title, items }: { title: string; items: string[] }) {
+function ResultList({ title, items, emptyText = "None found." }: { title: string; items: string[]; emptyText?: string }) {
   return (
     <section className="rounded-card border border-line bg-white p-5 shadow-card">
       <div className="flex items-center justify-between gap-3">
@@ -29,13 +22,13 @@ function ResultList({ title, items }: { title: string; items: string[] }) {
           ))}
         </ul>
       ) : (
-        <p className="mt-3 text-sm text-ink-muted">None found.</p>
+        <p className="mt-3 text-sm text-ink-muted">{emptyText}</p>
       )}
     </section>
   );
 }
 
-export function SummaryResult({ result, loading }: { result: SummaryView | null; loading: boolean }) {
+export function SummaryResult({ result, loading }: { result: SummaryResponse | null; loading: boolean }) {
   if (loading) {
     return (
       <div role="status" aria-label="Generating summary" className="space-y-4 rounded-card border border-line bg-white p-5 shadow-card">
@@ -64,7 +57,11 @@ export function SummaryResult({ result, loading }: { result: SummaryView | null;
       </section>
       {result.warning ? <Alert tone="warning">{result.warning}</Alert> : null}
       <ResultList title="Key findings" items={result.key_findings} />
-      <ResultList title="Values to discuss with your doctor" items={result.risk_indicators} />
+      <ResultList
+        title="Rule alerts to discuss with your doctor"
+        items={result.risk_indicators}
+        emptyText="No rule raised an alert. That does not mean the report is normal; the rules check only a few values."
+      />
       <ResultList title="Suggested next steps" items={result.recommendations} />
     </div>
   );

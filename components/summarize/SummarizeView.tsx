@@ -9,24 +9,19 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { api } from "@/lib/api";
-import { summarizeMedicalText } from "@/lib/medical-summarizer";
 import { useStoredSession } from "@/hooks/use-stored-session";
-import { SummaryResult, type SummaryView } from "./SummaryResult";
+import type { SummaryResponse } from "@/lib/types";
+import { SummaryResult } from "./SummaryResult";
 
 const MIN_LENGTH = 20;
 const EXAMPLE_REPORT =
   "CBC report: Hemoglobin 10.8 g/dL, WBC 13.2, Platelets 230. Patient has fever and cough for 3 days. No chest pain. Blood pressure 145/92. Glucose 186 mg/dL. Impression: possible infection, follow clinical correlation.";
 
-/** Server summary text combined with the local rule-based breakdown (findings, values, steps). */
-function toView(text: string, backend: { summary: string; warning: string | null }): SummaryView {
-  return { ...summarizeMedicalText(text), summary: backend.summary, warning: backend.warning };
-}
-
 export function SummarizeView() {
   const { ready, session } = useStoredSession();
   const isPatient = session?.user.role === "patient";
   const [text, setText] = useState("");
-  const [result, setResult] = useState<SummaryView | null>(null);
+  const [result, setResult] = useState<SummaryResponse | null>(null);
   const [pending, setPending] = useState<"text" | "saved" | null>(null);
   const [error, setError] = useState("");
 
@@ -42,7 +37,7 @@ export function SummarizeView() {
     setPending("text");
     setResult(null);
     try {
-      setResult(toView(input, await api.summarizeText(session.token, input)));
+      setResult(await api.summarizeText(session.token, input));
     } catch (err) {
       setError(err instanceof Error ? err.message : "The summary could not be generated.");
     } finally {
@@ -56,9 +51,8 @@ export function SummarizeView() {
     setPending("saved");
     setResult(null);
     try {
-      const backend = await api.summarizeSavedReports(session.token);
       setText("");
-      setResult(toView(backend.text, backend));
+      setResult(await api.summarizeSavedReports(session.token));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Your saved reports could not be summarized.");
     } finally {

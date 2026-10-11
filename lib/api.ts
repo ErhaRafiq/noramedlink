@@ -26,6 +26,7 @@ import type {
   PatientVitals,
   VitalTrendPoint,
   SignupOtpPayload,
+  SummaryResponse,
   AdminActivity,
   AdminDashboardStats,
   AdminDoctor,
@@ -401,17 +402,14 @@ export const api = {
     });
   },
   summarizeText(token: string, text: string) {
-    return apiRequest<{ summary: string; method: string; warning: string | null }>("/nlp/summarize", {
+    return apiRequest<SummaryResponse>("/nlp/summarize", {
       method: "POST",
       token,
       body: JSON.stringify({ text, category: "medical-report" }),
     });
   },
   summarizeSavedReports(token: string) {
-    return apiRequest<{ summary: string; method: string; warning: string | null; text: string }>(
-      "/nlp/summarize/saved-reports",
-      { method: "POST", token },
-    );
+    return apiRequest<SummaryResponse>("/nlp/summarize/saved-reports", { method: "POST", token });
   },
   createPayment(
     token: string,

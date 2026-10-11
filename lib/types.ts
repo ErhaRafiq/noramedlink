@@ -443,6 +443,18 @@ export type AIChatResponse = {
   disclaimer: string;
 };
 
+/** POST /nlp/summarize and /nlp/summarize/saved-reports. */
+export type SummaryResponse = {
+  summary: string;
+  method: "openai" | "rule_based";
+  warning: string | null;
+  /** Values and terms found in the text, as written. */
+  key_findings: string[];
+  /** Alerts from the backend's deterministic report rules only. */
+  risk_indicators: string[];
+  recommendations: string[];
+};
+
 export type MedicineSafetyCheck = {
   /** Set by deterministic rules only; "No data" means no rule matched, never "safe". */
   status: "No data" | "Caution" | "High Risk";
