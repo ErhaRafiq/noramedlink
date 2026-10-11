@@ -8,7 +8,8 @@
     "backend:install": "python -m pip install -r backend/requirements.txt",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "screenshots": "node scripts/capture-screenshots.mjs screenshots http://localhost:3000"
   },
   "dependencies": {
     "@react-three/fiber": "^9.8.1",
@@ -21,6 +22,7 @@
     "three": "^0.186.1"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "20.19.39",
     "@types/react": "19.2.14",

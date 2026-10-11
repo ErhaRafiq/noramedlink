@@ -68,3 +68,5 @@ uploads/
 *.tsbuildinfo
 next-env.d.ts
 
+# Visual review output (npm run screenshots)
+/screenshots
