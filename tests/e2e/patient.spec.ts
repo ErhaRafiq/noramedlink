@@ -48,6 +48,9 @@ test.describe("patient dashboard", () => {
     await page.goto("/dashboard/patient");
     const report = page.getByRole("button", { name: new RegExp(`^phase0-test-e2e blood panel ${run}`) });
     await expect(report).toBeVisible();
+    // Its validation status is SAFE, which only means no rule raised an alert (AGENTS.md 6.2).
+    await expect(report).toContainText("No rule alerts");
+    await expect(report).not.toContainText(/SAFE|AI summarized/);
 
     const search = page.getByRole("searchbox", { name: "Search reports" });
     await search.fill("blood panel");

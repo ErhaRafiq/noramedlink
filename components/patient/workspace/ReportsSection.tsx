@@ -67,8 +67,7 @@ export function HealthCategoriesCard({
 function validationBadge(status: MedicalDocument["validation_status"]) {
   if (status === "HIGH_RISK") return { label: "Review", tone: "bg-rose-50 text-rose-600 border border-rose-100" };
   if (status === "CAUTION") return { label: "Monitor", tone: "bg-amber-50 text-amber-600 border border-amber-100" };
-  if (status === "NOT_VALIDATED") return { label: validationLabel(status), tone: "bg-slate-100 text-slate-600 border border-slate-200" };
-  return { label: "AI summarized", tone: "bg-blue-50 text-blue-600 border border-blue-100" };
+  return { label: validationLabel(status), tone: "bg-slate-100 text-slate-600 border border-slate-200" };
 }
 
 function ReportRowSkeleton() {

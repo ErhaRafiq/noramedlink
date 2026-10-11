@@ -72,22 +72,28 @@ def list_field(value: Any) -> list[Any]:
     return value if isinstance(value, list) else []
 
 
+# A report the rules have not checked counts as NOT_VALIDATED, never as SAFE.
+VALIDATION_ORDER = {"NOT_VALIDATED": -1, "SAFE": 0, "CAUTION": 1, "HIGH_RISK": 2}
+
+
 def highest_validation_status(reports: list[PatientReport]) -> str:
-    order = {"SAFE": 0, "CAUTION": 1, "HIGH_RISK": 2}
-    status = "SAFE"
+    status = "NOT_VALIDATED"
     for report in reports:
-        report_status = report.validation_status or "SAFE"
-        if order.get(report_status, 0) > order.get(status, 0):
+        report_status = report.validation_status or "NOT_VALIDATED"
+        if VALIDATION_ORDER.get(report_status, -1) > VALIDATION_ORDER[status]:
             status = report_status
     return status
 
 
 def risk_level_for_status(status_value: str) -> str:
+    """Words only for what the rules found: no alerts is "None flagged", not "Low" (AGENTS.md 6.2)."""
     if status_value == "HIGH_RISK":
         return "High"
     if status_value == "CAUTION":
         return "Medium"
-    return "Low"
+    if status_value == "SAFE":
+        return "None flagged"
+    return "Unknown"
 
 
 def health_status_for_department(reports: list[PatientReport], status_value: str) -> str:
@@ -97,7 +103,9 @@ def health_status_for_department(reports: list[PatientReport], status_value: str
         return "Needs review"
     if status_value == "CAUTION":
         return "Monitor"
-    return "Stable"
+    if status_value == "SAFE":
+        return "No rule alerts"  # never "Stable" (AGENTS.md section 7)
+    return "Not validated"
 
 
 def report_to_out(report: PatientReport) -> PatientReportOut:

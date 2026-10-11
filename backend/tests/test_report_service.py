@@ -7,6 +7,7 @@ import pytest
 from services.ocr_space_service import DEPARTMENTS, department_slug
 from services.report_service import (
     dict_field,
+    health_status_for_department,
     highest_validation_status,
     list_field,
     preview_text,
@@ -24,11 +25,34 @@ def report(status=None, summary=None, formatted=None, extracted=None) -> SimpleN
 def test_highest_validation_status():
     assert highest_validation_status([report("CAUTION"), report("HIGH_RISK"), report("SAFE")]) == "HIGH_RISK"
     assert highest_validation_status([report("CAUTION"), report(None)]) == "CAUTION"
+    assert highest_validation_status([report("SAFE"), report("NOT_VALIDATED")]) == "SAFE"
 
 
-@pytest.mark.parametrize(("status", "level"), [("HIGH_RISK", "High"), ("CAUTION", "Medium"), ("SAFE", "Low")])
+@pytest.mark.parametrize("reports", [[], [report(None)], [report("NOT_VALIDATED"), report(None)]])
+def test_unchecked_reports_are_not_validated_never_safe(reports):
+    assert highest_validation_status(reports) == "NOT_VALIDATED"
+
+
+@pytest.mark.parametrize(
+    ("status", "level"),
+    [("HIGH_RISK", "High"), ("CAUTION", "Medium"), ("SAFE", "None flagged"), ("NOT_VALIDATED", "Unknown")],
+)
 def test_risk_level_for_status(status, level):
     assert risk_level_for_status(status) == level
+
+
+@pytest.mark.parametrize(
+    ("status", "label"),
+    [
+        ("HIGH_RISK", "Needs review"),
+        ("CAUTION", "Monitor"),
+        ("SAFE", "No rule alerts"),
+        ("NOT_VALIDATED", "Not validated"),
+    ],
+)
+def test_department_health_status_never_says_stable(status, label):
+    assert health_status_for_department([report(status)], status) == label
+    assert health_status_for_department([], status) == "No reports"
 
 
 def test_preview_prefers_the_summary_and_trims():

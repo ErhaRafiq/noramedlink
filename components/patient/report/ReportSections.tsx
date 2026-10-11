@@ -39,7 +39,7 @@ export function ReportStats({ report }: { report: MedicalDocument }) {
       <Stat label="Text reading" value={report.ocr_status.replaceAll("_", " ").toLowerCase()} />
       <Stat label="Reading confidence" value={typeof report.ocr_confidence === "number" ? `${Math.round(report.ocr_confidence * 100)}%` : "Not available"} />
       <Stat label="File type" value={report.file_type.toUpperCase()} />
-      <Stat label="Validation" value={validationLabel(report.validation_status).toLowerCase()} />
+      <Stat label="Validation" value={validationLabel(report.validation_status)} />
     </dl>
   );
 }

@@ -298,8 +298,8 @@ class DepartmentTileOut(BaseModel):
     latest_upload_date: datetime | None
     preview_text: str | None
     health_status: str = "No reports"
-    risk_level: Literal["Low", "Medium", "High"] | str = "Low"
-    validation_status: Literal["SAFE", "CAUTION", "HIGH_RISK"] | str = "SAFE"
+    risk_level: Literal["None flagged", "Medium", "High", "Unknown"] | str = "Unknown"
+    validation_status: Literal["SAFE", "CAUTION", "HIGH_RISK", "NOT_VALIDATED"] | str = "NOT_VALIDATED"
 
 
 class PatientReportUpdateRequest(BaseModel):
