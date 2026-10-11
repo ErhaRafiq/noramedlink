@@ -1,12 +1,4 @@
-const DEFAULT_BACKEND_URL = "http://127.0.0.1:8000";
-
-function backendBaseUrl() {
-  return (
-    process.env.SERVER_API_URL ||
-    process.env.FASTAPI_URL ||
-    DEFAULT_BACKEND_URL
-  ).replace(/\/$/, "");
-}
+import { backendBaseUrl } from "@/lib/backend-url";
 
 export async function proxyAuthPost(request: Request, authPath: string) {
   const headers = new Headers();
