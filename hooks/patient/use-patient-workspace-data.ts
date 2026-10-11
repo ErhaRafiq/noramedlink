@@ -75,7 +75,7 @@ export function usePatientWorkspaceData(token: string | null) {
         api.patientDepartmentTiles(token).catch(() => []),
         api.reports(token, { limit: HIGH_RISK_SHOWN, validationStatus: "HIGH_RISK" }).catch(() => ({ items: [], total: 0 })),
         api.doctors(token).catch(() => []),
-        api.appointmentsV2(token, { limit: APPOINTMENTS_LOADED }).then((page) => page.items).catch(() => []),
+        api.appointments(token, { limit: APPOINTMENTS_LOADED }).then((page) => page.items).catch(() => []),
         api.medicines(token).catch(() => []),
         api.remindersToday(token).catch(() => []),
         api.riskPredictions(token).catch(() => []),

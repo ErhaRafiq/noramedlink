@@ -1,6 +1,4 @@
 import type {
-  AppointmentBookingPayload,
-  AppointmentBookingResponseV2,
   Appointment,
   AppointmentBookingResponse,
   AppointmentDoctor,
@@ -12,19 +10,11 @@ import type {
   DoctorDashboard,
   DoctorOverview,
   DoctorOption,
-  DoctorSignupPayload,
   HealthRiskPrediction,
-  HealthTip,
   MedicalDocument,
-  MedicineHistory,
-  MedicineHistoryPayload,
-  MedicineSafetyCheck,
   MedicationSchedule,
   MedicineReminder,
-  PatientDashboard,
-  PatientSignupPayload,
   PatientVitals,
-  VitalTrendPoint,
   SignupOtpPayload,
   SummaryResponse,
   AdminActivity,
@@ -81,7 +71,6 @@ function withPage(path: string, page: PageQuery = {}) {
 
 type RequestOptions = RequestInit & {
   token?: string;
-  baseUrl?: string;
 };
 
 function formatApiDetail(detail: unknown) {
@@ -105,27 +94,24 @@ function formatApiDetail(detail: unknown) {
 }
 
 async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const headers = new Headers(options.headers);
-  const isFormData = options.body instanceof FormData;
-  const baseUrl = (options.baseUrl ?? API_BASE_URL).replace(/\/$/, "");
+  const { token, ...init } = options;
+  const headers = new Headers(init.headers);
+  const isFormData = init.body instanceof FormData;
 
-  if (!isFormData && options.body && !headers.has("Content-Type")) {
+  if (!isFormData && init.body && !headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
   }
 
-  if (options.token) {
-    headers.set("Authorization", `Bearer ${options.token}`);
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   let response: Response;
   try {
-    response = await fetch(`${baseUrl}${path}`, {
-      ...options,
-      headers,
-    });
+    response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
   } catch (error) {
     const detail = error instanceof Error ? ` (${error.message})` : "";
-    if (options.signal?.aborted) {
+    if (init.signal?.aborted) {
       throw error;
     }
     throw new ApiError(`Unable to reach the backend API. Make sure the FastAPI server is running.${detail}`, 0);
@@ -150,62 +136,15 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
   return data as T;
 }
 
-async function authApiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  try {
-    return await apiRequest<T>(path, options);
-  } catch (error) {
-    if (
-      typeof window !== "undefined" &&
-      path.startsWith("/api/auth/") &&
-      error instanceof Error &&
-      (error.message.includes("Unable to reach the backend API") ||
-        error.message.includes("404") ||
-        error.message.toLowerCase().includes("not found"))
-    ) {
-      return apiRequest<T>(path, {
-        ...options,
-        baseUrl: "",
-      });
-    }
-
-    throw error;
-  }
-}
-
 export const api = {
-  baseUrl: API_BASE_URL,
-  signupPatient(payload: PatientSignupPayload) {
-    return apiRequest<AuthResponse>("/api/auth/signup/patient", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
-  signupDoctor(payload: DoctorSignupPayload) {
-    return apiRequest<AuthResponse>("/api/auth/signup/doctor", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
   signupAccount(payload: SignupOtpPayload) {
-    return authApiRequest<AuthResponse>("/api/auth/signup", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
-  requestSignupOtp(payload: SignupOtpPayload) {
-    return authApiRequest<{ message: string; expires_in_seconds: number }>("/api/auth/request-otp", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
-  },
-  verifySignupOtp(payload: SignupOtpPayload & { otp: string }) {
-    return authApiRequest<AuthResponse>("/api/auth/verify-otp-signup", {
+    return apiRequest<AuthResponse>("/api/auth/signup", {
       method: "POST",
       body: JSON.stringify(payload),
     });
   },
   login(payload: { email: string; password: string }) {
-    return authApiRequest<AuthResponse>("/api/auth/login", {
+    return apiRequest<AuthResponse>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify(payload),
     });
@@ -237,23 +176,11 @@ export const api = {
   adminRecentActivity(token: string) {
     return apiRequest<AdminActivity[]>("/api/admin/recent-activity", { token });
   },
-  patientDashboard(token: string) {
-    return apiRequest<PatientDashboard>("/patient/dashboard", { token });
-  },
-  patientDocuments(token: string, page?: PageQuery) {
-    return apiRequest<Page<MedicalDocument>>(withPage("/patient/reports", page), { token });
-  },
   patientDocument(token: string, documentId: number) {
-    return apiRequest<MedicalDocument>(`/patient/reports/${documentId}`, { token, baseUrl: API_BASE_URL });
-  },
-  patientDepartmentReports(token: string, department: string, page?: PageQuery) {
-    return apiRequest<Page<MedicalDocument>>(withPage(`/patient/reports/department/${encodeURIComponent(department)}`, page), { token });
+    return apiRequest<MedicalDocument>(`/patient/reports/${documentId}`, { token });
   },
   patientDepartmentTiles(token: string) {
     return apiRequest<DepartmentTile[]>("/patient/reports/tiles", { token });
-  },
-  patientLatestVitals(token: string) {
-    return apiRequest<PatientVitals | null>("/patient/vitals/latest", { token });
   },
   basicVitalsHistory(token: string) {
     return apiRequest<PatientVitals[]>("/patient/vitals/basic", { token });
@@ -268,28 +195,6 @@ export const api = {
   patientVitalsToday(token: string) {
     return apiRequest<DailyVital | null>("/patient/vitals/today", { token });
   },
-  patientVitalsTrends(token: string) {
-    return apiRequest<VitalTrendPoint[]>("/patient/vitals/trends", { token });
-  },
-  createPatientVital(
-    token: string,
-    payload: {
-      bloodPressureSystolic: number;
-      bloodPressureDiastolic: number;
-      heartRate: number;
-      spo2: number;
-      temperature: number;
-      sugarLevel?: number | null;
-      weight?: number | null;
-      recordedAt?: string;
-    },
-  ) {
-    return apiRequest<DailyVital>("/patient/vitals", {
-      method: "POST",
-      token,
-      body: JSON.stringify(payload),
-    });
-  },
   async doctors(token: string): Promise<DoctorOption[]> {
     // Verified doctors only (FastAPI /appointments/doctors), in the workspace's shape.
     const doctors = await apiRequest<AppointmentDoctor[]>("/appointments/doctors", { token });
@@ -303,20 +208,6 @@ export const api = {
       source: doctor.source,
     }));
   },
-  bookAppointment(token: string, payload: AppointmentBookingPayload) {
-    return apiRequest<AppointmentBookingResponseV2>("/appointments", {
-      method: "POST",
-      token,
-      body: JSON.stringify({
-        doctor_id: payload.doctorId,
-        date: `${payload.date}T${payload.time}`,
-        reason: payload.reason,
-      }),
-    });
-  },
-  appointmentsV2(token: string, page?: PageQuery) {
-    return apiRequest<Page<Appointment>>(withPage("/appointments", page), { token });
-  },
   reports(token: string, query: ReportListQuery = {}, init?: { signal?: AbortSignal }) {
     const path = withQuery("/patient/reports", {
       limit: query.limit,
@@ -327,15 +218,11 @@ export const api = {
     });
     return apiRequest<Page<MedicalDocument>>(path, { token, signal: init?.signal });
   },
-  reportsByCategory(token: string, category: string, page?: PageQuery) {
-    return apiRequest<Page<MedicalDocument>>(withPage(`/patient/reports/department/${encodeURIComponent(category)}`, page), { token });
-  },
   uploadReport(token: string, formData: FormData) {
     return apiRequest<MedicalDocument>("/patient/reports/upload", {
       method: "POST",
       token,
       body: formData,
-      baseUrl: API_BASE_URL,
     });
   },
   medicines(token: string) {
@@ -356,9 +243,6 @@ export const api = {
       token,
       body: JSON.stringify(payload),
     });
-  },
-  patientOverview<T>(token: string, init?: { signal?: AbortSignal }) {
-    return apiRequest<T>("/patient/overview", { token, signal: init?.signal });
   },
   issueDashboardOtp(token: string) {
     return apiRequest<{ message: string; otp: { code: string; expiresAt: string } }>("/patient/dashboard-otp", {
@@ -421,13 +305,6 @@ export const api = {
       body: JSON.stringify(payload),
     });
   },
-  addReminder(token: string, payload: { title: string; due_at: string }) {
-    return apiRequest<{ id: number; title: string; due_at: string; status: string }>("/reminders", {
-      method: "POST",
-      token,
-      body: JSON.stringify(payload),
-    });
-  },
   createReminder(
     token: string,
     payload: {
@@ -458,62 +335,21 @@ export const api = {
     });
   },
 
-  uploadDocument(token: string, formData: FormData) {
-    return apiRequest<MedicalDocument>("/patient/reports/upload", {
-      method: "POST",
-      token,
-      body: formData,
-    });
-  },
-  updateOcrText(token: string, documentId: number, cleanedText: string) {
-    return apiRequest<MedicalDocument>(`/patient/reports/${documentId}`, {
-      method: "PATCH",
-      token,
-      body: JSON.stringify({ extracted_text: cleanedText }),
-      baseUrl: API_BASE_URL,
-    });
-  },
   updateDocument(token: string, documentId: number, payload: { title?: string; department?: string; extracted_text?: string; formatted_text?: string }) {
     return apiRequest<MedicalDocument>(`/patient/reports/${documentId}`, {
       method: "PATCH",
       token,
       body: JSON.stringify(payload),
-      baseUrl: API_BASE_URL,
     });
   },
   regenerateDocumentOcr(token: string, documentId: number) {
     return apiRequest<MedicalDocument>(`/patient/reports/${documentId}/regenerate-ocr`, {
       method: "POST",
       token,
-      baseUrl: API_BASE_URL,
     });
   },
   deleteDocument(token: string, documentId: number) {
     return apiRequest<{ message: string }>(`/patient/reports/${documentId}`, {
-      method: "DELETE",
-      token,
-      baseUrl: API_BASE_URL,
-    });
-  },
-  patientMedicines(token: string, page?: PageQuery) {
-    return apiRequest<Page<MedicineHistory>>(withPage("/patient/medicines", page), { token });
-  },
-  createMedicine(token: string, payload: MedicineHistoryPayload) {
-    return apiRequest<MedicineHistory>("/patient/medicines", {
-      method: "POST",
-      token,
-      body: JSON.stringify(payload),
-    });
-  },
-  updateMedicine(token: string, medicineId: number, payload: Partial<MedicineHistoryPayload>) {
-    return apiRequest<MedicineHistory>(`/patient/medicines/${medicineId}`, {
-      method: "PUT",
-      token,
-      body: JSON.stringify(payload),
-    });
-  },
-  deleteMedicine(token: string, medicineId: number) {
-    return apiRequest<{ message: string }>(`/patient/medicines/${medicineId}`, {
       method: "DELETE",
       token,
     });
@@ -521,39 +357,8 @@ export const api = {
   riskPredictions(token: string) {
     return apiRequest<HealthRiskPrediction[]>("/patient/risk-predictions", { token });
   },
-  generateRiskPredictions(token: string) {
-    return apiRequest<HealthRiskPrediction[]>("/patient/risk-predictions/generate", {
-      method: "POST",
-      token,
-    });
-  },
-  healthTips(token: string) {
-    return apiRequest<HealthTip[]>("/patient/health-tips", { token });
-  },
-  generateHealthTips(token: string) {
-    return apiRequest<HealthTip[]>("/patient/health-tips/generate", {
-      method: "POST",
-      token,
-    });
-  },
   doctorSummaries(token: string) {
     return apiRequest<DoctorSummary[]>("/patient/doctor-summaries", { token });
-  },
-  generateDoctorSummary(token: string) {
-    return apiRequest<DoctorSummary>("/patient/doctor-summaries/generate", {
-      method: "POST",
-      token,
-    });
-  },
-  checkMedicineSafety(
-    token: string,
-    payload: { medicine_name: string; dosage?: string | null; known_allergies?: string | null },
-  ) {
-    return apiRequest<MedicineSafetyCheck>("/patient/medicine-safety/check", {
-      method: "POST",
-      token,
-      body: JSON.stringify(payload),
-    });
   },
   doctorDashboard(token: string) {
     return apiRequest<DoctorDashboard>("/doctor/dashboard", { token });
@@ -576,24 +381,25 @@ export const api = {
     const query = searchParams.toString();
     return apiRequest<AppointmentDoctor[]>(`/appointments/doctors${query ? `?${query}` : ""}`);
   },
-  appointments(token: string, page?: PageQuery) {
-    return apiRequest<Page<Appointment>>(withPage("/appointments", page), { token });
-  },
-  createAppointment(
+  /** Books a verified doctor. `date` must be an ISO string with a time zone (Date#toISOString). */
+  bookAppointment(
     token: string,
-    payload: {
-      doctor_name: string;
-      doctor_id?: number | null;
-      date?: string | null;
-      notes?: string | null;
-      patient_access_otp?: string | null;
-    },
+    payload: { doctorId: number; date: string; reason?: string | null; notes?: string | null; patientAccessOtp?: string | null },
   ) {
     return apiRequest<AppointmentBookingResponse>("/appointments", {
       method: "POST",
       token,
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        doctor_id: payload.doctorId,
+        date: payload.date,
+        reason: payload.reason || null,
+        notes: payload.notes || null,
+        patient_access_otp: payload.patientAccessOtp || null,
+      }),
     });
+  },
+  appointments(token: string, page?: PageQuery) {
+    return apiRequest<Page<Appointment>>(withPage("/appointments", page), { token });
   },
   updateAppointment(
     token: string,
@@ -609,12 +415,6 @@ export const api = {
       method: "PUT",
       token,
       body: JSON.stringify(payload),
-    });
-  },
-  deleteAppointment(token: string, appointmentId: number) {
-    return apiRequest<{ message: string }>(`/appointments/${appointmentId}`, {
-      method: "DELETE",
-      token,
     });
   },
   uploadUrl(path: string) {

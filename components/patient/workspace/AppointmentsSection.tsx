@@ -32,14 +32,13 @@ export function AppointmentsSection({
     useCallback(
       async (doctor: DoctorOption, values: typeof EMPTY_FORM) => {
         try {
-          await api.bookAppointment(token, {
-            doctorId: doctor.id,
-            doctorName: doctor.name,
-            specialty: values.specialty || doctor.specialty,
-            date: values.date,
-            time: values.time,
-            reason: values.reason,
-          });
+          // The inputs are the patient's local date and time; send them with the time zone.
+          const when = new Date(`${values.date}T${values.time}`);
+          if (Number.isNaN(when.getTime())) {
+            notify("error", "Choose a valid date and time.");
+            return;
+          }
+          await api.bookAppointment(token, { doctorId: doctor.id, date: when.toISOString(), reason: values.reason });
           notify("success", "Appointment booked successfully.");
           setForm(EMPTY_FORM);
           await onSaved();

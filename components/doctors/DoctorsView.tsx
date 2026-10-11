@@ -49,12 +49,11 @@ export function DoctorsView() {
 
     setBookingId(doctor.id);
     try {
-      const result = await api.createAppointment(session.token, {
-        doctor_name: doctor.name,
-        doctor_id: doctor.doctor_id,
+      const result = await api.bookAppointment(session.token, {
+        doctorId: doctor.id,
         date: date.toISOString(),
-        notes: details.notes.trim() || null,
-        patient_access_otp: details.accessCode.trim() || null,
+        notes: details.notes.trim(),
+        patientAccessOtp: details.accessCode.trim(),
       });
       setNotice({ tone: "success", text: result.message });
       setDetails((current) => ({ ...current, notes: "", accessCode: "" }));

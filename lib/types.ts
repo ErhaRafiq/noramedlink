@@ -17,28 +17,6 @@ export type AuthResponse = {
   user: AuthUser;
 };
 
-export type PatientSignupPayload = {
-  full_name: string;
-  email: string;
-  password: string;
-  confirm_password: string;
-  cnic: string;
-  phone: string;
-  date_of_birth: string;
-  gender: string;
-};
-
-export type DoctorSignupPayload = {
-  full_name: string;
-  email: string;
-  password: string;
-  confirm_password: string;
-  pmdc_number: string;
-  specialization: string;
-  phone: string;
-  hospital_name: string;
-};
-
 export type AdminSignupPayload = {
   full_name: string;
   email: string;
@@ -392,20 +370,6 @@ export type AppointmentBookingResponse = {
   message: string;
   appointment: Appointment;
   dashboard_access_granted: boolean;
-};
-
-export type AppointmentBookingPayload = {
-  doctorId: number;
-  doctorName: string;
-  specialty: string;
-  date: string;
-  time: string;
-  reason: string;
-};
-
-export type AppointmentBookingResponseV2 = {
-  message: string;
-  appointment: Appointment;
 };
 
 export type DoctorOption = {
