@@ -3,6 +3,21 @@ import type { AuthResponse, AuthUser } from "@/lib/types";
 const TOKEN_KEY = "nora_medlink_token";
 const USER_KEY = "nora_medlink_user";
 
+/** Fired on window whenever this tab signs in or out (other tabs get the "storage" event). */
+export const SESSION_CHANGE_EVENT = "nora-session-change";
+
+function announceSessionChange() {
+  window.dispatchEvent(new Event(SESSION_CHANGE_EVENT));
+}
+
+/** Raw stored session as one string, for useSyncExternalStore snapshots ("" when signed out). */
+export function readSessionSnapshot() {
+  if (typeof window === "undefined") return "";
+  const token = localStorage.getItem(TOKEN_KEY);
+  const user = localStorage.getItem(USER_KEY);
+  return token && user ? `${token}\n${user}` : "";
+}
+
 export type StoredSession = {
   token: string;
   user: AuthUser;
@@ -18,6 +33,7 @@ export function saveSession(auth: AuthResponse) {
   localStorage.setItem("userRole", auth.user.role.toUpperCase());
   localStorage.setItem("userName", auth.user.full_name);
   localStorage.setItem("userEmail", auth.user.email);
+  announceSessionChange();
 }
 
 export function getSession(): StoredSession | null {
@@ -66,6 +82,7 @@ export function clearSession() {
   localStorage.removeItem("userRole");
   localStorage.removeItem("userName");
   localStorage.removeItem("userEmail");
+  announceSessionChange();
 }
 
 export function dashboardPathForRole(role: AuthUser["role"]) {

@@ -25,13 +25,13 @@ export function LandingFooter() {
               </Link>
             </li>
             <li>
-              <Link href="/login" className="hover:text-ink">
-                Sign in
+              <Link href="/summarize" className="hover:text-ink">
+                Summarize a report
               </Link>
             </li>
             <li>
-              <Link href="/signup?role=patient" className="hover:text-ink">
-                Create account
+              <Link href="/emergency" className="hover:text-ink">
+                Home visit
               </Link>
             </li>
           </ul>
