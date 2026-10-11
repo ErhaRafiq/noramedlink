@@ -65,30 +65,10 @@
 }
 
 @layer components {
-  /* ── Page shells ─────────────────────────────────────────────────────────── */
-  .app-shell {
-    @apply min-h-screen bg-surface-page text-ink;
-  }
-
   /* ── Surfaces ────────────────────────────────────────────────────────────── */
-  .glass-card {
-    @apply rounded-card border border-line bg-white shadow-card;
-  }
 
   .floating-card {
     @apply transition duration-200 ease-out hover:border-line-strong hover:shadow-card-hover;
-  }
-
-  .dashboard-topbar {
-    @apply mb-6 rounded-card border border-line bg-white p-5 shadow-card sm:p-6;
-  }
-
-  .dashboard-panel {
-    @apply rounded-card border border-line bg-white p-5 shadow-card sm:p-6;
-  }
-
-  .metric-card {
-    @apply rounded-card border border-line bg-white p-5 shadow-card;
   }
 
   /* ── Buttons ─────────────────────────────────────────────────────────────── */
@@ -109,10 +89,6 @@
   /* ── Form controls ───────────────────────────────────────────────────────── */
   .form-field {
     @apply w-full rounded-control border border-line bg-white px-3.5 py-2.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-blue focus:shadow-focus disabled:cursor-not-allowed disabled:bg-surface-soft;
-  }
-
-  .form-input {
-    @apply mt-2 h-11 w-full rounded-control border border-line bg-white px-3.5 text-sm text-ink outline-none transition placeholder:text-slate-400 focus:border-brand-blue focus:shadow-focus disabled:cursor-not-allowed disabled:bg-surface-soft;
   }
 
   /* ── Typography ──────────────────────────────────────────────────────────── */
@@ -143,7 +119,7 @@
     @apply bg-white/10 text-white ring-1 ring-white/15;
   }
 
-  /* ── Landing page (reworked with the Three.js hero in U5) ────────────────── */
+  /* ── Public pages backdrop ───────────────────────────────────────────────── */
   .premium-page {
     position: relative;
     min-height: 100vh;
@@ -174,18 +150,6 @@
     mask-image: linear-gradient(to bottom, transparent, black 16%, black 68%, transparent);
   }
 
-  .landing-glass {
-    @apply border border-line bg-white shadow-card;
-  }
-
-  .feature-glass {
-    @apply border border-line bg-white shadow-card;
-  }
-
-  .soft-shimmer {
-    position: relative;
-    overflow: hidden;
-  }
 }
 
 /* Scroll reveal (components/landing/Reveal.tsx): only set by JavaScript, so content is

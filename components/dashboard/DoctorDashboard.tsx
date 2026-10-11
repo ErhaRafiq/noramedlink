@@ -1,23 +1,25 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { CalendarDays, FileSearch, KeyRound, LayoutDashboard, LogOut, ShieldAlert, Siren, Stethoscope, Users } from "lucide-react";
+import { CalendarDays, FileSearch, KeyRound, LayoutDashboard, Siren, Stethoscope, Users } from "lucide-react";
 
-import { SidebarDashboardSkeleton } from "@/components/ui/dashboard-skeleton";
-import { Sidebar, StatCard } from "@/components/ui/saas-shell";
+import { DashboardShell, type DashboardNavItem } from "@/components/layout/DashboardShell";
+import { Alert } from "@/components/ui/alert";
+import { ButtonLink } from "@/components/ui/button";
+import { SkeletonCard } from "@/components/ui/skeleton";
 import { ErrorState, PageLoader } from "@/components/ui/spinner";
+import { StatCard, StatCardSkeleton } from "@/components/ui/stat-card";
 import { clearSession } from "@/lib/auth";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useDoctorDashboard } from "@/hooks/doctor/use-doctor-dashboard";
 import { ActivePatientsCard, AppointmentsCard, EmergencyCard, PatientFileCard, UnlockCard } from "./doctor/sections";
 
-const sidebarItems = [
-  { href: "/dashboard/doctor", label: "Dashboard", icon: LayoutDashboard, active: true },
-  { href: "/dashboard/doctor#unlock", label: "Unlock Patient", icon: KeyRound },
-  { href: "/dashboard/doctor#appointments", label: "Appointments", icon: CalendarDays },
-  { href: "/dashboard/doctor#patient-file", label: "Patient File", icon: FileSearch },
-  { href: "/dashboard/doctor#emergency", label: "Emergency Visits", icon: Siren },
+const NAV: DashboardNavItem[] = [
+  { id: "summary", label: "Summary", icon: LayoutDashboard },
+  { id: "unlock", label: "Unlock a file", icon: KeyRound },
+  { id: "appointments", label: "Appointments", icon: CalendarDays },
+  { id: "patient-file", label: "Patient file", icon: FileSearch },
+  { id: "emergency", label: "Emergency visits", icon: Siren },
 ];
 
 const VERIFIED_STATUSES = ["approved", "verified"];
@@ -28,16 +30,15 @@ export function DoctorDashboard() {
   const dashboard = useDoctorDashboard(auth.status === "ready" ? auth.token : null);
   const { profile, overview, notice, selectedPatientId } = dashboard;
 
-  function logout() {
+  function signOut() {
     clearSession();
     router.replace("/login");
   }
 
   if (auth.status === "error") return <ErrorState message={auth.message} onRetry={() => window.location.reload()} />;
   if (auth.status !== "ready") return <PageLoader message="Checking your session..." />;
-  if (dashboard.isLoading) return <SidebarDashboardSkeleton label="Loading the doctor dashboard" />;
 
-  const doctorName = (profile?.full_name ?? overview?.doctor.name ?? "").replace(/^dr\.?\s*/i, "");
+  const doctorName = (profile?.full_name ?? overview?.doctor.name ?? auth.user.full_name ?? "").replace(/^dr\.?\s*/i, "");
   const verification = (profile?.verification_status ?? "").toLowerCase();
   const isVerified = VERIFIED_STATUSES.includes(verification);
   const profileLine = [profile?.specialization, profile?.hospital_name].filter(Boolean).join(" · ");
@@ -53,101 +54,67 @@ export function DoctorDashboard() {
       : null;
 
   return (
-    <main className="app-shell min-h-screen">
-      <div className="mx-auto grid max-w-[1520px] gap-6 px-4 py-5 lg:grid-cols-[286px_1fr] lg:px-6">
-        <Sidebar
-          items={sidebarItems}
-          userName={doctorName ? `Dr. ${doctorName}` : "Doctor"}
-          userMeta={profile?.email ?? overview?.doctor.email}
-          action={
-            <button
-              type="button"
-              onClick={logout}
-              className="flex w-full items-center gap-3 rounded-[16px] px-4 py-3 text-left text-sm font-bold text-red-100 transition hover:bg-red-400/10"
-            >
-              <LogOut className="h-4 w-4" />
-              Logout
-            </button>
-          }
-        />
+    <DashboardShell nav={NAV} userName={doctorName ? `Dr. ${doctorName}` : "Doctor"} userMeta={profile?.email ?? auth.user.email} onSignOut={signOut}>
+      <header id="summary" className="flex scroll-mt-24 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="section-eyebrow">Doctor dashboard</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">{doctorName ? `Welcome back, Dr. ${doctorName}` : "Welcome back"}</h1>
+          <p className="mt-1 text-sm text-ink-muted">{profileLine || "Appointments, patient files opened by one-time code, and emergency visits."}</p>
+        </div>
+        <ButtonLink href="/doctors" variant="secondary" size="sm" icon={<Stethoscope className="h-4 w-4" />}>
+          Doctor directory
+        </ButtonLink>
+      </header>
 
-        <section className="space-y-6">
-          <header className="dashboard-topbar">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="section-eyebrow">Doctor dashboard</p>
-                <h1 className="mt-2 text-3xl font-black tracking-tight text-slate-950 sm:text-4xl">
-                  {doctorName ? `Welcome back, Dr. ${doctorName}` : "Welcome back"}
-                </h1>
-                <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-500">
-                  {profileLine || "Appointments, patient files opened by one-time code, and emergency visits."}
-                </p>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/dashboard/doctor#unlock" className="gradient-button gap-2 px-4 py-3">
-                  <KeyRound className="h-4 w-4" />
-                  Unlock Patient
-                </Link>
-                <Link href="/doctors" className="secondary-button gap-2 px-4 py-3">
-                  <Stethoscope className="h-4 w-4" />
-                  Doctor Directory
-                </Link>
-              </div>
-            </div>
-          </header>
+      {profile && !isVerified ? (
+        <Alert tone="warning" title={verification === "rejected" ? "Verification rejected" : "Verification pending"}>
+          Patients cannot find or book you until an administrator approves your registration.
+        </Alert>
+      ) : null}
 
-          {profile && !isVerified ? (
-            <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
-              <ShieldAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
-              <p>
-                <span className="font-black">{verification === "rejected" ? "Verification rejected." : "Verification pending."}</span>{" "}
-                Patients cannot find or book you until an admin approves your account.
-              </p>
-            </div>
-          ) : null}
+      {notice ? <Alert tone={notice.tone === "success" ? "success" : "error"}>{notice.text}</Alert> : null}
 
-          {notice ? (
-            <p
-              role={notice.tone === "error" ? "alert" : "status"}
-              className={`rounded-2xl border px-5 py-4 text-sm font-semibold ${
-                notice.tone === "success" ? "border-emerald-100 bg-emerald-50 text-emerald-700" : "border-red-100 bg-red-50 text-red-700"
-              }`}
-            >
-              {notice.text}
-            </p>
-          ) : null}
+      {dashboard.isLoading ? (
+        <div role="status" aria-label="Loading the doctor dashboard" className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {Array.from({ length: 4 }, (_, i) => (
+              <StatCardSkeleton key={i} />
+            ))}
+          </div>
+          <div className="grid gap-6 xl:grid-cols-2">
+            <SkeletonCard lines={4} />
+            <SkeletonCard lines={4} />
+          </div>
+        </div>
+      ) : overview ? (
+        <>
+          <section aria-label="Summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard label="Appointments" value={overview.stats.appointments} detail="recent, booked with you" icon={CalendarDays} />
+            <StatCard label="Patients with access" value={overview.stats.patients} detail="unlocked by one-time code" icon={Users} tint="bg-teal-50 text-teal-700" />
+            <StatCard label="Emergency visits" value={overview.stats.emergencyBookings} detail="recent, assigned to you" icon={Siren} tint="bg-rose-50 text-rose-600" />
+            <StatCard label="Shared reports" value={overview.stats.medicalRecords} detail="from patients with access" icon={FileSearch} tint="bg-violet-50 text-violet-700" />
+          </section>
 
-          {overview ? (
-            <>
-              <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                <StatCard label="Appointments" value={overview.stats.appointments} detail="recent, booked with you" icon={CalendarDays} />
-                <StatCard label="Patients with access" value={overview.stats.patients} detail="unlocked by one-time code" icon={Users} />
-                <StatCard label="Emergency visits" value={overview.stats.emergencyBookings} detail="recent, assigned to you" icon={Siren} />
-                <StatCard label="Shared reports" value={overview.stats.medicalRecords} detail="from patients with access" icon={FileSearch} />
-              </section>
+          <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+            <UnlockCard isUnlocking={dashboard.isUnlocking} onUnlock={dashboard.unlock} />
+            <ActivePatientsCard patients={patients} selectedPatientId={selectedPatientId} onSelect={dashboard.selectPatient} />
+          </div>
 
-              <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-                <UnlockCard isUnlocking={dashboard.isUnlocking} onUnlock={dashboard.unlock} />
-                <ActivePatientsCard patients={patients} selectedPatientId={selectedPatientId} onSelect={dashboard.selectPatient} />
-              </section>
+          <div className="grid items-start gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+            <AppointmentsCard appointments={overview.appointments} selectedPatientId={selectedPatientId} onSelect={dashboard.selectPatient} />
+            <PatientFileCard
+              patient={activePatient}
+              selectedWithoutAccess={selectedWithoutAccess}
+              reports={activePatient ? overview.medicalRecords.filter((r) => r.userId === activePatient.id) : []}
+              medicines={activePatient ? overview.medications.filter((m) => m.userId === activePatient.id) : []}
+              isEnding={activePatient !== null && dashboard.endingPatientId === activePatient.id}
+              onEndAccess={(id) => void dashboard.endAccess(id)}
+            />
+          </div>
 
-              <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-                <AppointmentsCard appointments={overview.appointments} selectedPatientId={selectedPatientId} onSelect={dashboard.selectPatient} />
-                <PatientFileCard
-                  patient={activePatient}
-                  selectedWithoutAccess={selectedWithoutAccess}
-                  reports={activePatient ? overview.medicalRecords.filter((r) => r.userId === activePatient.id) : []}
-                  medicines={activePatient ? overview.medications.filter((m) => m.userId === activePatient.id) : []}
-                  isEnding={activePatient !== null && dashboard.endingPatientId === activePatient.id}
-                  onEndAccess={(id) => void dashboard.endAccess(id)}
-                />
-              </section>
-
-              <EmergencyCard bookings={overview.emergencyBookings} />
-            </>
-          ) : null}
-        </section>
-      </div>
-    </main>
+          <EmergencyCard bookings={overview.emergencyBookings} />
+        </>
+      ) : null}
+    </DashboardShell>
   );
 }
