@@ -9,6 +9,7 @@ from database import get_db
 from dependencies import require_admin
 from models import Appointment, DoctorProfile, PatientReport, User
 from pagination import Page, PageParams, page_params, paginate
+from services.signup_service import pmdc_matches
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -111,6 +112,22 @@ def update_doctor_status(doctor_profile_id: int, next_status: str, db: Session) 
     profile = db.get(DoctorProfile, doctor_profile_id)
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor profile not found.")
+
+    if next_status == "approved":
+        duplicate = (
+            db.query(DoctorProfile.id)
+            .filter(
+                DoctorProfile.id != profile.id,
+                func.lower(DoctorProfile.verification_status) == "approved",
+                pmdc_matches(profile.pmdc_number),
+            )
+            .first()
+        )
+        if duplicate:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Another approved doctor already has this PMDC/PMC number. Check the registration first.",
+            )
 
     profile.verification_status = next_status
     if profile.user:

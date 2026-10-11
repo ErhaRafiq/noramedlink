@@ -33,6 +33,7 @@ from services.signup_service import (
     as_utc,
     build_token_response,
     create_user_from_verified_signup,
+    doctor_pmdc,
     enforce_otp_rate_limit,
     ensure_unique_identity,
     normalize_email,
@@ -52,7 +53,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 def signup(request: Request, payload: SignupOtpRequest, db: Session = Depends(get_db)):
     email, phone = normalize_signup_payload(payload)
     validate_role_specific_fields(payload)
-    ensure_unique_identity(db, email, phone)
+    ensure_unique_identity(db, email, phone, doctor_pmdc(payload))
 
     try:
         user = create_user_from_verified_signup(payload, email, phone, db)
@@ -73,7 +74,7 @@ def signup(request: Request, payload: SignupOtpRequest, db: Session = Depends(ge
 def request_signup_otp(request: Request, payload: SignupOtpRequest, db: Session = Depends(get_db)):
     email, phone = normalize_signup_payload(payload)
     validate_role_specific_fields(payload)
-    ensure_unique_identity(db, email, phone)
+    ensure_unique_identity(db, email, phone, doctor_pmdc(payload))
     enforce_otp_rate_limit(db, email, phone)
 
     otp = f"{secrets.randbelow(1_000_000):06d}"
@@ -108,7 +109,7 @@ def request_signup_otp(request: Request, payload: SignupOtpRequest, db: Session 
 def verify_otp_signup(request: Request, payload: VerifySignupOtpRequest, db: Session = Depends(get_db)):
     email, phone = normalize_signup_payload(payload)
     validate_role_specific_fields(payload)
-    ensure_unique_identity(db, email, phone)
+    ensure_unique_identity(db, email, phone, doctor_pmdc(payload))
 
     otp_record = (
         db.query(SignupOtp)
@@ -193,7 +194,7 @@ def signup_patient(request: Request, payload: PatientSignupRequest, db: Session 
 def signup_doctor(request: Request, payload: DoctorSignupRequest, db: Session = Depends(get_db)):
     email = normalize_email(str(payload.email))
     phone = normalize_phone(payload.phone)
-    ensure_unique_identity(db, email, phone)
+    ensure_unique_identity(db, email, phone, payload.pmdc_number)
 
     user = User(
         full_name=payload.full_name.strip(),

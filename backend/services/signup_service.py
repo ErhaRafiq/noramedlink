@@ -6,7 +6,7 @@ import re
 from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from auth import create_access_token, hash_password
@@ -93,7 +93,26 @@ def ensure_unique_email(db: Session, email: str) -> None:
         )
 
 
-def ensure_unique_identity(db: Session, email: str, phone: str) -> None:
+def normalize_pmdc(value: str) -> str:
+    """PMDC/PMC numbers compare without case or spaces: "PMC 12345" == "pmc12345"."""
+    return re.sub(r"\s+", "", value or "").lower()
+
+
+def pmdc_matches(value: str):
+    """SQL condition: a doctor profile whose PMDC/PMC number equals `value` once normalised."""
+    return func.lower(func.replace(DoctorProfile.pmdc_number, " ", "")) == normalize_pmdc(value)
+
+
+def ensure_unique_pmdc(db: Session, pmdc_number: str) -> None:
+    if db.query(DoctorProfile.id).filter(pmdc_matches(pmdc_number)).first():
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="This PMDC/PMC registration number is already registered.",
+        )
+
+
+def ensure_unique_identity(db: Session, email: str, phone: str, pmdc_number: str | None = None) -> None:
+    """Email and phone are unique per account; a doctor's PMDC/PMC number is unique too."""
     existing_email = db.query(User.id).filter(User.email == email).first()
     if existing_email:
         raise HTTPException(
@@ -107,6 +126,13 @@ def ensure_unique_identity(db: Session, email: str, phone: str) -> None:
             status_code=status.HTTP_409_CONFLICT,
             detail="Phone number already registered",
         )
+
+    if pmdc_number and pmdc_number.strip():
+        ensure_unique_pmdc(db, pmdc_number)
+
+
+def doctor_pmdc(payload: SignupOtpRequest) -> str | None:
+    return payload.pmdc_number if payload.role == "doctor" else None
 
 
 def validate_role_specific_fields(payload: SignupOtpRequest) -> None:

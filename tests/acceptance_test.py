@@ -864,6 +864,26 @@ def run_tests() -> None:
           response.status_code == 200
           and scalar("select verification_status from doctor_profiles where id = :id", id=profile_id) == "rejected")
 
+    taken = scalar("select pmdc_number from doctor_profiles where user_id = :id", id=doctor)
+    response = call("POST", "/api/backend/api/auth/signup", body={
+        "role": "doctor", "full_name": f"{TEST_PREFIX}pmdc duplicate", "email": f"{TEST_PREFIX}pmdc-dup-{run_id}@example.com",
+        "password": "Pmdc-test-pass-1", "confirm_password": "Pmdc-test-pass-1", "phone": f"0311 {secrets.randbelow(10**7):07d}",
+        "pmdc_number": f"  {taken.upper()} ", "specialization": "Cardiology", "hospital_name": "Test Hospital",
+    })
+    check("doctor signup with a PMDC number already in use (other case and spacing) -> 409",
+          response.status_code == 409 and "PMDC" in response.json().get("detail", ""), f"got {response.status_code}")
+    twin = create_user("doctor-pmdc-twin", "DOCTOR", doctor_status="pending")
+    with engine.begin() as conn:
+        conn.execute(text("update doctor_profiles set pmdc_number = :p where user_id = :id"), {"p": taken, "id": twin})
+    twin_profile = scalar("select id from doctor_profiles where user_id = :uid", uid=twin)
+    response = call("PATCH", f"/api/backend/api/admin/doctors/{twin_profile}/approve", tok_admin)
+    check("approving a doctor whose PMDC number an approved doctor already has -> 409, stays pending",
+          response.status_code == 409
+          and scalar("select verification_status from doctor_profiles where id = :id", id=twin_profile) == "pending",
+          f"got {response.status_code}")
+    response = call("PATCH", f"/api/backend/api/admin/doctors/{twin_profile}/reject", tok_admin)
+    check("that doctor can still be rejected -> 200", response.status_code == 200, f"got {response.status_code}")
+
     print("\n[13d] Medicine safety check (deterministic status, AGENTS.md 6.2)")
     tok_safety = token_for(create_user("safety", "PATIENT"))
     safety_url = "/api/backend/patient/medicine-safety/check"

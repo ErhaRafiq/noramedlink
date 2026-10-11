@@ -105,3 +105,19 @@ def test_otp_must_be_six_digits(otp):
 def test_patient_signup_schema_normalises_cnic():
     request = PatientSignupRequest(**BASE, cnic=" 12345-1234567-1 ", date_of_birth=date(1990, 1, 1), gender="female")
     assert request.cnic == "12345-1234567-1"
+
+
+@pytest.mark.parametrize(
+    ("first", "second"),
+    [("momna-56", "MOMNA-56"), ("PMC 12345", "pmc12345"), ("  12345-P ", "12345-p")],
+)
+def test_pmdc_numbers_compare_without_case_or_spaces(first, second):
+    from services.signup_service import normalize_pmdc
+
+    assert normalize_pmdc(first) == normalize_pmdc(second)
+
+
+def test_different_pmdc_numbers_stay_different():
+    from services.signup_service import normalize_pmdc
+
+    assert normalize_pmdc("12345-P") != normalize_pmdc("12345-PA")
