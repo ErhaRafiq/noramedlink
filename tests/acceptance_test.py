@@ -830,6 +830,26 @@ def run_tests() -> None:
         response = call("GET", f"/api/backend/patient/reports?{bad}", tok_a)
         check(f"?{bad[:30]} -> 422", response.status_code == 422, f"got {response.status_code}")
 
+    print("\n[13c] Account and doctor-review responses")
+    me = call("GET", "/api/backend/api/auth/me", tok_a)
+    check("/auth/me -> 200 for an address on a reserved domain (@example.test)",
+          me.status_code == 200 and me.json().get("email", "").endswith("@example.test"), f"got {me.status_code}")
+    reviewed = create_user("doctor-review", "DOCTOR", doctor_status="pending")
+    profile_id = scalar("select id from doctor_profiles where user_id = :uid", uid=reviewed)
+    # Only send the user id when it matches no profile, so this can never touch a real doctor.
+    if scalar("select count(*) from doctor_profiles where id = :id", id=reviewed) == 0:
+        response = call("PATCH", f"/api/backend/api/admin/doctors/{reviewed}/approve", tok_admin)
+        check("approve with the doctor's user id (not the profile id) -> 404", response.status_code == 404,
+              f"got {response.status_code}")
+    response = call("PATCH", f"/api/backend/api/admin/doctors/{profile_id}/approve", tok_admin)
+    check("approve with the profile id -> 200 and approved",
+          response.status_code == 200 and response.json().get("verificationStatus") == "approved"
+          and scalar("select is_identity_verified from users where id = :id", id=reviewed) is True)
+    response = call("PATCH", f"/api/backend/api/admin/doctors/{profile_id}/reject", tok_admin)
+    check("reject with the profile id -> 200 and rejected",
+          response.status_code == 200
+          and scalar("select verification_status from doctor_profiles where id = :id", id=profile_id) == "rejected")
+
     print("\n[14] Rate limits")
     limited_patient = create_user("ratelimit", "PATIENT")
     tok_limited = token_for(limited_patient)

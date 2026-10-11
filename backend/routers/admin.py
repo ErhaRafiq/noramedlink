@@ -106,9 +106,9 @@ def pending_doctors(
 
 
 def update_doctor_status(doctor_profile_id: int, next_status: str, db: Session) -> dict:
+    # Profile id only: falling back to a user id could approve a different doctor
+    # whose profile id happens to equal that number.
     profile = db.get(DoctorProfile, doctor_profile_id)
-    if not profile:
-        profile = db.query(DoctorProfile).filter(DoctorProfile.user_id == doctor_profile_id).first()
     if not profile:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Doctor profile not found.")
 

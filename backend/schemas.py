@@ -10,7 +10,9 @@ Role = Literal["patient", "doctor", "admin"]
 class UserOut(BaseModel):
     id: int
     full_name: str
-    email: EmailStr
+    # Plain str: emails are validated on the way in. Re-validating stored values on
+    # the way out turned an address the validator now rejects into a 500 on /auth/me.
+    email: str
     role: Role
     phone: str
     is_email_verified: bool
