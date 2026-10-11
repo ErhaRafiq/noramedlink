@@ -20,8 +20,6 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-# .env must be loaded before the app modules that read settings at import time.
-"main.py" = ["E402"]
 # Standalone scripts that extend sys.path before importing app modules.
 "test_quick.py" = ["E402"]
 # Migration helpers favour explicit, step-by-step code over shorter idioms.

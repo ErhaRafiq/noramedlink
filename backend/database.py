@@ -1,17 +1,12 @@
 import logging
-import os
 from pathlib import Path
 
-from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
-BACKEND_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = BACKEND_DIR.parent
-load_dotenv(PROJECT_ROOT / ".env")
-load_dotenv(BACKEND_DIR / ".env", override=True)
+from config import BACKEND_DIR, PROJECT_ROOT, settings
 
 DEFAULT_SQLITE_PATH = BACKEND_DIR / "dev.db"
 logger = logging.getLogger("nora.database")
@@ -40,9 +35,7 @@ def _normalize_database_url(configured_url: str) -> str:
 
 
 def get_database_url() -> str:
-    configured_url = os.getenv("FASTAPI_DATABASE_URL", "").strip().strip('"').strip("'") or os.getenv(
-        "DATABASE_URL", ""
-    ).strip().strip('"').strip("'")
+    configured_url = settings.database_url
     if not configured_url:
         logger.warning("No PostgreSQL URL configured; using local SQLite fallback for development only.")
         return _sqlite_url_for_path(DEFAULT_SQLITE_PATH)
@@ -65,15 +58,15 @@ DATABASE_BACKEND = make_url(DATABASE_URL).get_backend_name()
 
 engine_options = {
     "pool_pre_ping": True,
-    "pool_recycle": int(os.getenv("DB_POOL_RECYCLE_SECONDS", "1800")),
+    "pool_recycle": settings.db_pool_recycle_seconds,
 }
 
 if DATABASE_BACKEND == "postgresql":
     engine_options.update(
         {
-            "pool_size": int(os.getenv("DB_POOL_SIZE", "5")),
-            "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "10")),
-            "pool_timeout": int(os.getenv("DB_POOL_TIMEOUT_SECONDS", "30")),
+            "pool_size": settings.db_pool_size,
+            "max_overflow": settings.db_max_overflow,
+            "pool_timeout": settings.db_pool_timeout_seconds,
         }
     )
 else:
@@ -115,8 +108,7 @@ def check_database_connection() -> dict[str, str]:
 
 
 def get_upload_root_path() -> Path:
-    configured_path = os.getenv("UPLOAD_DIR", "uploads")
-    upload_root = Path(configured_path)
+    upload_root = Path(settings.upload_dir)
     if not upload_root.is_absolute():
         upload_root = BACKEND_DIR / upload_root
     return upload_root

@@ -1,11 +1,4 @@
-import os
 from contextlib import asynccontextmanager
-from pathlib import Path
-
-from dotenv import load_dotenv
-
-BACKEND_DIR = Path(__file__).resolve().parent
-load_dotenv(BACKEND_DIR / ".env")
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -14,7 +7,9 @@ from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from sqlalchemy.exc import OperationalError, SQLAlchemyError
 
+from config import settings
 from database import check_database_connection, ensure_runtime_dirs, run_migrations
+from logging_config import configure_logging
 from rate_limit import limiter, rate_limit_exceeded_handler
 from routers import (
     admin,
@@ -36,6 +31,8 @@ from routers import (
     vitals,
 )
 
+configure_logging()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -52,9 +49,8 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:3000")
 allowed_origins = {
-    frontend_origin,
+    settings.frontend_origin,
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 }

@@ -1,4 +1,3 @@
-import os
 import re
 import secrets
 from datetime import UTC, datetime, timedelta
@@ -9,6 +8,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from auth import create_access_token, hash_password, verify_password
+from config import settings
 from database import get_db
 from dependencies import get_current_user
 from models import DoctorProfile, PatientProfile, SignupOtp, User
@@ -26,7 +26,7 @@ from services.otp_delivery_service import OtpDeliveryError, send_email_otp, send
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "5"))
+OTP_EXPIRY_MINUTES = settings.otp_expiry_minutes
 OTP_RATE_LIMIT_WINDOW_MINUTES = 15
 OTP_MAX_REQUESTS_PER_WINDOW = 3
 OTP_RESEND_COOLDOWN_SECONDS = 60
@@ -52,7 +52,7 @@ def as_utc(value: datetime) -> datetime:
 
 
 def admin_invite_code() -> str:
-    return os.getenv("ADMIN_INVITE_CODE", "").strip() or os.getenv("ADMIN_SIGNUP_CODE", "").strip()
+    return settings.admin_invite_code
 
 
 def user_to_out(user: User) -> UserOut:
@@ -287,7 +287,7 @@ def request_signup_otp(request: Request, payload: SignupOtpRequest, db: Session 
 
     message = (
         "OTP sent successfully. Please check backend terminal in development mode."
-        if os.getenv("OTP_DEV_MODE", "").strip().lower() in {"1", "true", "yes", "on"}
+        if settings.otp_dev_mode
         else "OTP sent successfully. Please check your email."
     )
     return {

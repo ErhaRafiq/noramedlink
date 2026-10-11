@@ -1,19 +1,14 @@
 import mimetypes
-import os
 import re
 import unicodedata
 from pathlib import Path
 from typing import Any
 
 import httpx
-from dotenv import load_dotenv
 
-load_dotenv(Path(__file__).resolve().parents[1] / ".env")
-load_dotenv(Path(__file__).resolve().parents[2] / ".env", override=False)
-
+from config import settings
 
 OCR_SPACE_ENDPOINT = "https://api.ocr.space/parse/image"
-DEFAULT_TIMEOUT_SECONDS = 60
 
 DEPARTMENTS = [
     {
@@ -334,17 +329,17 @@ def parse_confidence(payload: dict[str, Any]) -> float | None:
 
 
 async def call_ocr_space(file_path: Path, file_name: str) -> tuple[str, float | None]:
-    api_key = os.getenv("OCR_SPACE_API_KEY", "").strip().strip('"').strip("'")
+    api_key = settings.ocr_space_api_key
     if not api_key:
         raise OcrSpaceError("OCR_SPACE_API_KEY is missing. Add it to the backend environment.", 503)
 
     content_type = mimetypes.guess_type(file_name or file_path.name)[0] or "application/octet-stream"
-    timeout_seconds = float(os.getenv("OCR_SPACE_TIMEOUT_SECONDS", str(DEFAULT_TIMEOUT_SECONDS)))
+    timeout_seconds = settings.ocr_space_timeout_seconds
 
     data = {
         "apikey": api_key,
-        "language": os.getenv("OCR_SPACE_LANGUAGE", "eng"),
-        "OCREngine": os.getenv("OCR_SPACE_ENGINE", "2"),
+        "language": settings.ocr_space_language,
+        "OCREngine": settings.ocr_space_engine,
         "isTable": "true",
         "scale": "true",
         "detectOrientation": "true",

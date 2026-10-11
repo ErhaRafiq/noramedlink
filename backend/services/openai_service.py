@@ -1,6 +1,5 @@
 import asyncio
 import json
-import os
 from dataclasses import dataclass
 from typing import Any
 
@@ -9,10 +8,9 @@ try:
 except ImportError:  # pragma: no cover - exercised only when dependency is missing.
     OpenAI = None  # type: ignore[assignment]
 
+from config import settings
 
-DEFAULT_OPENAI_MODEL = "gpt-4.1-mini"
-DEFAULT_GROQ_BASE_URL = "https://api.groq.com/openai/v1"
-DEFAULT_GROQ_MODELS = ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"]
+OPENAI_BASE_URL = "https://api.openai.com/v1"
 
 
 @dataclass
@@ -27,39 +25,24 @@ class OpenAIResult:
 
 
 def configured_model() -> str:
-    return os.getenv("OPENAI_SCAN_MODEL", DEFAULT_OPENAI_MODEL).strip() or DEFAULT_OPENAI_MODEL
-
-
-def _parse_model_list(value: str | None) -> list[str]:
-    if not value:
-        return []
-    return [item.strip() for item in value.split(",") if item.strip()]
+    return settings.openai_scan_model
 
 
 def configured_openai_models() -> list[str]:
     primary = configured_model()
-    fallbacks = _parse_model_list(os.getenv("OPENAI_FALLBACK_MODELS"))
-    ordered = [primary, *fallbacks]
-    deduped: list[str] = []
-    for model in ordered:
-        if model not in deduped:
-            deduped.append(model)
-    return deduped or [DEFAULT_OPENAI_MODEL]
+    return list(dict.fromkeys([primary, *settings.openai_fallback_models]))
 
 
 def configured_groq_models() -> list[str]:
-    configured = _parse_model_list(os.getenv("GROQ_CHAT_MODELS"))
-    if configured:
-        return configured
-    return DEFAULT_GROQ_MODELS
+    return list(settings.groq_chat_models)
 
 
 def _has_openai_provider() -> bool:
-    return bool(os.getenv("OPENAI_API_KEY", "").strip())
+    return bool(settings.openai_api_key)
 
 
 def _has_groq_provider() -> bool:
-    return bool(os.getenv("GROQ_API_KEY", "").strip())
+    return bool(settings.groq_api_key)
 
 
 def openai_unavailable_message() -> str | None:
@@ -104,11 +87,10 @@ def _provider_attempts() -> list[tuple[str, str, str]]:
     attempts: list[tuple[str, str, str]] = []
     if _has_openai_provider():
         for model in configured_openai_models():
-            attempts.append(("openai", model, "https://api.openai.com/v1"))
+            attempts.append(("openai", model, OPENAI_BASE_URL))
     if _has_groq_provider():
-        groq_base = os.getenv("GROQ_BASE_URL", DEFAULT_GROQ_BASE_URL).strip() or DEFAULT_GROQ_BASE_URL
         for model in configured_groq_models():
-            attempts.append(("groq", model, groq_base))
+            attempts.append(("groq", model, settings.groq_base_url))
     return attempts
 
 
@@ -188,7 +170,7 @@ async def generate_openai_text(instructions: str, prompt: str) -> OpenAIResult:
 
     errors: list[str] = []
     for provider, model, base_url in attempts:
-        api_key = os.getenv("OPENAI_API_KEY") if provider == "openai" else os.getenv("GROQ_API_KEY")
+        api_key = settings.openai_api_key if provider == "openai" else settings.groq_api_key
 
         # Bind this attempt's values now, so the closure never sees a later iteration's.
         def create_response(api_key=api_key, base_url=base_url, model=model):

@@ -1,15 +1,14 @@
-import os
 from pathlib import Path
 from uuid import uuid4
 
 from fastapi import HTTPException, UploadFile, status
 from PIL import Image, UnidentifiedImageError
 
+from config import settings
 from database import get_upload_root_path
 
 ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".pdf"}
 ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"}
-DEFAULT_MAX_UPLOAD_MB = 10
 
 
 def get_upload_root() -> Path:
@@ -53,7 +52,7 @@ def validate_stored_file(path: Path, suffix: str) -> None:
 
 async def save_upload_file(file: UploadFile, category: str, patient_id: int | str | None = None) -> tuple[str, str]:
     suffix = validate_upload(file)
-    max_upload_mb = int(os.getenv("MAX_UPLOAD_MB", str(DEFAULT_MAX_UPLOAD_MB)))
+    max_upload_mb = settings.max_upload_mb
     max_upload_bytes = max_upload_mb * 1024 * 1024
     category_dir = sanitize_path_segment(category)
     patient_dir = sanitize_path_segment(str(patient_id)) if patient_id is not None else "shared"

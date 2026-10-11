@@ -1,7 +1,8 @@
 import logging
-import os
 import smtplib
 from email.message import EmailMessage
+
+from config import settings
 
 logger = logging.getLogger("nora.otp")
 
@@ -10,26 +11,19 @@ class OtpDeliveryError(Exception):
     pass
 
 
-def _bool_env(name: str, default: bool = False) -> bool:
-    value = os.getenv(name)
-    if value is None:
-        return default
-    return value.strip().lower() in {"1", "true", "yes", "on"}
-
-
 def send_email_otp(email: str, otp: str) -> None:
-    if _bool_env("OTP_DEV_MODE", False):
+    if settings.otp_dev_mode:
         logger.warning("Development signup OTP for %s: %s", email, otp)
         return
 
-    smtp_host = os.getenv("SMTP_HOST", "").strip()
-    smtp_port = int(os.getenv("SMTP_PORT", "587"))
-    smtp_user = os.getenv("SMTP_USERNAME", "").strip()
-    smtp_password = os.getenv("SMTP_PASSWORD", "").strip()
-    smtp_from = os.getenv("SMTP_FROM_EMAIL", "").strip()
-    smtp_from_name = os.getenv("SMTP_FROM_NAME", "Nora MedLink").strip()
-    use_tls = _bool_env("SMTP_USE_TLS", True)
-    allow_console = _bool_env("SIGNUP_OTP_ALLOW_CONSOLE_FALLBACK", True)
+    smtp_host = settings.smtp_host
+    smtp_port = settings.smtp_port
+    smtp_user = settings.smtp_username
+    smtp_password = settings.smtp_password
+    smtp_from = settings.smtp_from_email
+    smtp_from_name = settings.smtp_from_name
+    use_tls = settings.smtp_use_tls
+    allow_console = settings.otp_console_fallback
 
     if not smtp_host or not smtp_from:
         if allow_console:
@@ -68,10 +62,9 @@ def send_email_otp(email: str, otp: str) -> None:
 
 
 def send_sms_otp(phone: str, otp: str) -> bool:
-    sms_provider = os.getenv("SMS_PROVIDER", "").strip()
-    sms_api_key = os.getenv("SMS_API_KEY", "").strip()
-    if not sms_provider or not sms_api_key:
-        logger.info("SMS OTP provider is not configured; skipping SMS OTP for %s.", phone)
+    sms_provider = settings.sms_provider
+    if not sms_provider or not settings.sms_api_key:
+        logger.info("SMS OTP provider is not configured; skipping the SMS code.")
         return False
 
     logger.info("SMS OTP provider %s is configured, but no SMS adapter is enabled.", sms_provider)

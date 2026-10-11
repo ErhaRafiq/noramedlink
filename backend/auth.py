@@ -1,4 +1,3 @@
-import os
 import secrets
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -6,13 +5,14 @@ from typing import Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
+from config import settings
+
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 def get_jwt_secret() -> str:
-    configured_secret = os.getenv("JWT_SECRET_KEY") or os.getenv("SECRET_KEY") or os.getenv("NORA_JWT_SECRET")
-    if configured_secret:
-        return configured_secret
+    if settings.jwt_secret:
+        return settings.jwt_secret
 
     if not hasattr(get_jwt_secret, "_runtime_secret"):
         get_jwt_secret._runtime_secret = secrets.token_urlsafe(48)
@@ -20,7 +20,7 @@ def get_jwt_secret() -> str:
 
 
 def get_jwt_algorithm() -> str:
-    return os.getenv("JWT_ALGORITHM", "HS256")
+    return settings.jwt_algorithm
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -32,7 +32,7 @@ def hash_password(password: str) -> str:
 
 
 def create_access_token(subject: str, extra_claims: dict[str, Any] | None = None) -> str:
-    expire_minutes = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
+    expire_minutes = settings.access_token_expire_minutes
     now = datetime.now(UTC)
     payload: dict[str, Any] = {
         "sub": subject,

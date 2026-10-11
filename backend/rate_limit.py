@@ -19,7 +19,6 @@ store such as Redis via RATE_LIMIT_STORAGE_URI in that case).
 """
 
 import math
-import os
 
 from fastapi import HTTPException, Request, status
 from fastapi.responses import JSONResponse
@@ -30,24 +29,20 @@ from slowapi import Limiter
 from slowapi.errors import RateLimitExceeded
 
 from auth import decode_access_token
-
-
-def _env(name: str, default: str) -> str:
-    return (os.getenv(name) or default).strip()
-
+from config import settings
 
 # Limit strings use the `limits` notation: "<count>/<second|minute|hour|day>".
-DEFAULT_LIMIT = _env("RATE_LIMIT_DEFAULT", "200/minute")
-LOGIN_LIMIT = _env("RATE_LIMIT_LOGIN", "20/minute")  # per IP (the per-email limit is the tighter one)
-LOGIN_ACCOUNT_LIMIT = _env("RATE_LIMIT_LOGIN_ACCOUNT", "5/minute")  # per email
-SIGNUP_LIMIT = _env("RATE_LIMIT_SIGNUP", "5/minute")  # per IP
-UPLOAD_LIMIT = _env("RATE_LIMIT_UPLOAD", "10/minute")  # per user
-AI_LIMIT = _env("RATE_LIMIT_AI", "10/minute")  # per user: OCR, summaries, generated insights
-ACCESS_CODE_LIMIT = _env("RATE_LIMIT_ACCESS_CODE", "10/minute")  # per patient, issuing doctor codes
+DEFAULT_LIMIT = settings.rate_limit_default
+LOGIN_LIMIT = settings.rate_limit_login  # per IP (the per-email limit is the tighter one)
+LOGIN_ACCOUNT_LIMIT = settings.rate_limit_login_account  # per email
+SIGNUP_LIMIT = settings.rate_limit_signup  # per IP
+UPLOAD_LIMIT = settings.rate_limit_upload  # per user
+AI_LIMIT = settings.rate_limit_ai  # per user: OCR, summaries, generated insights
+ACCESS_CODE_LIMIT = settings.rate_limit_access_code  # per patient, issuing doctor codes
 
-RATE_LIMIT_ENABLED = _env("RATE_LIMIT_ENABLED", "true").lower() not in {"0", "false", "no", "off"}
-STORAGE_URI = _env("RATE_LIMIT_STORAGE_URI", "memory://")
-TRUSTED_PROXY_IPS = {ip.strip() for ip in _env("TRUSTED_PROXY_IPS", "127.0.0.1,::1").split(",") if ip.strip()}
+RATE_LIMIT_ENABLED = settings.rate_limit_enabled
+STORAGE_URI = settings.rate_limit_storage_uri
+TRUSTED_PROXY_IPS = set(settings.trusted_proxy_ips)
 
 
 def client_ip(request: Request) -> str:
