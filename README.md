@@ -19,7 +19,7 @@ safety, security and UI rules. The phase plan and current state are in
 | Frontend | Next.js 16 (App Router), React 19, Tailwind CSS, Poppins, lucide-react; Three.js on the landing page |
 | Backend | FastAPI, SQLAlchemy 2, Alembic, slowapi (rate limiting) |
 | Database | PostgreSQL (a local SQLite file is used only when no database URL is set) |
-| OCR | OCR.space (optional; see [Reports and OCR](#reports-and-ocr)) |
+| OCR | Local OCR (RapidOCR) by default; OCR.space when a key is set (see [Reports and OCR](#reports-and-ocr)) |
 | AI | OpenAI or Groq when a key is set, rule-based fallback otherwise; BioBERT for entity extraction |
 
 The browser never calls FastAPI directly. It calls `/api/backend/...` on the Next.js server,
@@ -61,7 +61,7 @@ The important backend variables:
 | `FASTAPI_DATABASE_URL` (or `DATABASE_URL`) | PostgreSQL, e.g. `postgresql+psycopg2://postgres:YOUR_PASSWORD@localhost:5432/noramedlink` |
 | `JWT_SECRET_KEY` | Signing sign-in tokens. Without it, a random secret is used and everyone is signed out on restart |
 | `ADMIN_INVITE_CODE` | Creating an admin account |
-| `OCR_SPACE_API_KEY` | Reading text from uploaded reports |
+| `OCR_SPACE_API_KEY` | Optional: send reports to OCR.space instead of reading them locally |
 | `OPENAI_API_KEY` or `GROQ_API_KEY` | AI summaries and explanations (rule-based text otherwise) |
 | `RATE_LIMIT_*`, `LOG_LEVEL`, `MAX_UPLOAD_MB` | Optional; defaults are in `backend/.env.example` |
 
@@ -99,12 +99,19 @@ Open **http://localhost:3000**.
 2. FastAPI checks the token, the file type and the file's contents, and stores it privately under
    `backend/uploads/<patient id>/<department>/`. Files are served only to the owner, or to a
    doctor with an active access grant, through short-lived signed links.
-3. OCR.space reads the text. Rule-based checks set the report's validation status
-   (`SAFE`, `CAUTION`, `HIGH_RISK` or `NOT_VALIDATED`); the AI only writes the explanation.
-4. The patient reviews the text on the report page, corrects it and saves, or re-runs OCR.
+3. The text is read on the server. A PDF's own text layer is used when it has one; scanned pages and
+   photos are read with local OCR (RapidOCR). Nothing is sent to an outside service unless
+   `OCR_SPACE_API_KEY` is set, in which case OCR.space is used instead. The first upload downloads the
+   OCR model once (about 9 MB, checksum-verified) into `backend/models/`; to fetch it ahead of time, run
+   `.\venv\Scripts\python.exe -m services.local_ocr --download` from `backend/`. A two-page scan takes
+   about 30-60 seconds on a laptop CPU.
+4. Rule-based checks set the report's validation status (`SAFE`, `CAUTION`, `HIGH_RISK` or
+   `NOT_VALIDATED`). With an OpenAI or Groq key the AI writes the summary; without one, the summary is
+   built by fixed rules and quotes the report's own Impression/Conclusion. The page says which.
+5. The patient reviews the text on the report page, corrects it and saves, or re-reads the file.
 
-Without `OCR_SPACE_API_KEY`, the upload is still saved with OCR marked as failed, and the patient
-can type the text on the report page.
+If no text can be read, the report is saved as not validated, with no summary, and the report page says
+why; the patient can type the text and save to get the summary.
 
 OCR works best on clear, straight, well-lit printed text. Handwriting, blur, folds, stamps and
 complex tables reduce accuracy, so always check the text before relying on a summary.

@@ -39,7 +39,7 @@ It is **not** a certified medical device. Every medical feature is advisory only
 | Backend | **FastAPI** (the only backend), SQLAlchemy 2 ORM, slowapi rate limiting, ruff |
 | Database | PostgreSQL; schema managed by **Alembic** migrations |
 | Auth | JWT (HS256) issued by FastAPI, stored in `localStorage` on the client |
-| OCR | **OCR.space** only (needs `OCR_SPACE_API_KEY`). There is no Tesseract. Without a key the report is saved with OCR marked failed, and the patient types or corrects the text in the report editor |
+| OCR | **Local OCR** by default (`services/local_ocr.py`): PDF text layers are read directly; scans and photos go through RapidOCR (ONNX, CPU) with its English model, downloaded once to `backend/models/` (checksum-verified). No key, nothing leaves the server. OCR.space is used instead only when `OCR_SPACE_API_KEY` is set. There is no Tesseract |
 | AI | OpenAI / Groq when keys are set, rule-based fallback otherwise; BioBERT NER |
 
 There is **no** Flutter app, **no** Node gateway and **no** Prisma. Do not create them.
