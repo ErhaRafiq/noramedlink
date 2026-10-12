@@ -1,0 +1,8 @@
+# OCR benchmark virtualenv (.venv-ocr-bench), kept separate from the app's backend/venv.
+#   python -m venv .venv-ocr-bench
+#   .venv-ocr-bench\Scripts\python.exe -m pip install -r scripts\ocr_bench\requirements.txt
+# Sample generation
+reportlab==4.2.5
+pypdfium2==4.30.0
+pillow==11.0.0
+numpy==2.1.3
