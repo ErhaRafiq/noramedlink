@@ -5,7 +5,8 @@ from models import User
 from rate_limit import AI_LIMIT, limiter
 from schemas import OcrOutput
 from services.file_service import save_upload_file, stored_path_to_disk_path
-from services.ocr_space_service import OcrSpaceError, extract_report_with_ocr_space
+from services.ocr_space_service import OcrError
+from services.report_ocr import extract_report_text
 
 router = APIRouter(prefix="/ocr", tags=["ocr"])
 
@@ -15,8 +16,8 @@ router = APIRouter(prefix="/ocr", tags=["ocr"])
 async def extract(request: Request, file: UploadFile = File(...), current_user: User = Depends(require_patient)):
     stored_path, _ = await save_upload_file(file, "ocr-temp", patient_id=current_user.id)
     try:
-        result = await extract_report_with_ocr_space(str(stored_path_to_disk_path(stored_path)), file.filename or "")
-    except OcrSpaceError as exc:
+        result = await extract_report_text(str(stored_path_to_disk_path(stored_path)), file.filename or "")
+    except OcrError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     fields = result.get("structured_data_json", {}).get("fields", {})

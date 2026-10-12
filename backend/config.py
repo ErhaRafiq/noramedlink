@@ -99,6 +99,7 @@ class Settings:
     ocr_space_timeout_seconds: float = 60
     ocr_space_language: str = "eng"
     ocr_space_engine: str = "2"
+    ocr_model_dir: str = "models"  # local OCR model cache, relative to backend/
 
     # Rate limits ("<count>/<second|minute|hour|day>"); see rate_limit.py
     rate_limit_enabled: bool = True
@@ -152,6 +153,7 @@ def load_settings() -> Settings:
         ocr_space_timeout_seconds=env_float("OCR_SPACE_TIMEOUT_SECONDS", d.ocr_space_timeout_seconds),
         ocr_space_language=env_str("OCR_SPACE_LANGUAGE", d.ocr_space_language),
         ocr_space_engine=env_str("OCR_SPACE_ENGINE", d.ocr_space_engine),
+        ocr_model_dir=env_str("OCR_MODEL_DIR", d.ocr_model_dir),
         rate_limit_enabled=env_bool("RATE_LIMIT_ENABLED", d.rate_limit_enabled),
         rate_limit_storage_uri=env_str("RATE_LIMIT_STORAGE_URI", d.rate_limit_storage_uri),
         rate_limit_default=env_str("RATE_LIMIT_DEFAULT", d.rate_limit_default),

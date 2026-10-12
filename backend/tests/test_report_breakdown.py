@@ -70,3 +70,17 @@ def test_lists_are_capped_and_unique():
     text = " ".join(f"Glucose {value} mg/dL." for value in range(100, 130))
     findings = build_breakdown(text)["key_findings"]
     assert len(findings) == 8 and len(set(findings)) == 8
+
+
+def test_report_conclusion_is_quoted_up_to_the_next_label():
+    from services.report_breakdown import report_conclusion
+
+    text = "REPORT:\nDisc bulge seen.\nIMPRESSION:\nL4-L5 broad-based disc bulge.\nMild facet arthrosis.\nNote: digitally verified."
+    assert report_conclusion(text) == "L4-L5 broad-based disc bulge. Mild facet arthrosis."
+
+
+@pytest.mark.parametrize("text", ["Hemoglobin 10.8 g/dL", "IMPRESSION: ok", ""])
+def test_no_conclusion_without_a_real_section(text):
+    from services.report_breakdown import report_conclusion
+
+    assert report_conclusion(text) is None

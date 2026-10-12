@@ -74,3 +74,6 @@ next-env.d.ts
 # Playwright output (tests/e2e)
 /test-results/
 /playwright-report/
+
+# Local OCR model cache (downloaded on first use)
+backend/models/

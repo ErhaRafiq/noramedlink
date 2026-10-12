@@ -59,7 +59,10 @@ def test_tip_categories_are_restricted():
 
 def test_annotate_fallback():
     assert annotate_fallback("Text.", None) == "Text."
-    assert annotate_fallback("Text.", "No key.").startswith("Text. Clinical AI was unavailable: No key.")
+    assert (
+        annotate_fallback("Text.", "No key.")
+        == "Text. The AI summary is not available right now, so this text was built by fixed rules."
+    )
 
 
 def test_rule_based_tips_cover_all_four_categories():

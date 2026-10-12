@@ -88,7 +88,9 @@ STRUCTURED_FIELDS = {
 }
 
 
-class OcrSpaceError(Exception):
+class OcrError(Exception):
+    """Report text could not be read (OCR.space or local OCR); status_code is the HTTP status."""
+
     def __init__(self, message: str, status_code: int = 502):
         super().__init__(message)
         self.status_code = status_code
@@ -331,7 +333,7 @@ def parse_confidence(payload: dict[str, Any]) -> float | None:
 async def call_ocr_space(file_path: Path, file_name: str) -> tuple[str, float | None]:
     api_key = settings.ocr_space_api_key
     if not api_key:
-        raise OcrSpaceError("OCR_SPACE_API_KEY is missing. Add it to the backend environment.", 503)
+        raise OcrError("OCR_SPACE_API_KEY is missing. Add it to the backend environment.", 503)
 
     content_type = mimetypes.guess_type(file_name or file_path.name)[0] or "application/octet-stream"
     timeout_seconds = settings.ocr_space_timeout_seconds
@@ -354,38 +356,38 @@ async def call_ocr_space(file_path: Path, file_name: str) -> tuple[str, float | 
                     files={"file": (file_name or file_path.name, input_file, content_type)},
                 )
     except httpx.TimeoutException as exc:
-        raise OcrSpaceError(
+        raise OcrError(
             "OCR.Space timed out while reading the report. Try again with a clearer or smaller file.", 504
         ) from exc
     except httpx.RequestError as exc:
-        raise OcrSpaceError("Unable to reach OCR.Space. Check internet connectivity and try again.", 502) from exc
+        raise OcrError("Unable to reach OCR.Space. Check internet connectivity and try again.", 502) from exc
 
     if response.status_code in {401, 403}:
-        raise OcrSpaceError("OCR.Space rejected the API key. Verify OCR_SPACE_API_KEY.", 502)
+        raise OcrError("OCR.Space rejected the API key. Verify OCR_SPACE_API_KEY.", 502)
     if response.status_code == 429:
-        raise OcrSpaceError("OCR.Space rate limit reached. Please retry after a short wait.", 429)
+        raise OcrError("OCR.Space rate limit reached. Please retry after a short wait.", 429)
     if response.status_code >= 500:
-        raise OcrSpaceError("OCR.Space is temporarily unavailable. Please try again.", 502)
+        raise OcrError("OCR.Space is temporarily unavailable. Please try again.", 502)
     if response.status_code >= 400:
-        raise OcrSpaceError(f"OCR.Space request failed with status {response.status_code}.", 502)
+        raise OcrError(f"OCR.Space request failed with status {response.status_code}.", 502)
 
     try:
         payload = response.json()
     except ValueError as exc:
-        raise OcrSpaceError("OCR.Space returned an invalid response.", 502) from exc
+        raise OcrError("OCR.Space returned an invalid response.", 502) from exc
 
     if payload.get("IsErroredOnProcessing"):
         message = parse_error_message(payload.get("ErrorMessage") or payload.get("ErrorDetails"))
         lowered = message.lower()
         if "api key" in lowered or "apikey" in lowered:
-            raise OcrSpaceError("OCR.Space rejected the API key. Verify OCR_SPACE_API_KEY.", 502)
+            raise OcrError("OCR.Space rejected the API key. Verify OCR_SPACE_API_KEY.", 502)
         if "rate" in lowered or "quota" in lowered:
-            raise OcrSpaceError("OCR.Space rate limit or quota was reached.", 429)
-        raise OcrSpaceError(message, 502)
+            raise OcrError("OCR.Space rate limit or quota was reached.", 429)
+        raise OcrError(message, 502)
 
     parsed_results = payload.get("ParsedResults")
     if not isinstance(parsed_results, list) or not parsed_results:
-        raise OcrSpaceError("OCR.Space returned no parsed text for this report.", 422)
+        raise OcrError("OCR.Space returned no parsed text for this report.", 422)
 
     raw_text = "\n\n".join(
         str(result.get("ParsedText") or "").strip()
@@ -393,7 +395,7 @@ async def call_ocr_space(file_path: Path, file_name: str) -> tuple[str, float | 
         if isinstance(result, dict) and str(result.get("ParsedText") or "").strip()
     )
     if not raw_text.strip():
-        raise OcrSpaceError("OCR.Space found no readable text. Try a sharper image or a clearer PDF.", 422)
+        raise OcrError("OCR.Space found no readable text. Try a sharper image or a clearer PDF.", 422)
 
     return raw_text, parse_confidence(payload)
 
@@ -431,7 +433,7 @@ async def extract_report_with_ocr_space(
 ) -> dict[str, Any]:
     file_path = Path(path)
     if not file_path.exists() or not file_path.is_file():
-        raise OcrSpaceError("Uploaded report file was not found on the server.", 404)
+        raise OcrError("Uploaded report file was not found on the server.", 404)
 
     raw_text, confidence = await call_ocr_space(file_path, file_name)
     result = build_ocr_result(raw_text, file_name, fallback_department)

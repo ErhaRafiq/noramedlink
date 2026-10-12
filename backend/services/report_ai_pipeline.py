@@ -1,8 +1,24 @@
+import re
 from typing import Any
 
 from services.biobert_service import extract_medical_entities
 from services.openai_service import fallback_notice, generate_openai_json, generate_openai_text
+from services.report_breakdown import measured_values, report_conclusion
 from services.rule_validation_service import validate_medical_rules
+
+_MEASUREMENT = re.compile(r"[A-Za-z]{3,}\D{0,12}\d")  # a name, then a number: "Hemoglobin 10.8"
+
+
+def _rule_check_sentence(validation: dict[str, Any]) -> str:
+    """The rule result in words; no alerts is never described as normal or safe (AGENTS.md 6.2)."""
+    status = validation.get("status")
+    alerts = [w for w in validation.get("warnings", []) if w.get("severity") in {"CAUTION", "HIGH_RISK"}]
+    if status == "HIGH_RISK":
+        return "Rule check: at least one value needs prompt review by a doctor."
+    if status == "CAUTION":
+        return f"Rule check: {len(alerts)} point(s) to go over with a doctor."
+    return "Rule check: no rule raised an alert. That does not mean the report is normal."
+
 
 SUMMARY_SCHEMA_KEYS = [
     "patient_overview",
@@ -51,21 +67,29 @@ def _fallback_summary_json(
     if not any(item.get("label") == "Allergy" for item in entities):
         missing_data.append("Allergy history was not found in this report.")
 
-    summary = (
-        f"{department} report processed with OCR and medical entity extraction. "
-        f"Key structured fields: {', '.join(lab_values[:4]) or 'none detected'}. "
-        f"Rule validation status: {validation.get('status', 'CAUTION')}."
-    )
-    if preview and not lab_values:
-        summary = f"{summary} OCR preview: {preview}"
+    conclusion = report_conclusion(text)
+    # Deterministic values first; the NER model also tags header words ("mri", "age") as lab values.
+    values = measured_values(text)[:8] or [value for value in lab_values if _MEASUREMENT.search(value)]
+    parts = [f"{department} report."]
+    if conclusion:
+        parts.append(f"The report's conclusion, as written: {conclusion}")
+    elif preview:
+        parts.append(f"Start of the report text: {preview}")
+    if values:
+        parts.append(f"Values found: {', '.join(values[:6])}.")
+    parts.append(_rule_check_sentence(validation))
+    summary = " ".join(parts)
 
     if warning:
         summary = f"{summary} {fallback_notice(warning)}"
 
     return {
         "patient_overview": f"Uploaded {department.lower()} report. Use only as a support summary pending doctor review.",
-        "key_findings": lab_values
-        or list(structured_fields.keys())[:6]
+        "report_conclusion": conclusion,
+        # Real values only; the old fallback listed field names such as "age" or "gender".
+        # Narrative reports (MRI, X-ray) have no values; their conclusion sentences are the findings.
+        "key_findings": values
+        or [s.strip() for s in re.split(r"(?<=\.)\s+", conclusion or "") if s.strip()][:4]
         or ["No structured clinical fields were confidently extracted."],
         "detected_diseases": disease_terms or ["No disease entity was confidently detected."],
         "medicines": medicines or ["No medicine entity was confidently detected."],
@@ -199,8 +223,13 @@ def _build_patient_summary_fallback(
     if overview:
         parts.append(overview)
 
+    conclusion = clinical_json.get("report_conclusion")
+    if conclusion:
+        parts.append(f"What the report concludes, in the reporting doctor's words: {conclusion}")
+
     findings = clinical_json.get("key_findings", [])
-    if findings and findings != ["No structured clinical fields were confidently extracted."]:
+    # Skipped when they are the conclusion's sentences, already quoted above.
+    if not conclusion and findings and findings != ["No structured clinical fields were confidently extracted."]:
         parts.append("Key findings from your report: " + ", ".join(findings[:5]) + ".")
 
     diseases = clinical_json.get("detected_diseases", [])

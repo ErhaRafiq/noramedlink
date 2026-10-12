@@ -161,10 +161,27 @@ function SummaryList({ title, values }: { title: string; values: string[] }) {
   );
 }
 
-/** The readable text and the AI summaries, always with the advisory note. */
+/** The text could not be read, so there is nothing to summarise yet: say why and what to do. */
+function UnreadReport({ report }: { report: MedicalDocument }) {
+  const reason = report.structured_data_json?.error;
+  return (
+    <ReportCard icon={Sparkles} title="Summary" description={`Uploaded ${formatDateTime(report.upload_date)}`}>
+      <EmptyState
+        icon={FileText}
+        title="The text of this file could not be read"
+        description={`${reason ? `${reason} ` : ""}Try "Read file again", or type the report text under "Correct the report" and save: the summary and rule checks are then built from your text.`}
+      />
+    </ReportCard>
+  );
+}
+
+/** The readable text and the summaries, with the note that matches where the summary came from. */
 export function ReportSummary({ report }: { report: MedicalDocument }) {
   const clinical = report.clinical_summary_json ?? report.structured_data_json?.ai_summary ?? {};
   const summaryText = clinical.summary || report.summary || report.ai_summary;
+  const textRead = report.ocr_status !== "FAILED" || Boolean((report.extracted_text ?? "").trim());
+  if (!textRead) return <UnreadReport report={report} />;
+  const aiWritten = Boolean(report.summary_source) && report.summary_source !== "rule_based";
   return (
     <ReportCard icon={Sparkles} title="Summary" description={`Uploaded ${formatDateTime(report.upload_date)}`}>
       {report.patient_summary ? (
@@ -183,7 +200,11 @@ export function ReportSummary({ report }: { report: MedicalDocument }) {
         <SummaryList title="Medicines mentioned" values={clinical.medicines ?? []} />
         <SummaryList title="Doctor notes" values={clinical.doctor_notes ?? []} />
       </div>
-      <p className="mt-4 text-xs leading-5 text-ink-muted">{buildMedicalDisclaimer()}</p>
+      <p className="mt-4 text-xs leading-5 text-ink-muted">
+        {aiWritten
+          ? buildMedicalDisclaimer()
+          : "Built by fixed rules from the report text, not by AI. Advisory only; this is not a diagnosis. Verify with a clinician."}
+      </p>
 
       <details className="mt-4 rounded-control border border-line">
         <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium text-slate-700">Show the text read from the file</summary>

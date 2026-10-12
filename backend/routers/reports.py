@@ -18,11 +18,11 @@ from schemas import DepartmentTileOut, PatientReportOut, PatientReportUpdateRequ
 from services.file_service import save_upload_file, stored_path_to_disk_path
 from services.ocr_space_service import (
     DEPARTMENTS,
-    OcrSpaceError,
+    OcrError,
     build_ocr_result,
     department_slug,
-    extract_report_with_ocr_space,
 )
+from services.report_ocr import extract_report_text
 from services.report_service import (
     analyze_report_result,
     apply_ocr_result,
@@ -193,7 +193,7 @@ async def upload_report(
             ocr_result = build_ocr_result(local_text, original_name, manual_department)
             ocr_result.setdefault("structured_data_json", {})["source"] = "client_local_ocr"
         else:
-            ocr_result = await extract_report_with_ocr_space(
+            ocr_result = await extract_report_text(
                 str(stored_path_to_disk_path(stored_path)),
                 original_name,
                 manual_department,
@@ -203,14 +203,17 @@ async def upload_report(
         analysis = await analyze_report_result(ocr_result, final_department)
         summary = str(analysis.get("summary_text") or ocr_result.get("summary") or "")
         apply_ocr_result(report, ocr_result, final_department, summary)
-    except OcrSpaceError as exc:
+    except OcrError as exc:
+        # Saved without text: no summary, and "not validated" (no rule ran). The reason is kept in
+        # structured_data_json["error"] for the report page.
         final_department = manual_department or "General"
         report.department = get_department(db, final_department)
         report.ocr_status = "FAILED"
         report.ocr_confidence = None
         report.extracted_text = None
         report.formatted_text = None
-        report.summary = str(exc)
+        report.summary = None
+        report.validation_status = "NOT_VALIDATED"
         report.structured_data_json = {
             "fields": {},
             "department": final_department,
@@ -294,18 +297,14 @@ async def regenerate_report_ocr(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Report not found.")
 
     try:
-        ocr_result = await extract_report_with_ocr_space(
+        ocr_result = await extract_report_text(
             str(stored_path_to_disk_path(report.file_url)),
             report.original_file_name,
             report.department.name if report.department else None,
         )
-    except OcrSpaceError as exc:
-        report.ocr_status = "FAILED"
-        report.summary = str(exc)
-        report.updated_at = datetime.now(UTC)
-        db.commit()
-        db.refresh(report)
-        return report_to_out(report)
+    except OcrError as exc:
+        # Leave the report as it was (a failed re-read must not replace good text or a summary).
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
     final_department = str(
         ocr_result.get("department_name") or (report.department.name if report.department else "General")

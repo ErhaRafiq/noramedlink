@@ -16,3 +16,6 @@ slowapi==0.1.9
 openai>=1.59.0,<3
 transformers>=4.44.0,<5
 torch>=2.3.0
+# Local OCR (services/local_ocr.py). rapidocr-onnxruntime also installs opencv-python.
+rapidocr-onnxruntime==1.4.4
+pypdfium2==4.30.0

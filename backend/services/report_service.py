@@ -108,6 +108,10 @@ def health_status_for_department(reports: list[PatientReport], status_value: str
     return "Not validated"
 
 
+def _text_was_read(report: PatientReport) -> bool:
+    return report.ocr_status != "FAILED" or bool((report.extracted_text or "").strip())
+
+
 def report_to_out(report: PatientReport) -> PatientReportOut:
     department_name = report.department.name if report.department else "General"
     structured_payload = dict_field(report.structured_data_json)
@@ -135,10 +139,10 @@ def report_to_out(report: PatientReport) -> PatientReportOut:
         extracted_text=report.extracted_text,
         formatted_text=report.formatted_text,
         structured_data_json=structured_payload,
-        summary=report.summary,
+        summary=report.summary if _text_was_read(report) else None,
         extracted_entities=[item for item in list_field(report.extracted_entities) if isinstance(item, dict)],
         rule_warnings=[item for item in list_field(report.rule_warnings) if isinstance(item, dict)],
-        validation_status=report.validation_status or "SAFE",
+        validation_status=(report.validation_status or "NOT_VALIDATED") if _text_was_read(report) else "NOT_VALIDATED",
         validation_results=dict_field(report.validation_results),
         clinical_summary_json=dict_field(report.clinical_summary_json),
         llm_self_check=dict_field(report.llm_self_check),
@@ -152,7 +156,7 @@ def report_to_out(report: PatientReport) -> PatientReportOut:
         possible_report_type=f"{department_name} report",
         detected_keywords=[str(keyword) for keyword in detected_keywords],
         structured_sections=structured_sections,
-        ai_summary=report.summary,
+        ai_summary=report.summary if _text_was_read(report) else None,
         patient_summary=structured_payload.get("patient_summary"),
     )
 

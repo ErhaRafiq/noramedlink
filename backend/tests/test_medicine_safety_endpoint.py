@@ -72,4 +72,4 @@ def test_without_ai_the_rules_still_answer(client, monkeypatch):
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "Caution"
-    assert any("Clinical AI was unavailable" in w for w in body["warnings"])
+    assert any("built by fixed rules" in w for w in body["warnings"])

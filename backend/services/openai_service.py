@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from dataclasses import dataclass
 from typing import Any
 
@@ -9,6 +10,8 @@ except ImportError:  # pragma: no cover - exercised only when dependency is miss
     OpenAI = None  # type: ignore[assignment]
 
 from config import settings
+
+logger = logging.getLogger("nora.ai")
 
 OPENAI_BASE_URL = "https://api.openai.com/v1"
 
@@ -215,6 +218,8 @@ async def generate_openai_json(instructions: str, prompt: str) -> OpenAIResult:
 
 
 def fallback_notice(error: str | None) -> str:
+    """Plain-language note for patients; the technical reason goes to the server log only."""
     if not error:
         return ""
-    return f"Clinical AI was unavailable: {error} Generated using the local rule-based fallback."
+    logger.info("AI text unavailable, rule-based fallback used: %s", error)
+    return "The AI summary is not available right now, so this text was built by fixed rules."

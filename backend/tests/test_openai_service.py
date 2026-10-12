@@ -21,7 +21,8 @@ async def test_without_keys_generation_returns_an_error_not_a_request():
 
 def test_fallback_notice():
     assert fallback_notice(None) == ""
-    assert "rule-based fallback" in fallback_notice("No key.")
+    assert "built by fixed rules" in fallback_notice("No key.")
+    assert "key" not in fallback_notice("No API key configured.").lower()  # no developer detail for patients
 
 
 def test_provider_order_and_model_dedupe(monkeypatch: pytest.MonkeyPatch):

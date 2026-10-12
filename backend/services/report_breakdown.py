@@ -62,6 +62,26 @@ def measured_values(text: str) -> list[str]:
     return found
 
 
+# The report's own conclusion: text after an "Impression:" (or similar) heading, up to the
+# next "Label:" line, a blank line or the end.
+_CONCLUSION = re.compile(
+    r"^[ \t]*(?i:impression|conclusion|opinion|final diagnosis)[ \t]*[:\-][ \t]*(?P<body>.*?)"
+    r"(?=^[ \t]*[A-Z][A-Za-z .&/]{1,40}:|\n[ \t]*\n|\Z)",
+    re.MULTILINE | re.DOTALL,
+)
+
+
+def report_conclusion(text: str, limit: int = 700) -> str | None:
+    """The conclusion as the reporting doctor wrote it, or None when the report has none."""
+    match = _CONCLUSION.search(text or "")
+    if not match:
+        return None
+    body = " ".join(match.group("body").split())
+    if len(body) < 15:
+        return None
+    return body if len(body) <= limit else body[:limit].rsplit(" ", 1)[0] + "..."
+
+
 def mentioned_terms(text: str) -> tuple[list[str], list[str]]:
     """Terms the text mentions, split into present and stated as absent ("no chest pain")."""
     present: list[str] = []
