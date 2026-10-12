@@ -72,6 +72,25 @@ def _field_value(fields: dict[str, Any], keys: list[str]) -> tuple[float | None,
     return None, None
 
 
+# A blood pressure only where the text says so: "BP"/"blood pressure" just before, or
+# "mmHg" just after. Any "a/b" (dates, IDs such as "43102/2609") used to be read as one.
+_BP_WITH_LABEL = re.compile(r"\b(?:bp|b\.p\.?|blood\s*pressure)\b[^0-9\n]{0,15}(\d{2,3})\s*/\s*(\d{2,3})\b", re.I)
+_BP_WITH_UNIT = re.compile(r"\b(\d{2,3})\s*/\s*(\d{2,3})\s*mm\s*hg\b", re.I)
+
+
+def _blood_pressure(field_value: str, text: str) -> tuple[int, int, str] | None:
+    candidates = []
+    field_match = re.search(r"(\d{2,3})\s*/\s*(\d{2,3})", field_value)
+    if field_match:
+        candidates.append(field_match)
+    candidates += [m for pattern in (_BP_WITH_LABEL, _BP_WITH_UNIT) for m in [pattern.search(text)] if m]
+    for match in candidates:
+        systolic, diastolic = int(match.group(1)), int(match.group(2))
+        if 60 <= systolic <= 260 and 30 <= diastolic <= 160 and systolic > diastolic:  # plausible readings only
+            return systolic, diastolic, f"{systolic}/{diastolic}"
+    return None
+
+
 def _converted_field(fields: dict[str, Any], keys: list[str], convert) -> tuple[float | None, str | None]:
     """A structured field's value, converted using the unit written right after the number."""
     for key in keys:
@@ -193,11 +212,9 @@ def validate_medical_rules(
         )
         status = _highest_status(status, "CAUTION")
 
-    bp_text = str(fields.get("blood_pressure") or "")
-    bp_match = re.search(r"(\d{2,3})\s*/\s*(\d{2,3})", f"{bp_text} {source_text}")
-    if bp_match:
-        systolic = int(bp_match.group(1))
-        diastolic = int(bp_match.group(2))
+    blood_pressure = _blood_pressure(str(fields.get("blood_pressure") or ""), " ".join(source_text.split()))
+    if blood_pressure:
+        systolic, diastolic, bp_evidence = blood_pressure
         if systolic >= 180 or diastolic >= 120:
             severity = "HIGH_RISK"
         elif systolic >= 140 or diastolic >= 90:
@@ -210,7 +227,7 @@ def validate_medical_rules(
                     "HYPERTENSION_INDICATOR",
                     severity,
                     "Blood pressure text appears elevated and should be checked against the original report.",
-                    bp_match.group(0),
+                    bp_evidence,
                 )
             )
             status = _highest_status(status, severity)

@@ -98,3 +98,36 @@ def test_status_never_goes_down():
 def test_evidence_is_trimmed():
     result = validate_medical_rules("x " * 5)
     assert all(len(w.get("evidence", "")) <= 220 for w in result["warnings"])
+
+
+@pytest.mark.parametrize(
+    "snippet",
+    [
+        "MRN/PIN: K-4-43102/2609-01-29526",  # an ID from a real MRI report header
+        "Visit Date: 22/09/2026",
+        "Ref No 120/80 Street 4",  # numbers that look like a reading, but nothing says so
+        "BP 300/20",  # implausible
+    ],
+)
+def test_blood_pressure_needs_a_label_or_unit_and_a_plausible_value(snippet):
+    assert "HYPERTENSION_INDICATOR" not in codes(validate_medical_rules(f"{BASE} {snippet}."))
+
+
+@pytest.mark.parametrize("snippet", ["BP: 150/95", "B.P. 150/95", "Blood pressure was 150/95", "150/95 mmHg"])
+def test_labelled_blood_pressure_is_read(snippet):
+    assert "HYPERTENSION_INDICATOR" in codes(validate_medical_rules(f"{BASE} {snippet}."))
+
+
+@pytest.mark.parametrize(
+    ("status", "expected"),
+    [
+        ("HIGH_RISK", "prompt review"),
+        ("CAUTION", "point(s) to go over"),
+        ("SAFE", "does not mean the report is normal"),
+    ],
+)
+def test_rule_result_sentence_never_calls_a_report_normal_or_safe(status, expected):
+    from services.report_ai_pipeline import _rule_check_sentence
+
+    sentence = _rule_check_sentence({"status": status, "warnings": [{"severity": "CAUTION"}]})
+    assert expected in sentence and "safe" not in sentence.lower()
