@@ -2,7 +2,7 @@
 
 import pytest
 
-from services.lab_ranges import LAB_RANGES, check_lab_ranges, read_value
+from services.lab_ranges import LAB_RANGES, check_lab_ranges, read_value, read_values
 from services.rule_validation_service import validate_medical_rules
 
 
@@ -143,3 +143,56 @@ def test_a_unit_written_after_another_value_is_not_borrowed():
     # The mmol/L belongs to urea; glucose 110 mg/dL must not be read as mmol.
     result = validate_medical_rules(f"{BASE} Glucose 110 mg/dL, Urea 5 mmol/L.")
     assert result["status"] == "SAFE"
+
+
+# Every glucose reading is checked; the most severe one counts.
+
+
+def glucose_alerts(text: str) -> list[tuple[str, str]]:
+    result = validate_medical_rules(f"{BASE} {text}")
+    return [(w["code"], w["severity"]) for w in result["warnings"] if "GLUCOSE" in w["code"]]
+
+
+def test_random_sugar_230_with_a_normal_fasting_value_raises_an_alert():
+    text = "Fasting Blood Sugar | 92 | mg/dL | 70 - 100\nRandom Blood Sugar | 230 | mg/dL | < 140"
+    assert glucose_alerts(text) == [("HIGH_GLUCOSE", "CAUTION")]
+    assert validate_medical_rules(f"{BASE} {text}")["status"] == "CAUTION"
+
+
+def test_the_most_severe_glucose_reading_sets_the_status():
+    result = validate_medical_rules(f"{BASE} Fasting Blood Sugar 210 mg/dL. Random Blood Sugar 320 mg/dL.")
+    assert result["status"] == "HIGH_RISK"
+    assert sorted(glucose_alerts("Fasting Blood Sugar 210 mg/dL. Random Blood Sugar 320 mg/dL.")) == [
+        ("HIGH_GLUCOSE", "CAUTION"),
+        ("HIGH_GLUCOSE", "HIGH_RISK"),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Post Prandial Blood Sugar 250 mg/dL", [("HIGH_GLUCOSE", "CAUTION")]),
+        ("PPBS: 260 mg/dL", [("HIGH_GLUCOSE", "CAUTION")]),
+        ("FBS 5.0 mmol/L, RBS 16.7 mmol/L", [("HIGH_GLUCOSE", "HIGH_RISK")]),  # 16.7 mmol/L is about 300 mg/dL
+        ("Fasting Blood Sugar 95 mg/dL. Random Blood Sugar 62 mg/dL", [("GLUCOSE_LOW", "CAUTION")]),
+        ("Fasting Blood Sugar 95 mg/dL. Random Blood Sugar 120 mg/dL", []),
+    ],
+)
+def test_each_kind_of_glucose_reading_is_checked(text, expected):
+    assert glucose_alerts(text) == expected
+
+
+def test_one_reading_reached_through_two_names_counts_once():
+    # "Fasting Blood Sugar" matches both "blood sugar" and "sugar": one reading, one alert.
+    assert glucose_alerts("Fasting Blood Sugar 250 mg/dL") == [("HIGH_GLUCOSE", "CAUTION")]
+    assert [r.value for r in read_values("Fasting Blood Sugar 250 mg/dL", ["blood sugar", "sugar"])] == [250]
+
+
+def test_a_time_after_the_name_is_not_a_glucose_value():
+    # "2 hours" must not become glucose 2 (a false low alert); the 180 is then not read: missing, not wrong.
+    assert glucose_alerts("Blood sugar 2 hours after meal 180 mg/dL") == []
+
+
+def test_read_values_keeps_every_reading_in_order():
+    readings = read_values("FBS 92 mg/dL ... RBS 230 mg/dL ... PPBS 180 mg/dL", ["fbs", "rbs", "ppbs"])
+    assert [r.value for r in readings] == [92, 230, 180]

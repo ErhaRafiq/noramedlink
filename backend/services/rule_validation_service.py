@@ -1,7 +1,14 @@
 import re
 from typing import Any
 
-from services.lab_ranges import check_lab_ranges, creatinine_mg_dl, glucose_mg_dl, read_value
+from services.lab_ranges import (
+    GLUCOSE_ALIASES,
+    check_lab_ranges,
+    creatinine_mg_dl,
+    glucose_mg_dl,
+    read_value,
+    read_values,
+)
 
 STATUS_ORDER = {"SAFE": 0, "CAUTION": 1, "HIGH_RISK": 2}
 
@@ -103,6 +110,22 @@ def _converted_field(fields: dict[str, Any], keys: list[str], convert) -> tuple[
     return None, None
 
 
+def _glucose_readings(fields: dict[str, Any], text: str) -> list[tuple[float, str]]:
+    """All glucose values in the report, in mg/dL: structured fields and every reading in the text."""
+    readings: list[tuple[float, str]] = []
+    field_value, field_evidence = _converted_field(fields, ["glucose", "blood_sugar", "rbs", "fbs"], glucose_mg_dl)
+    if field_value is not None:
+        readings.append((field_value, field_evidence or ""))
+    readings += [(r.value, r.evidence) for r in read_values(text, GLUCOSE_ALIASES, glucose_mg_dl)]
+    seen: set[float] = set()
+    unique = []
+    for value, evidence in readings:  # the structured field usually repeats a text reading
+        if value not in seen:
+            seen.add(value)
+            unique.append((value, evidence))
+    return unique
+
+
 def _lab_value(fields, keys, text, aliases, convert) -> tuple[float | None, str | None]:
     value, evidence = _converted_field(fields, keys, convert)
     if value is None:
@@ -182,21 +205,21 @@ def validate_medical_rules(
             warnings.append(_warning("MEDICINE_COMBINATION_CAUTION", "CAUTION", message, ", ".join(sorted(pair))))
             status = _highest_status(status, "CAUTION")
 
-    # mmol/L values are converted to mg/dL (unit written after the number).
-    glucose, glucose_evidence = _lab_value(
-        fields, ["glucose", "blood_sugar", "rbs", "fbs"], source_text,
-        ["glucose", "blood sugar", "sugar", "rbs", "fbs"], glucose_mg_dl,
-    )  # fmt: skip
-    if glucose is not None and glucose >= 200:
-        warnings.append(
-            _warning(
-                "HIGH_GLUCOSE",
-                "HIGH_RISK" if glucose >= 300 else "CAUTION",
-                "Glucose value appears elevated and should be reviewed by a qualified clinician.",
-                glucose_evidence,
+    # Every glucose reading counts (fasting, random, post-prandial; mmol/L converted to mg/dL), and
+    # the most severe sets the status. Reading only the first let a random sugar of 230 go unchecked
+    # next to a normal fasting value.
+    for glucose, glucose_evidence in _glucose_readings(fields, source_text):
+        if glucose >= 200:
+            severity = "HIGH_RISK" if glucose >= 300 else "CAUTION"
+            warnings.append(
+                _warning(
+                    "HIGH_GLUCOSE",
+                    severity,
+                    f"Glucose {glucose:g} mg/dL appears elevated and should be reviewed by a qualified clinician.",
+                    glucose_evidence,
+                )
             )
-        )
-        status = _highest_status(status, "HIGH_RISK" if glucose >= 300 else "CAUTION")
+            status = _highest_status(status, severity)
 
     hba1c, hba1c_evidence = _field_value(fields, ["hba1c", "hb_a1c"])
     if hba1c is None:

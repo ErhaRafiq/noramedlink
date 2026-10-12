@@ -22,6 +22,25 @@ _READING = (
 )
 
 
+_TIME_UNIT = re.compile(r"^(?:hrs?|hours?|h|mins?|minutes?)\b")
+
+# Every way reports name a blood glucose reading. All of them are checked, not just the first.
+GLUCOSE_ALIASES = [
+    "fasting blood sugar",
+    "random blood sugar",
+    "post prandial",
+    "postprandial",
+    "blood sugar",
+    "blood glucose",
+    "glucose",
+    "sugar",
+    "fbs",
+    "rbs",
+    "ppbs",
+    "fpg",
+]
+
+
 @dataclass(frozen=True)
 class Reading:
     value: float  # already converted to the rule's unit
@@ -33,21 +52,41 @@ def _clean(text: str) -> str:
     return re.sub(r"(?<=\d),(?=\d)", "", " ".join((text or "").split()))
 
 
-def read_value(
-    text: str, aliases: list[str], convert: Callable[[float, str], float] = lambda v, _: v
-) -> Reading | None:
-    """The first value written after one of `aliases`, converted with `convert(value, unit)`."""
+def _readings(text: str, aliases: list[str], convert: Callable[[float, str], float]):
+    """Every value written after one of `aliases`, as (position of the number, Reading), alias by alias."""
     compact = _clean(text)
     for alias in aliases:
         pattern = _READING.format(alias=re.escape(alias))
         for match in re.finditer(pattern, compact, flags=re.IGNORECASE):
             if "ratio" in match.group("gap").lower():
                 continue  # "LDL/HDL ratio 3.1" is not an LDL or HDL value
-            raw = float(match.group("value"))
             unit = match.group("unit").strip().lower()
+            if _TIME_UNIT.match(unit):
+                continue  # "Blood sugar 2 hours after meal": 2 is a time, not a reading
+            raw = float(match.group("value"))
             evidence = compact[match.start() : min(len(compact), match.end() + 20)].strip()
-            return Reading(value=round(convert(raw, unit), 2), evidence=evidence)
-    return None
+            yield match.start("value"), Reading(value=round(convert(raw, unit), 2), evidence=evidence)
+
+
+def read_value(
+    text: str, aliases: list[str], convert: Callable[[float, str], float] = lambda v, _: v
+) -> Reading | None:
+    """The first value written after one of `aliases`, converted with `convert(value, unit)`."""
+    return next((reading for _, reading in _readings(text, aliases, convert)), None)
+
+
+def read_values(
+    text: str, aliases: list[str], convert: Callable[[float, str], float] = lambda v, _: v
+) -> list[Reading]:
+    """Every value of a test in the report (e.g. fasting and random sugar), in reading order.
+
+    A number reached through two aliases ("Fasting Blood Sugar" via "blood sugar" and "sugar")
+    counts once.
+    """
+    by_position: dict[int, Reading] = {}
+    for position, reading in _readings(text, aliases, convert):
+        by_position.setdefault(position, reading)
+    return [by_position[position] for position in sorted(by_position)]
 
 
 # Unit conversions to the unit each rule uses.
@@ -99,13 +138,15 @@ class LabRange:
     low: float | None = None
     high: float | None = None
     convert: Callable[[float, str], float] = lambda value, _unit: value
+    # Check every reading of this test in the report (the most severe counts), not only the first.
+    all_readings: bool = False
 
 
 LAB_RANGES = [
     LabRange("HEMOGLOBIN", "Hemoglobin", ["hemoglobin", "haemoglobin", "hb"], "g/dL", 12.0, 17.5, hemoglobin_g_dl),
     LabRange("WBC", "White blood cells", ["white blood cells", "white blood cell count", "wbc", "tlc"], "x10^9/L", 4.0, 11.0, per_nanolitre),
     LabRange("PLATELETS", "Platelets", ["platelet count", "platelets", "plt"], "x10^9/L", 150.0, 450.0, per_nanolitre),
-    LabRange("GLUCOSE", "Glucose", ["blood sugar", "glucose", "fbs", "rbs"], "mg/dL", low=70.0, convert=glucose_mg_dl),
+    LabRange("GLUCOSE", "Glucose", GLUCOSE_ALIASES, "mg/dL", low=70.0, convert=glucose_mg_dl, all_readings=True),
     LabRange("UREA", "Urea", ["blood urea", "urea"], "mg/dL", high=45.0, convert=urea_mg_dl),
     LabRange("BILIRUBIN", "Bilirubin", ["total bilirubin", "bilirubin"], "mg/dL", high=1.2, convert=bilirubin_mg_dl),
     LabRange("ALT", "ALT", ["alt", "sgpt"], "U/L", high=56.0),
@@ -127,24 +168,31 @@ def check_lab_ranges(text: str) -> list[dict[str, str]]:
     """CAUTION warnings for values outside the ranges above, in the rule-warning shape."""
     warnings: list[dict[str, str]] = []
     for lab in LAB_RANGES:
-        reading = read_value(text, lab.aliases, lab.convert)
-        if reading is None:
-            continue
-        if lab.low is not None and reading.value < lab.low:
-            direction, code = "below", f"{lab.code}_LOW"
-        elif lab.high is not None and reading.value > lab.high:
-            direction, code = "above", f"{lab.code}_HIGH"
+        if lab.all_readings:
+            readings = read_values(text, lab.aliases, lab.convert)
         else:
-            continue
-        warnings.append(
-            {
-                "code": code,
-                "severity": "CAUTION",
-                "message": (
-                    f"{lab.name} {reading.value:g} {lab.unit} is {direction} the range these rules use "
-                    f"({_range_text(lab)}). Ranges differ between labs; for physician review."
-                ),
-                "evidence": reading.evidence[:220],
-            }
-        )
+            first = read_value(text, lab.aliases, lab.convert)
+            readings = [first] if first else []
+        for reading in readings:
+            warning = _range_warning(lab, reading)
+            if warning:
+                warnings.append(warning)
     return warnings
+
+
+def _range_warning(lab: LabRange, reading: Reading) -> dict[str, str] | None:
+    if lab.low is not None and reading.value < lab.low:
+        direction, code = "below", f"{lab.code}_LOW"
+    elif lab.high is not None and reading.value > lab.high:
+        direction, code = "above", f"{lab.code}_HIGH"
+    else:
+        return None
+    return {
+        "code": code,
+        "severity": "CAUTION",
+        "message": (
+            f"{lab.name} {reading.value:g} {lab.unit} is {direction} the range these rules use "
+            f"({_range_text(lab)}). Ranges differ between labs; for physician review."
+        ),
+        "evidence": reading.evidence[:220],
+    }
