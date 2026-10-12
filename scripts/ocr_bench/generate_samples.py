@@ -92,7 +92,7 @@ def row(test: str, value: float, unit: str, low: float | None, high: float | Non
 
 def lakh(value: float) -> str:
     """Indian/Pakistani digit grouping: 250000 -> 2,50,000."""
-    digits = str(int(round(value)))
+    digits = str(round(value))
     if len(digits) <= 3:
         return digits
     head, tail = digits[:-3], digits[-3:]
@@ -102,7 +102,7 @@ def lakh(value: float) -> str:
         head = head[:-2]
     if head:
         groups.insert(0, head)
-    return ",".join(groups + [tail])
+    return ",".join([*groups, tail])
 
 
 # --- panels -------------------------------------------------------------------------------
@@ -213,8 +213,20 @@ def liver(r: random.Random) -> Panel:
 
 # --- reports ------------------------------------------------------------------------------
 
-FIRST = [("Ayesha", "F"), ("Bilal", "M"), ("Fatima", "F"), ("Hamza", "M"), ("Iqra", "F"), ("Junaid", "M"),
-         ("Kiran", "F"), ("Mahnoor", "F"), ("Omer", "M"), ("Rabia", "F"), ("Saad", "M"), ("Zoya", "F")]
+FIRST = [
+    ("Ayesha", "F"),
+    ("Bilal", "M"),
+    ("Fatima", "F"),
+    ("Hamza", "M"),
+    ("Iqra", "F"),
+    ("Junaid", "M"),
+    ("Kiran", "F"),
+    ("Mahnoor", "F"),
+    ("Omer", "M"),
+    ("Rabia", "F"),
+    ("Saad", "M"),
+    ("Zoya", "F"),
+]
 LAST = ["Testani", "Samplewala", "Fakhri", "Demoji", "Mockari", "Exampli", "Placeholdar", "Synthani"]
 LABS = [
     ("Example Diagnostics Laboratory", "12-B Sample Road, Sector Z-9, Islamabad"),
@@ -230,31 +242,31 @@ def make_reports() -> list[Report]:
         lab, address = LABS[i % len(LABS)]
         first, sex = FIRST[i % len(FIRST)]
         day = r.randint(1, 26)
-        return dict(
-            lab=lab,
-            address=address,
-            patient=f"{first} {r.choice(LAST)}",
-            age_sex=f"{r.randint(19, 78)} Y / {sex}",
-            mrn=f"SYN-{r.randint(10000, 99999)}-{r.randint(10, 99)}",
-            doctor=f"Dr. {r.choice(['Sample', 'Example', 'Demo'])} {r.choice(['Physician', 'Consultant'])}",
-            collected=f"{day:02d}-Sep-2026 {r.randint(7, 11):02d}:{r.choice(['05', '20', '40'])} AM",
+        return {
+            "lab": lab,
+            "address": address,
+            "patient": f"{first} {r.choice(LAST)}",
+            "age_sex": f"{r.randint(19, 78)} Y / {sex}",
+            "mrn": f"SYN-{r.randint(10000, 99999)}-{r.randint(10, 99)}",
+            "doctor": f"Dr. {r.choice(['Sample', 'Example', 'Demo'])} {r.choice(['Physician', 'Consultant'])}",
+            "collected": f"{day:02d}-Sep-2026 {r.randint(7, 11):02d}:{r.choice(['05', '20', '40'])} AM",
             # Reported the same day or up to two days after collection.
-            reported=f"{day + r.randint(0, 2):02d}-Sep-2026 {r.randint(1, 6):02d}:{r.choice(['10', '35', '55'])} PM",
-        )
+            "reported": f"{day + r.randint(0, 2):02d}-Sep-2026 {r.randint(1, 6):02d}:{r.choice(['10', '35', '55'])} PM",
+        }
 
     specs = [
-        ("lab01_cbc", [[cbc(r, anaemic=True)]], dict()),
-        ("lab02_lipid", [[lipid(r)]], dict(font="Times-Roman", grid=False)),
-        ("lab03_glucose", [[glucose(r, diabetic=True)]], dict()),
-        ("lab04_kidney", [[kidney(r, impaired=True)]], dict(font="Helvetica", size=10.5)),
-        ("lab05_kidney_si", [[kidney(r, si=True)]], dict(font="Courier", size=9.5, grid=False)),
-        ("lab06_cbc_lakh", [[cbc(r, counts_per_ul=True)]], dict(hard_scan=True)),
-        ("lab07_liver", [[liver(r)]], dict(font="Times-Roman")),
-        ("lab08_combined_2pages", [[cbc(r), lipid(r)], [glucose(r, diabetic=True), kidney(r)]], dict(size=9.5)),
-        ("lab09_lipid_si", [[lipid(r, si=True), glucose(r, si=True)]], dict(grid=False, hard_scan=True)),
-        ("lab10_small_font", [[cbc(r), kidney(r), liver(r)]], dict(size=7.5, hard_scan=True)),
-        ("lab11_cbc_g_per_l", [[cbc(r, anaemic=True, hb_g_l=True)]], dict(font="Courier", size=9.5)),
-        ("lab12_glucose_kidney", [[glucose(r), kidney(r, impaired=True)]], dict(hard_scan=True)),
+        ("lab01_cbc", [[cbc(r, anaemic=True)]], {}),
+        ("lab02_lipid", [[lipid(r)]], {"font": "Times-Roman", "grid": False}),
+        ("lab03_glucose", [[glucose(r, diabetic=True)]], {}),
+        ("lab04_kidney", [[kidney(r, impaired=True)]], {"font": "Helvetica", "size": 10.5}),
+        ("lab05_kidney_si", [[kidney(r, si=True)]], {"font": "Courier", "size": 9.5, "grid": False}),
+        ("lab06_cbc_lakh", [[cbc(r, counts_per_ul=True)]], {"hard_scan": True}),
+        ("lab07_liver", [[liver(r)]], {"font": "Times-Roman"}),
+        ("lab08_combined_2pages", [[cbc(r), lipid(r)], [glucose(r, diabetic=True), kidney(r)]], {"size": 9.5}),
+        ("lab09_lipid_si", [[lipid(r, si=True), glucose(r, si=True)]], {"grid": False, "hard_scan": True}),
+        ("lab10_small_font", [[cbc(r), kidney(r), liver(r)]], {"size": 7.5, "hard_scan": True}),
+        ("lab11_cbc_g_per_l", [[cbc(r, anaemic=True, hb_g_l=True)]], {"font": "Courier", "size": 9.5}),
+        ("lab12_glucose_kidney", [[glucose(r), kidney(r, impaired=True)]], {"hard_scan": True}),
     ]
     return [Report(base=base, pages=pages, **person(i), **opts) for i, (base, pages, opts) in enumerate(specs)]
 
