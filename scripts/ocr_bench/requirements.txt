@@ -12,3 +12,5 @@ httpx==0.28.1
 python-dotenv==1.0.1
 # Metrics
 rapidfuzz==3.10.1
+# Candidate: RapidOCR 3 with PP-OCRv5 models (rows_v5)
+rapidocr==3.10.0

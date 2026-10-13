@@ -1,0 +1,10 @@
+# docTR candidate (rows_doctr, doctr): separate virtualenv, about 1.8 GB with CPU PyTorch.
+#   python -m venv .venv-ocr-bench-doctr
+#   .venv-ocr-bench-doctr\Scripts\python.exe -m pip install --upgrade pip
+#   .venv-ocr-bench-doctr\Scripts\python.exe -m pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cpu
+#   .venv-ocr-bench-doctr\Scripts\python.exe -m pip install -r scripts\ocr_bench\requirements-doctr.txt
+python-doctr==1.1.0
+rapidocr-onnxruntime==1.4.4
+httpx==0.28.1
+python-dotenv==1.0.1
+rapidfuzz==3.10.1
