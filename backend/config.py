@@ -92,6 +92,10 @@ class Settings:
     groq_api_key: str = ""
     groq_base_url: str = "https://api.groq.com/openai/v1"
     groq_chat_models: list[str] = field(default_factory=lambda: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"])
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.5-flash"
+    gemini_fallback_models: list[str] = field(default_factory=list)
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
     biobert_model: str = "d4data/biomedical-ner-all"
 
     # OCR.space
@@ -148,6 +152,10 @@ def load_settings() -> Settings:
         groq_api_key=env_str("GROQ_API_KEY"),
         groq_base_url=env_str("GROQ_BASE_URL", d.groq_base_url),
         groq_chat_models=env_list("GROQ_CHAT_MODELS", d.groq_chat_models),
+        gemini_api_key=env_str("GEMINI_API_KEY") or env_str("GOOGLE_API_KEY"),
+        gemini_model=env_str("GEMINI_MODEL", d.gemini_model),
+        gemini_fallback_models=env_list("GEMINI_FALLBACK_MODELS"),
+        gemini_base_url=env_str("GEMINI_BASE_URL", d.gemini_base_url),
         biobert_model=env_str("BIOBERT_MODEL", d.biobert_model),
         ocr_space_api_key=env_str("OCR_SPACE_API_KEY", strip_quotes=True),
         ocr_space_timeout_seconds=env_float("OCR_SPACE_TIMEOUT_SECONDS", d.ocr_space_timeout_seconds),

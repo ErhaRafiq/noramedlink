@@ -6,7 +6,7 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/datetime";
-import { buildMedicalDisclaimer, validationLabel } from "@/lib/patient-dashboard";
+import { buildMedicalDisclaimer, summaryOrigin, validationLabel } from "@/lib/patient-dashboard";
 import type { MedicalDocument, UncertainValue } from "@/lib/types";
 
 /** A titled card used by every section of the report page. */
@@ -203,17 +203,21 @@ export function ReportSummary({ report }: { report: MedicalDocument }) {
   const textRead = report.ocr_status !== "FAILED" || Boolean((report.extracted_text ?? "").trim());
   if (!textRead) return <UnreadReport report={report} />;
   const aiWritten = Boolean(report.summary_source) && report.summary_source !== "rule_based";
+  // Older reports did not record who wrote the plain-language summary: fall back to the clinical one's source.
+  const plain = summaryOrigin(report.patient_summary_source ?? report.summary_source);
   return (
     <ReportCard icon={Sparkles} title="Summary" description={`Uploaded ${formatDateTime(report.upload_date)}`}>
       {report.patient_summary ? (
         <div className="rounded-control border border-emerald-100 bg-emerald-50 p-4">
           <h3 className="text-xs font-semibold uppercase tracking-wide text-emerald-800">In plain language</h3>
-          <p className="mt-1.5 text-sm leading-7 text-emerald-950">{report.patient_summary}</p>
+          <p className="mt-0.5 text-xs text-emerald-800/80">{plain.label}</p>
+          <p className="mt-2 whitespace-pre-line text-sm leading-7 text-emerald-950">{report.patient_summary}</p>
+          <p className="mt-3 text-xs leading-5 text-emerald-900/70">{plain.note}</p>
         </div>
       ) : null}
       <div className="mt-3 rounded-control border border-teal-100 bg-teal-50 p-4">
         <h3 className="text-xs font-semibold uppercase tracking-wide text-teal-800">Clinical summary</h3>
-        <p className="mt-1.5 text-sm leading-7 text-teal-950">{summaryText || "No summary is available for this report yet."}</p>
+        <p className="mt-1.5 whitespace-pre-line text-sm leading-7 text-teal-950">{summaryText || "No summary is available for this report yet."}</p>
       </div>
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <SummaryList title="Key findings" values={clinical.key_findings ?? []} />

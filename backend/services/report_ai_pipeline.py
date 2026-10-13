@@ -1,10 +1,14 @@
+import logging
 import re
 from typing import Any
 
+from services.ai_guard import numbers_not_in_source
 from services.biobert_service import extract_medical_entities
 from services.openai_service import fallback_notice, generate_openai_json, generate_openai_text
 from services.report_breakdown import measured_values, report_conclusion
 from services.rule_validation_service import validate_medical_rules
+
+logger = logging.getLogger("nora.ai")
 
 _MEASUREMENT = re.compile(r"[A-Za-z]{3,}\D{0,12}\d")  # a name, then a number: "Hemoglobin 10.8"
 
@@ -168,7 +172,7 @@ async def _generate_summary_json(
     )
 
     if result.data:
-        return _normalize_summary_json(result.data, fallback), "openai", None
+        return _normalize_summary_json(result.data, fallback), result.provider or "openai", None
 
     fallback = _fallback_summary_json(text, department, entities, validation, structured_fields, result.error)
     return fallback, "rule_based", result.error
@@ -260,44 +264,73 @@ async def _generate_patient_summary(
     department: str,
     clinical_json: dict[str, Any],
     validation: dict[str, Any],
-) -> tuple[str, str | None]:
-    """Generate a patient-friendly summary using OpenAI.
+) -> tuple[str, str | None, str]:
+    """A plain-language summary for a patient with no medical training.
 
-    Returns the summary text and an optional warning if OpenAI was unavailable.
+    Returns the summary, a warning when the AI one could not be used, and its source
+    ("gemini", "openai", "groq" or "rule_based").
     """
+    alerts = [w["message"] for w in validation.get("warnings", []) if w.get("severity") in {"CAUTION", "HIGH_RISK"}]
     result = await generate_openai_text(
-        instructions=(
-            "You are a patient-friendly medical report summarizer for Nora MedLink. "
-            "Your job is to explain medical report findings in simple, easy-to-understand language. "
-            "Rules:\n"
-            "- Write in simple English that any patient can understand.\n"
-            "- Explain what each abnormal value means in plain terms.\n"
-            "- Do NOT diagnose or prescribe treatment.\n"
-            "- Highlight any values that seem abnormal and explain why they matter.\n"
-            "- Mention detected medicines and what they are typically used for.\n"
-            "- If there are risk alerts, explain them simply.\n"
-            "- Always end with: 'Please consult your doctor for proper diagnosis and treatment.'\n"
-            "- Keep the summary between 100-300 words.\n"
-            "- Use bullet points for key findings."
-        ),
-        prompt=(
-            f"Medical Department: {department}\n"
-            f"Clinical Summary: {clinical_json}\n"
-            f"Validation Status: {validation.get('status', 'SAFE')}\n\n"
-            f"Original OCR Report Text:\n{_compact_text(text, 6000)}\n\n"
-            "Write a patient-friendly summary of this medical report. "
-            "The patient should be able to understand their results after reading this."
-        ),
+        instructions=PATIENT_SUMMARY_INSTRUCTIONS, prompt=_patient_summary_prompt(text, department, alerts)
     )
 
     if result.text:
         summary = result.text.strip()
+        invented = numbers_not_in_source(summary, text)
+        if invented:
+            # A number that is not in the report must never reach the patient (AGENTS.md 6).
+            logger.warning("AI patient summary rejected: %d number(s) not found in the report text.", len(invented))
+            fallback = _build_patient_summary_fallback(clinical_json, department, validation)
+            return (
+                fallback,
+                "The AI summary used numbers that are not in the report, so it was not shown.",
+                "rule_based",
+            )
         if "consult your doctor" not in summary.lower() and "consult a doctor" not in summary.lower():
             summary += "\n\nPlease consult your doctor for proper diagnosis and treatment."
-        return summary, None
+        return summary, None, result.provider or "openai"
 
     fallback = _build_patient_summary_fallback(clinical_json, department, validation)
-    return fallback, result.error
+    return fallback, result.error, "rule_based"
+
+
+PATIENT_SUMMARY_INSTRUCTIONS = (
+    "You explain a person's medical test report to them in plain, warm, everyday English, for someone "
+    "with no medical or technical background (aim for a 12-year-old's reading level).\n\n"
+    "Write these sections, each starting with its heading on its own line:\n"
+    "What this report is\n"
+    "  One or two sentences: what kind of test or scan this is and why doctors usually order it.\n"
+    "Your results explained\n"
+    "  One short bullet (starting with '- ') per result or finding. Name the test, give the value and "
+    "unit exactly as written in the report, then say in simple words what that test measures.\n"
+    "What may need attention\n"
+    "  Only results the report itself marks as high/low/abnormal (for example with H or L), and the "
+    "alerts listed in the prompt. Explain each one simply and calmly. If there are none, say that "
+    "nothing on the report was marked for attention, and that this does not mean everything is normal.\n"
+    "Words you might see\n"
+    "  Two to four medical words from the report, each explained in one simple sentence.\n"
+    "Questions to ask your doctor\n"
+    "  Two or three short, useful questions.\n\n"
+    "Rules you must follow:\n"
+    "- Use only numbers, values and words that appear in the report text. Never invent, round, "
+    "convert or correct a value. If something is unclear in the report, say it is unclear.\n"
+    "- Do not decide yourself whether a value is high, low, normal or dangerous: only repeat what the "
+    "report marks and the alerts you are given.\n"
+    "- Do not diagnose, do not name a disease the report does not name, and do not suggest medicines, "
+    "doses or treatment.\n"
+    "- Plain text only: no markdown symbols such as ** or #. Short sentences. No more than about 350 words.\n"
+    "- End with: Please consult your doctor for proper diagnosis and treatment."
+)
+
+
+def _patient_summary_prompt(text: str, department: str, alerts: list[str]) -> str:
+    alert_lines = "\n".join(f"- {alert}" for alert in alerts) or "- none"
+    return (
+        f"Department: {department}\n"
+        f"Alerts from the app's safety rules (explain these; do not add others):\n{alert_lines}\n\n"
+        f"Report text (as read from the file; it may contain reading mistakes):\n{_compact_text(text, 6000)}"
+    )
 
 
 async def run_report_ai_pipeline(
@@ -324,7 +357,7 @@ async def run_report_ai_pipeline(
     confidence_level = str(self_check.get("confidence_level") or summary_json.get("confidence_level") or "Moderate")
 
     # Generate patient-friendly summary via OpenAI
-    patient_summary, patient_summary_warning = await _generate_patient_summary(
+    patient_summary, patient_summary_warning, patient_summary_source = await _generate_patient_summary(
         source_text,
         department_name,
         summary_json,
@@ -345,4 +378,5 @@ async def run_report_ai_pipeline(
         "confidence_level": confidence_level,
         "patient_summary": patient_summary,
         "patient_summary_warning": patient_summary_warning,
+        "patient_summary_source": patient_summary_source,
     }

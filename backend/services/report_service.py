@@ -159,6 +159,7 @@ def report_to_out(report: PatientReport) -> PatientReportOut:
         structured_sections=structured_sections,
         ai_summary=report.summary if _text_was_read(report) else None,
         patient_summary=structured_payload.get("patient_summary"),
+        patient_summary_source=structured_payload.get("patient_summary_source"),
     )
 
 
@@ -235,6 +236,7 @@ async def analyze_report_result(ocr_result: dict[str, Any], department_name: str
     structured_payload["summary_method"] = analysis["summary_source"]
     structured_payload["confidence_level"] = analysis["confidence_level"]
     structured_payload["patient_summary"] = analysis.get("patient_summary", "")
+    structured_payload["patient_summary_source"] = analysis.get("patient_summary_source", "rule_based")
     if analysis.get("summary_warning"):
         structured_payload["summary_warning"] = analysis["summary_warning"]
     if analysis.get("patient_summary_warning"):

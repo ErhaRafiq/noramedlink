@@ -40,7 +40,7 @@ It is **not** a certified medical device. Every medical feature is advisory only
 | Database | PostgreSQL; schema managed by **Alembic** migrations |
 | Auth | JWT (HS256) issued by FastAPI, stored in `localStorage` on the client |
 | OCR | **Local OCR** by default (`services/local_ocr.py`): PDF text layers are read directly; scans and photos go through RapidOCR 3 (ONNX, CPU) with the PP-OCRv5 detector and English recogniser, downloaded once to `backend/models/` (checksum-verified); boxes are rebuilt into table rows (`services/ocr_layout.py`), and numbers read with a score under 0.90 are listed as "check against the original report", never changed. No key, nothing leaves the server. OCR.space is used instead only when `OCR_SPACE_API_KEY` is set. There is no Tesseract |
-| AI | OpenAI / Groq when keys are set, rule-based fallback otherwise; BioBERT NER |
+| AI | Gemini, OpenAI or Groq when a key is set (Gemini first), rule-based fallback otherwise; BioBERT NER. Patient identifiers are removed before any prompt leaves the server (`services/privacy.py`), and an AI summary with a number that is not in the report is rejected (`services/ai_guard.py`) |
 
 There is **no** Flutter app, **no** Node gateway and **no** Prisma. Do not create them.
 The SRS/SDS documents describe some of these; the code is the source of truth.

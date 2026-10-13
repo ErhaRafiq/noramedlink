@@ -20,7 +20,7 @@ safety, security and UI rules. The phase plan and current state are in
 | Backend | FastAPI, SQLAlchemy 2, Alembic, slowapi (rate limiting) |
 | Database | PostgreSQL (a local SQLite file is used only when no database URL is set) |
 | OCR | Local OCR (RapidOCR) by default; OCR.space when a key is set (see [Reports and OCR](#reports-and-ocr)) |
-| AI | OpenAI or Groq when a key is set, rule-based fallback otherwise; BioBERT for entity extraction |
+| AI | Gemini, OpenAI or Groq when a key is set (Gemini first), rule-based fallback otherwise; BioBERT for entity extraction |
 
 The browser never calls FastAPI directly. It calls `/api/backend/...` on the Next.js server,
 which forwards to FastAPI.
@@ -62,7 +62,7 @@ The important backend variables:
 | `JWT_SECRET_KEY` | Signing sign-in tokens. Without it, a random secret is used and everyone is signed out on restart |
 | `ADMIN_INVITE_CODE` | Creating an admin account |
 | `OCR_SPACE_API_KEY` | Optional: send reports to OCR.space instead of reading them locally |
-| `OPENAI_API_KEY` or `GROQ_API_KEY` | AI summaries and explanations (rule-based text otherwise) |
+| `GEMINI_API_KEY`, `OPENAI_API_KEY` or `GROQ_API_KEY` | AI summaries and explanations in plain language (rule-based text otherwise). Patient identifiers are removed before text is sent; on Google's free Gemini tier, content may be used to improve Google's products |
 | `RATE_LIMIT_*`, `LOG_LEVEL`, `MAX_UPLOAD_MB` | Optional; defaults are in `backend/.env.example` |
 
 ### 3. Install

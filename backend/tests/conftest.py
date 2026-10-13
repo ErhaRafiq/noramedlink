@@ -14,7 +14,7 @@ import pytest
 from config import settings
 from services import ocr_space_service, openai_service
 
-NO_EXTERNAL_KEYS = replace(settings, openai_api_key="", groq_api_key="", ocr_space_api_key="")
+NO_EXTERNAL_KEYS = replace(settings, openai_api_key="", groq_api_key="", gemini_api_key="", ocr_space_api_key="")
 
 
 @pytest.fixture

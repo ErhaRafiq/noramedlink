@@ -286,6 +286,8 @@ class PatientReportOut(BaseModel):
     structured_sections: dict[str, str]
     ai_summary: str | None
     patient_summary: str | None = None
+    # Who wrote patient_summary: "gemini", "openai", "groq" or "rule_based" (absent on older reports).
+    patient_summary_source: str | None = None
 
 
 class DepartmentTileOut(BaseModel):
@@ -413,7 +415,7 @@ class SummarizeRequest(BaseModel):
 
 class SummaryResponse(BaseModel):
     summary: str
-    method: Literal["openai", "rule_based"]
+    method: Literal["gemini", "openai", "groq", "rule_based"]
     warning: str | None = None
     # From services/report_breakdown.py: values found, rule alerts (deterministic), next steps.
     key_findings: list[str] = Field(default_factory=list)

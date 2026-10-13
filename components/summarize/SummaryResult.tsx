@@ -3,7 +3,7 @@ import { Sparkles } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import { buildMedicalDisclaimer } from "@/lib/patient-dashboard";
+import { summaryOrigin } from "@/lib/patient-dashboard";
 import type { SummaryResponse } from "@/lib/types";
 
 function ResultList({ title, items, emptyText = "None found." }: { title: string; items: string[]; emptyText?: string }) {
@@ -52,8 +52,9 @@ export function SummaryResult({ result, loading }: { result: SummaryResponse | n
     <div className="space-y-4">
       <section className="rounded-card border border-teal-100 bg-teal-50/60 p-5">
         <h2 className="text-sm font-semibold text-ink">Summary</h2>
-        <p className="mt-2 text-sm leading-7 text-slate-700">{result.summary}</p>
-        <p className="mt-3 text-xs text-ink-muted">{buildMedicalDisclaimer()}</p>
+        <p className="mt-0.5 text-xs text-ink-muted">{summaryOrigin(result.method).label}</p>
+        <p className="mt-2 whitespace-pre-line text-sm leading-7 text-slate-700">{result.summary}</p>
+        <p className="mt-3 text-xs text-ink-muted">{summaryOrigin(result.method).note}</p>
       </section>
       {result.warning ? <Alert tone="warning">{result.warning}</Alert> : null}
       <ResultList title="Key findings" items={result.key_findings} />

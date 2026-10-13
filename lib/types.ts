@@ -157,6 +157,8 @@ export type MedicalDocument = {
   summary_source?: string;
   ai_summary: string | null;
   patient_summary?: string | null;
+  /** Who wrote patient_summary: "gemini", "openai", "groq" or "rule_based". */
+  patient_summary_source?: string | null;
 };
 
 /** A number OCR read with low confidence (below 0.90), still in the text as read. */
@@ -419,7 +421,7 @@ export type AIChatResponse = {
 /** POST /nlp/summarize and /nlp/summarize/saved-reports. */
 export type SummaryResponse = {
   summary: string;
-  method: "openai" | "rule_based";
+  method: "gemini" | "openai" | "groq" | "rule_based";
   warning: string | null;
   /** Values and terms found in the text, as written. */
   key_findings: string[];

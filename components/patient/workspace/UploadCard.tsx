@@ -6,7 +6,7 @@ import { AlertCircle, Camera, CheckCircle2, FilePlus2, Loader2, Sparkles, Upload
 import { cn } from "@/lib/cn";
 import { UPLOAD_ACCEPT } from "@/lib/image";
 import { DEPARTMENTS } from "@/lib/departments";
-import { buildMedicalDisclaimer } from "@/lib/patient-dashboard";
+import { summaryOrigin } from "@/lib/patient-dashboard";
 import type { FileQueueItem, useUploadQueue } from "@/hooks/patient/use-upload-queue";
 import { DashCard } from "./ui";
 
@@ -132,7 +132,7 @@ function UploadQueueRow({ item, onRemove }: { item: FileQueueItem; onRemove: () 
   const sizeStr = sizeMb < 1 ? `${(item.file.size / 1024).toFixed(0)} KB` : `${sizeMb.toFixed(1)} MB`;
   const isActive = item.step === "uploading";
   const textNotRead = item.report?.ocr_status === "FAILED";
-  const aiSummary = item.report?.summary_source !== undefined && item.report.summary_source !== "rule_based";
+  const origin = summaryOrigin(item.report?.patient_summary_source ?? item.report?.summary_source);
 
   return (
     <div
@@ -197,11 +197,11 @@ function UploadQueueRow({ item, onRemove }: { item: FileQueueItem; onRemove: () 
           <div className="mt-3 p-3 rounded-xl bg-white border border-emerald-100 shadow-sm relative">
             <div className="flex items-center gap-1.5 mb-1.5">
               <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
-              <p className="text-xs font-semibold text-slate-800">{aiSummary ? "AI-generated summary" : "Rule-based summary"}</p>
+              <p className="text-xs font-semibold text-slate-800">{origin.label}</p>
             </div>
-            <p className="text-xs text-slate-600 leading-relaxed">{item.report.patient_summary}</p>
+            <p className="max-h-60 overflow-y-auto whitespace-pre-line text-xs leading-relaxed text-slate-600">{item.report.patient_summary}</p>
             <p className="mt-1.5 text-[11px] text-ink-muted">
-              {aiSummary ? buildMedicalDisclaimer() : "Advisory only. This is not a diagnosis; verify with a clinician."}
+              {origin.note}
             </p>
           </div>
         )}
