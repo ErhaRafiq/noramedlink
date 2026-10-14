@@ -549,12 +549,62 @@ export type ClinicalSummaryVersionMeta = {
   is_current: boolean;
 };
 
+/** Where a flag or item came from: a report (title, printed date) or values entered in the app. */
+export type ClinicalSource = {
+  report_id: number | string;
+  title?: string | null;
+  date?: string | null;
+  date_source?: string | null;
+  kind?: "report" | "vitals" | string;
+  printed?: string;
+  medicine?: string;
+  dose?: string | null;
+  frequency?: string | null;
+};
+
+/** A flag set by the fixed rules (backend/services/icse/flags.py). */
+export type ClinicalFlag = {
+  code: string;
+  kind: "result" | "persistent" | "trend" | "chronic_condition" | "ongoing_treatment" | "high_alert_medicine" | "check_original" | string;
+  severity: "HIGH_RISK" | "CAUTION" | "INFO";
+  subject: string;
+  message: string;
+  reason: string;
+  rule?: string;
+  sources: ClinicalSource[];
+};
+
+export type ClinicalCondition = {
+  name: string;
+  icd10?: string | null;
+  chronic?: boolean;
+  relatives?: string[];
+  sources: ClinicalSource[];
+};
+
+/** The sections of a clinical summary (backend/services/icse/summary.py). */
+export type ClinicalSummaryContent = {
+  section_limit?: number;
+  key_findings: { text: string; source: string; rule_text?: string; ai_not_used?: string | null };
+  abnormal_results: ClinicalFlag[];
+  conditions: ClinicalCondition[];
+  family_history: ClinicalCondition[];
+  medications: {
+    from_app: { name: string; dosage?: string | null; list?: string; start_date?: string | null; end_date?: string | null }[];
+    from_reports: ClinicalSource[];
+    stopped_in_reports: string[];
+  };
+  allergies: { status: "listed" | "none_recorded" | "not_recorded"; items: { name: string; sources: ClinicalSource[] }[]; no_known_allergies_in: ClinicalSource[] };
+  flags: ClinicalFlag[];
+  check_original: ClinicalFlag[];
+  missing_data: string[];
+  notes: string[];
+};
+
 export type ClinicalSummaryVersion = ClinicalSummaryVersionMeta & {
   patient_id: number;
   summary_text: string;
-  /** Sections: key_findings, abnormal_results, conditions, family_history, medications, allergies,
-   * flags, check_original, missing_data, notes, sources (see backend/services/icse/summary.py). */
-  content: Record<string, unknown>;
+  content: ClinicalSummaryContent;
   note: string;
 };
 

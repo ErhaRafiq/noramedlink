@@ -9,6 +9,10 @@ import type {
   DoctorDashboard,
   DoctorOverview,
   DoctorOption,
+  ClinicalSummaryRegenerateResult,
+  ClinicalSummaryStatus,
+  ClinicalSummaryVersion,
+  ClinicalSummaryVersionMeta,
   HealthFlags,
   MedicalDocument,
   MedicationSchedule,
@@ -352,6 +356,26 @@ export const api = {
       method: "DELETE",
       token,
     });
+  },
+  /** A patient's clinical summary for the doctor (active access grant required). */
+  clinicalSummary(token: string, patientId: number, init?: { signal?: AbortSignal }) {
+    return apiRequest<ClinicalSummaryStatus>(`/doctor/patients/${patientId}/clinical-summary`, { token, signal: init?.signal });
+  },
+  regenerateClinicalSummary(token: string, patientId: number, init?: { signal?: AbortSignal }) {
+    return apiRequest<ClinicalSummaryRegenerateResult>(`/doctor/patients/${patientId}/clinical-summary/regenerate`, {
+      method: "POST",
+      token,
+      signal: init?.signal,
+    });
+  },
+  clinicalSummaryVersions(token: string, patientId: number, query: { limit?: number; offset?: number } = {}) {
+    return apiRequest<Page<ClinicalSummaryVersionMeta>>(
+      withQuery(`/doctor/patients/${patientId}/clinical-summary/versions`, { limit: query.limit, offset: query.offset }),
+      { token },
+    );
+  },
+  clinicalSummaryVersion(token: string, patientId: number, version: number) {
+    return apiRequest<ClinicalSummaryVersion>(`/doctor/patients/${patientId}/clinical-summary/versions/${version}`, { token });
   },
   /** What the fixed rules found in the patient's reports, in everyday words (not AI). */
   healthFlags(token: string) {

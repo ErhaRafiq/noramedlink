@@ -22,7 +22,7 @@ export type Fixtures = {
   attentionReportId: number;
   ocrKeySet: boolean;
   aiKeySet: boolean;
-  users: Record<"patient" | "patientEmpty" | "doctor" | "doctorPendingA" | "doctorPendingB" | "doctorUnreviewed" | "admin", TestUser>;
+  users: Record<"patient" | "patientEmpty" | "doctor" | "doctorWithAccess" | "doctorPendingA" | "doctorPendingB" | "doctorUnreviewed" | "admin", TestUser>;
 };
 
 export function runFixtures(args: string[]) {

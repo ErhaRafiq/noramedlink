@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { CalendarDays, FileSearch, KeyRound, LayoutDashboard, Siren, Stethoscope, Users } from "lucide-react";
+import { CalendarDays, ClipboardList, FileSearch, KeyRound, LayoutDashboard, Siren, Stethoscope, Users } from "lucide-react";
 
 import { DashboardShell, type DashboardNavItem } from "@/components/layout/DashboardShell";
 import { Alert } from "@/components/ui/alert";
@@ -12,6 +12,7 @@ import { StatCard, StatCardSkeleton } from "@/components/ui/stat-card";
 import { clearSession } from "@/lib/auth";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useDoctorDashboard } from "@/hooks/doctor/use-doctor-dashboard";
+import { ClinicalSummaryCard } from "./doctor/clinical-summary/ClinicalSummaryCard";
 import { ActivePatientsCard, AppointmentsCard, EmergencyCard, PatientFileCard, UnlockCard } from "./doctor/sections";
 
 const NAV: DashboardNavItem[] = [
@@ -19,6 +20,7 @@ const NAV: DashboardNavItem[] = [
   { id: "unlock", label: "Unlock a file", icon: KeyRound },
   { id: "appointments", label: "Appointments", icon: CalendarDays },
   { id: "patient-file", label: "Patient file", icon: FileSearch },
+  { id: "clinical-summary", label: "Clinical summary", icon: ClipboardList },
   { id: "emergency", label: "Emergency visits", icon: Siren },
 ];
 
@@ -111,6 +113,10 @@ export function DoctorDashboard() {
               onEndAccess={(id) => void dashboard.endAccess(id)}
             />
           </div>
+
+          {activePatient && auth.status === "ready" ? (
+            <ClinicalSummaryCard key={activePatient.id} token={auth.token} patientId={activePatient.id} patientName={activePatient.name} />
+          ) : null}
 
           <EmergencyCard bookings={overview.emergencyBookings} />
         </>

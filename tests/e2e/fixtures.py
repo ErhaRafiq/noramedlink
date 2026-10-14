@@ -17,6 +17,7 @@ from __future__ import annotations
 import json
 import secrets
 import sys
+from datetime import timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -112,6 +113,8 @@ def setup(out_file: Path) -> None:
         "patient": make_user("patient", "PATIENT"),
         "patientEmpty": make_user("patient-empty", "PATIENT"),
         "doctor": make_user("doctor", "DOCTOR"),
+        # Already has the patient's access grant, for the clinical summary tests.
+        "doctorWithAccess": make_user("doctor-with-access", "DOCTOR"),
         "doctorPendingA": make_user(
             "doctor-pending-a", "DOCTOR", doctor_status="pending"
         ),
@@ -128,6 +131,11 @@ def setup(out_file: Path) -> None:
         users["patient"]["id"], f"{base.TEST_PREFIX}e2e blood panel {RUN}"
     )
     attention_report_id = create_attention_record(users["patient"]["id"])
+    base.create_grant(
+        users["doctorWithAccess"]["id"],
+        users["patient"]["id"],
+        expires_in=timedelta(hours=3),
+    )
     out_file.parent.mkdir(parents=True, exist_ok=True)
     out_file.write_text(
         json.dumps(
