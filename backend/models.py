@@ -604,6 +604,71 @@ class ClinicalSummary(Base):
     is_current: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
 
 
+class Prescription(Base):
+    """A prescription a doctor confirmed after the medication-safety check (MSCIE). The check result
+    and the patient context it used are kept as they were at confirmation."""
+
+    __tablename__ = "prescriptions"
+    __table_args__ = (Index("prescriptions_patient_id_created_at_idx", "patient_id", "created_at"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    # Kept if the doctor's account is later removed; the name is copied for the record.
+    doctor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    doctor_name: Mapped[str] = mapped_column(String(160), nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="confirmed", nullable=False)  # confirmed | cancelled
+    notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    check_result: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
+    context_snapshot: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    items: Mapped[list["PrescriptionItem"]] = relationship(
+        back_populates="prescription", cascade="all, delete-orphan", order_by="PrescriptionItem.position"
+    )
+    overrides: Mapped[list["SafetyOverride"]] = relationship(
+        back_populates="prescription", cascade="all, delete-orphan"
+    )
+
+
+class PrescriptionItem(Base):
+    __tablename__ = "prescription_items"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    prescription_id: Mapped[int] = mapped_column(
+        ForeignKey("prescriptions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+    medicine: Mapped[str] = mapped_column(String(160), nullable=False)  # as chosen by the doctor
+    generic: Mapped[str | None] = mapped_column(String(160), nullable=True)  # None: not in the knowledge base
+    dose: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    frequency: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    duration: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    instructions: Mapped[str | None] = mapped_column(Text, nullable=True)
+    replaced_medicine: Mapped[str | None] = mapped_column(String(160), nullable=True)  # an alternative chosen instead
+
+    prescription: Mapped[Prescription] = relationship(back_populates="items")
+
+
+class SafetyOverride(Base):
+    """A doctor's written reason for prescribing despite a high-risk alert (AGENTS.md 6.5)."""
+
+    __tablename__ = "safety_overrides"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    prescription_id: Mapped[int] = mapped_column(
+        ForeignKey("prescriptions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    doctor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    alert_id: Mapped[str] = mapped_column(String(300), nullable=False)
+    alert_severity: Mapped[str] = mapped_column(String(20), nullable=False)
+    alert_title: Mapped[str] = mapped_column(String(300), nullable=False)
+    justification: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    prescription: Mapped[Prescription] = relationship(back_populates="overrides")
+
+
 class PatientDashboardAccess(Base):
     __tablename__ = "patient_dashboard_access"
     # Same name as the retired Prisma schema's @@unique([doctorId, patientId]), so existing databases match.
