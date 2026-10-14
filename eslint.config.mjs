@@ -12,8 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Python virtualenv (third-party JS inside site-packages).
+    // Python virtualenvs (third-party JS inside site-packages) and OCR benchmark output.
     "backend/venv/**",
+    ".venv-ocr-bench*/**",
+    "ocr_samples/**",
   ]),
 ]);
 
