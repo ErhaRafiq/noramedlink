@@ -90,3 +90,23 @@ def test_defaults():
     assert defaults.max_upload_mb == 10
     assert defaults.access_token_expire_minutes == 1440
     assert defaults.trusted_proxy_ips == ["127.0.0.1", "::1"]
+
+
+@pytest.mark.parametrize("switch", ["1", "true"])
+def test_disable_paid_services_ignores_every_ai_and_ocr_key(monkeypatch, switch):
+    from config import _without_paid_services
+
+    for name in ("OPENAI_API_KEY", "GROQ_API_KEY", "GEMINI_API_KEY", "OCR_SPACE_API_KEY"):
+        monkeypatch.setenv(name, "test-placeholder-key")
+    monkeypatch.setenv("DISABLE_PAID_SERVICES", switch)
+    loaded = _without_paid_services(load_settings())
+    assert loaded.paid_services_disabled
+    assert not (loaded.openai_api_key or loaded.groq_api_key or loaded.gemini_api_key or loaded.ocr_space_api_key)
+
+
+def test_keys_are_kept_without_the_switch(monkeypatch):
+    from config import _without_paid_services
+
+    monkeypatch.setenv("GEMINI_API_KEY", "test-placeholder-key")
+    monkeypatch.delenv("DISABLE_PAID_SERVICES", raising=False)
+    assert _without_paid_services(load_settings()).gemini_api_key == "test-placeholder-key"

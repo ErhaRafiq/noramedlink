@@ -9,7 +9,7 @@ to the default.
 """
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -85,7 +85,9 @@ class Settings:
     sms_provider: str = ""
     sms_api_key: str = ""
 
-    # AI providers
+    # AI providers. DISABLE_PAID_SERVICES=1 ignores every AI and OCR.space key (test runs: tests never
+    # call a paid service, even when backend/.env has keys).
+    paid_services_disabled: bool = False
     openai_api_key: str = ""
     openai_scan_model: str = "gpt-4.1-mini"
     openai_fallback_models: list[str] = field(default_factory=list)
@@ -146,6 +148,7 @@ def load_settings() -> Settings:
         smtp_use_tls=env_bool("SMTP_USE_TLS", d.smtp_use_tls),
         sms_provider=env_str("SMS_PROVIDER"),
         sms_api_key=env_str("SMS_API_KEY"),
+        paid_services_disabled=env_bool("DISABLE_PAID_SERVICES", d.paid_services_disabled),
         openai_api_key=env_str("OPENAI_API_KEY"),
         openai_scan_model=env_str("OPENAI_SCAN_MODEL", d.openai_scan_model),
         openai_fallback_models=env_list("OPENAI_FALLBACK_MODELS"),
@@ -176,4 +179,10 @@ def load_settings() -> Settings:
     )
 
 
-settings = load_settings()
+def _without_paid_services(loaded: Settings) -> Settings:
+    if not loaded.paid_services_disabled:
+        return loaded
+    return replace(loaded, openai_api_key="", groq_api_key="", gemini_api_key="", ocr_space_api_key="")
+
+
+settings = _without_paid_services(load_settings())
