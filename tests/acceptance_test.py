@@ -62,6 +62,11 @@ DOCTOR_ROUTES = [
     ("POST", "/api/backend/doctor/patients/1/clinical-summary/regenerate"),
     ("GET", "/api/backend/doctor/patients/1/clinical-summary/versions"),
     ("GET", "/api/backend/doctor/patients/1/clinical-summary/versions/1"),
+    ("GET", "/api/backend/doctor/medicines/search?q=glucophage"),
+    ("POST", "/api/backend/doctor/patients/1/medication-check"),
+    ("POST", "/api/backend/doctor/patients/1/prescriptions"),
+    ("GET", "/api/backend/doctor/patients/1/prescriptions"),
+    ("POST", "/api/backend/doctor/patients/1/prescriptions/1/cancel"),
 ]
 PATIENT_ROUTES = [
 ]
@@ -88,6 +93,7 @@ FASTAPI_PATIENT_ROUTES = [
     ("POST", "/api/backend/emergency/requests"),
     ("GET", "/api/backend/patient/reports"),
     ("GET", "/api/backend/patient/health-flags"),
+    ("GET", "/api/backend/patient/prescriptions"),
     ("POST", "/api/backend/patient/reports/upload"),
     ("DELETE", "/api/backend/patient/reports/1"),
     ("POST", "/api/backend/nlp/summarize/saved-reports"),
@@ -142,6 +148,7 @@ USER_OWNED_ROWS = [
     ("health_risk_predictions", "patient_id"),
     ("doctor_summaries", "patient_id"),
     ("clinical_summaries", "patient_id"),
+    ("prescriptions", "patient_id"),  # items and overrides go with it (ON DELETE CASCADE)
     ("patient_profiles", "user_id"),
     ("doctor_profiles", "user_id"),
 ]
@@ -1026,6 +1033,67 @@ def run_tests() -> None:
     response = call("GET", "/api/backend/patient/health-flags", tok_a)
     check("another patient does not see those flags",
           response.status_code == 200 and all(r["report_id"] != report_c for r in response.json()["reports"]))
+
+    print("\n[17] Medication safety and prescribing (MSCIE): grant only, alerts, justifications, patient view")
+    create_grant(doctor_c, patient_c, expires_in=timedelta(hours=1))
+    with engine.begin() as conn:
+        conn.execute(text(
+            "update patient_reports set formatted_text = :t, extracted_text = :t, structured_data_json = '{}' "
+            "where id = :id"), {"id": report_c, "t": "Date: 01/03/2026\nK/C/O CKD.\nTab Warfarin 5 mg OD\neGFR 25 mL/min/1.73m2"})
+    rx_base = f"/api/backend/doctor/patients/{patient_c}"
+    response = call("GET", "/api/backend/doctor/medicines/search?q=glucophag", tok_doctor_c)
+    check("medicine search finds a misspelled brand (fuzzy)",
+          response.status_code == 200 and response.json()[0]["generic"] == "metformin", f"got {response.status_code}")
+    body = {"items": [{"medicine": "Brufen", "dose": "400 mg", "frequency": "TDS"}]}
+    for who, token in (("doctor without a grant", tok_doctor_2), ("the patient", tok_c), ("an admin", tok_admin)):
+        response = call("POST", f"{rx_base}/medication-check", token, body)
+        check(f"medication check by {who} -> 403", response.status_code == 403, f"got {response.status_code}")
+    response = call("POST", f"{rx_base}/medication-check", tok_doctor_c, body)
+    checked = response.json() if response.status_code == 200 else {}
+    item = (checked.get("items") or [{}])[0]
+    titles = [a["title"] for a in item.get("alerts", [])]
+    check("check: ibuprofen with warfarin, CKD and eGFR 25 are high-risk alerts, with evidence and sources",
+          response.status_code == 200 and checked.get("worst") == "major"
+          and any("warfarin" in t for t in titles) and any("chronic kidney disease" in t for t in titles)
+          and all(a["sources"] or a["kind"] in ("duplicate", "previous_response") for a in item.get("alerts", [])),
+          f"got {response.status_code} {titles}")
+    check("check: paracetamol is the first ranked alternative, with its score breakdown",
+          (item.get("alternatives") or [{}])[0].get("medicine") == "paracetamol"
+          and len(item["alternatives"][0].get("breakdown", [])) == 4, f"alternatives={item.get('alternatives')}")
+    check("check: the context shows the record used (warfarin, CKD, eGFR 25)",
+          any(m["name"] == "warfarin" for m in checked.get("context", {}).get("medicines", []))
+          and any(lab["test"] == "eGFR" and lab["value"] == 25 for lab in checked.get("context", {}).get("labs", [])))
+    response = call("POST", f"{rx_base}/prescriptions", tok_doctor_c, body)
+    check("confirming without justifications -> 422 listing each high-risk alert",
+          response.status_code == 422 and len(response.json()["detail"]["alerts"]) == len(checked.get("requires_justification", [])),
+          f"got {response.status_code}")
+    short = [{"alert_id": a["id"], "justification": "too short"} for a in checked.get("requires_justification", [])]
+    response = call("POST", f"{rx_base}/prescriptions", tok_doctor_c, {**body, "overrides": short})
+    check("a justification under 20 characters -> 422", response.status_code == 422, f"got {response.status_code}")
+    overrides = [{"alert_id": a["id"], "justification": "Short course agreed with nephrology; INR checked in 3 days."}
+                 for a in checked.get("requires_justification", [])]
+    response = call("POST", f"{rx_base}/prescriptions", tok_doctor_c, {**body, "overrides": overrides, "notes": "phase0-test"})
+    created = response.json() if response.status_code == 201 else {}
+    check("confirming with a justification for each high-risk alert -> 201, overrides stored",
+          response.status_code == 201 and len(created.get("overrides", [])) == len(overrides)
+          and scalar("select count(*) from safety_overrides where prescription_id = :id", id=created.get("id") or 0) == len(overrides),
+          f"got {response.status_code} {response.text[:160]}")
+    response = call("GET", "/api/backend/patient/prescriptions", tok_c)
+    mine = response.json() if response.status_code == 200 else {}
+    check("the patient sees it read-only, in everyday words (three times a day)",
+          response.status_code == 200 and mine.get("total") == 1
+          and "three times a day" in mine["items"][0]["items"][0]["how_to_take"]
+          and "alerts" not in mine["items"][0], f"got {response.status_code} {str(mine)[:160]}")
+    check("another patient sees none of it", call("GET", "/api/backend/patient/prescriptions", tok_a).json().get("total") == 0)
+    cancel = f"{rx_base}/prescriptions/{created.get('id')}/cancel"
+    check("another doctor without a grant cannot cancel -> 403", call("POST", cancel, tok_doctor_2).status_code == 403)
+    response = call("POST", cancel, tok_doctor_c)
+    check("the prescribing doctor cancels -> cancelled", response.status_code == 200 and response.json()["status"] == "cancelled")
+    check("cancelling twice -> 409", call("POST", cancel, tok_doctor_c).status_code == 409)
+    response = call("GET", f"{rx_base}/prescriptions", tok_doctor_c)
+    check("the doctor's list keeps the cancelled prescription", response.status_code == 200 and response.json()["total"] == 1)
+    create_grant(doctor_c, patient_c, expires_in=timedelta(hours=-1))
+    check("after the grant expires -> 403", call("POST", f"{rx_base}/medication-check", tok_doctor_c, body).status_code == 403)
 
 
 def main() -> int:
