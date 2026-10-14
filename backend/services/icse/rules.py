@@ -1,8 +1,10 @@
 """The deterministic rules behind the clinical-summary flags (FE-3): ranges, units and trends.
 
-General adult ranges, the same ones the report rules use (services/lab_ranges.py and
-rule_validation_service.py), so a report and the summary never disagree. Each lab prints its own
-range; these are for physician review only and never call a value normal or safe.
+General adult ranges. Where the report rules (services/lab_ranges.py, rule_validation_service.py)
+check the same test, the limits match. These rules also cover tests the report rules do not
+(potassium, sodium, total cholesterol, TSH, BUN), and fasting sugar over 125 mg/dL, where the
+report rules flag glucose only from 200. Each lab prints its own range; these are for physician
+review only and never call a value normal or safe.
 
 Units: a value is converted to the rule's unit only when its printed unit is one listed here. A
 value with no unit is taken as the rule's unit only inside a narrow band where that is the only
