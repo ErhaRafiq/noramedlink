@@ -1,0 +1,40 @@
+{
+  "_meta": {
+    "status": "DEMO KNOWLEDGE BASE - not a clinical reference",
+    "notice": "Conditions the clinical summary can recognise in report text. Codes are ICD-10 (WHO) categories as commonly used; verify against the ICD-10 browser before any clinical use. Abbreviations are matched case-sensitively and as whole words only.",
+    "sources": {"ICD-10": "WHO International Classification of Diseases, 10th revision (icd.who.int/browse10)."}
+  },
+  "conditions": [
+    {"name": "diabetes mellitus", "synonyms": ["diabetes", "diabetes mellitus", "type 2 diabetes", "type 2 diabetes mellitus", "type 1 diabetes", "diabetic"], "abbreviations": ["DM", "T2DM", "T1DM"], "icd10": "E10-E14", "chronic": true, "source": "ICD-10"},
+    {"name": "hypertension", "synonyms": ["hypertension", "high blood pressure", "essential hypertension", "hypertensive"], "abbreviations": ["HTN"], "icd10": "I10", "chronic": true, "source": "ICD-10"},
+    {"name": "chronic kidney disease", "synonyms": ["chronic kidney disease", "chronic renal failure", "chronic renal disease"], "abbreviations": ["CKD"], "icd10": "N18", "chronic": true, "source": "ICD-10"},
+    {"name": "asthma", "synonyms": ["asthma", "bronchial asthma"], "abbreviations": [], "icd10": "J45", "chronic": true, "source": "ICD-10"},
+    {"name": "chronic obstructive pulmonary disease", "synonyms": ["chronic obstructive pulmonary disease"], "abbreviations": ["COPD"], "icd10": "J44", "chronic": true, "source": "ICD-10"},
+    {"name": "ischaemic heart disease", "synonyms": ["ischaemic heart disease", "ischemic heart disease", "coronary artery disease"], "abbreviations": ["IHD", "CAD"], "icd10": "I25", "chronic": true, "source": "ICD-10"},
+    {"name": "heart failure", "synonyms": ["heart failure", "congestive heart failure", "cardiac failure"], "abbreviations": ["CHF"], "icd10": "I50", "chronic": true, "source": "ICD-10"},
+    {"name": "atrial fibrillation", "synonyms": ["atrial fibrillation"], "abbreviations": [], "icd10": "I48", "chronic": true, "source": "ICD-10"},
+    {"name": "stroke", "synonyms": ["stroke", "cerebrovascular accident"], "abbreviations": ["CVA"], "icd10": "I64", "chronic": true, "source": "ICD-10"},
+    {"name": "hypothyroidism", "synonyms": ["hypothyroidism", "hypothyroid"], "abbreviations": [], "icd10": "E03", "chronic": true, "source": "ICD-10"},
+    {"name": "hyperthyroidism", "synonyms": ["hyperthyroidism", "thyrotoxicosis"], "abbreviations": [], "icd10": "E05", "chronic": true, "source": "ICD-10"},
+    {"name": "dyslipidaemia", "synonyms": ["dyslipidaemia", "dyslipidemia", "hyperlipidaemia", "hyperlipidemia", "hypercholesterolaemia", "hypercholesterolemia"], "abbreviations": [], "icd10": "E78", "chronic": true, "source": "ICD-10"},
+    {"name": "anaemia", "synonyms": ["anaemia", "anemia", "iron deficiency anaemia", "iron deficiency anemia"], "abbreviations": [], "icd10": "D50-D64", "chronic": false, "source": "ICD-10"},
+    {"name": "epilepsy", "synonyms": ["epilepsy", "seizure disorder"], "abbreviations": [], "icd10": "G40", "chronic": true, "source": "ICD-10"},
+    {"name": "chronic hepatitis B", "synonyms": ["hepatitis b", "hep b", "chronic hepatitis b"], "abbreviations": ["HBV"], "icd10": "B18.1", "chronic": true, "source": "ICD-10"},
+    {"name": "chronic hepatitis C", "synonyms": ["hepatitis c", "hep c", "chronic hepatitis c"], "abbreviations": ["HCV"], "icd10": "B18.2", "chronic": true, "source": "ICD-10"},
+    {"name": "HIV disease", "synonyms": ["hiv infection", "hiv disease"], "abbreviations": ["HIV"], "icd10": "B20-B24", "chronic": true, "source": "ICD-10"},
+    {"name": "tuberculosis", "synonyms": ["tuberculosis", "pulmonary tuberculosis"], "abbreviations": ["TB"], "icd10": "A15-A19", "chronic": false, "source": "ICD-10"},
+    {"name": "osteoarthritis", "synonyms": ["osteoarthritis"], "abbreviations": [], "icd10": "M15-M19", "chronic": true, "source": "ICD-10"},
+    {"name": "rheumatoid arthritis", "synonyms": ["rheumatoid arthritis"], "abbreviations": [], "icd10": "M05-M06", "chronic": true, "source": "ICD-10"},
+    {"name": "gout", "synonyms": ["gout", "gouty arthritis"], "abbreviations": [], "icd10": "M10", "chronic": true, "source": "ICD-10"},
+    {"name": "fatty liver disease", "synonyms": ["fatty liver", "non-alcoholic fatty liver disease", "hepatic steatosis"], "abbreviations": ["NAFLD"], "icd10": "K76.0", "chronic": true, "source": "ICD-10"},
+    {"name": "polycystic ovary syndrome", "synonyms": ["polycystic ovary syndrome", "polycystic ovarian syndrome"], "abbreviations": ["PCOS"], "icd10": "E28.2", "chronic": true, "source": "ICD-10"},
+    {"name": "depression", "synonyms": ["depression", "depressive disorder"], "abbreviations": [], "icd10": "F32-F33", "chronic": true, "source": "ICD-10"},
+    {"name": "obesity", "synonyms": ["obesity", "obese"], "abbreviations": [], "icd10": "E66", "chronic": true, "source": "ICD-10"},
+    {"name": "osteoporosis", "synonyms": ["osteoporosis"], "abbreviations": [], "icd10": "M80-M81", "chronic": true, "source": "ICD-10"},
+    {"name": "migraine", "synonyms": ["migraine"], "abbreviations": [], "icd10": "G43", "chronic": true, "source": "ICD-10"},
+    {"name": "pneumonia", "synonyms": ["pneumonia"], "abbreviations": [], "icd10": "J18", "chronic": false, "source": "ICD-10"},
+    {"name": "urinary tract infection", "synonyms": ["urinary tract infection"], "abbreviations": ["UTI"], "icd10": "N39.0", "chronic": false, "source": "ICD-10"},
+    {"name": "typhoid fever", "synonyms": ["typhoid", "typhoid fever", "enteric fever"], "abbreviations": [], "icd10": "A01.0", "chronic": false, "source": "ICD-10"},
+    {"name": "dengue", "synonyms": ["dengue", "dengue fever"], "abbreviations": [], "icd10": "A90", "chronic": false, "source": "ICD-10"}
+  ]
+}
