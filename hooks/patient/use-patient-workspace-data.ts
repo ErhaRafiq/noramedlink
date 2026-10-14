@@ -8,8 +8,7 @@ import type {
   DailyVital,
   DepartmentTile,
   DoctorOption,
-  DoctorSummary,
-  HealthRiskPrediction,
+  HealthFlags,
   MedicalDocument,
   MedicationSchedule,
   MedicineReminder,
@@ -28,8 +27,8 @@ export type PatientWorkspaceData = {
   appointments: Appointment[];
   medications: MedicationSchedule[];
   reminders: MedicineReminder[];
-  riskPredictions: HealthRiskPrediction[];
-  doctorSummaries: DoctorSummary[];
+  /** null: the flags could not be loaded (shown as an error, never as "nothing flagged"). */
+  healthFlags: HealthFlags | null;
 };
 
 // The report list itself is paged by useReportList; this hook loads the summaries.
@@ -46,8 +45,7 @@ const EMPTY: PatientWorkspaceData = {
   appointments: [],
   medications: [],
   reminders: [],
-  riskPredictions: [],
-  doctorSummaries: [],
+  healthFlags: null,
 };
 
 /**
@@ -69,7 +67,7 @@ export function usePatientWorkspaceData(token: string | null) {
 
   const refresh = useCallback(async () => {
     if (!token) return;
-    const [vitalsToday, departmentTiles, highRisk, doctors, appointments, medications, reminders, riskPredictions, doctorSummaries, basicVitals] =
+    const [vitalsToday, departmentTiles, highRisk, doctors, appointments, medications, reminders, healthFlags, basicVitals] =
       await Promise.all([
         api.patientVitalsToday(token).catch(() => null),
         api.patientDepartmentTiles(token).catch(() => []),
@@ -78,8 +76,7 @@ export function usePatientWorkspaceData(token: string | null) {
         api.appointments(token, { limit: APPOINTMENTS_LOADED }).then((page) => page.items).catch(() => []),
         api.medicines(token).catch(() => []),
         api.remindersToday(token).catch(() => []),
-        api.riskPredictions(token).catch(() => []),
-        api.doctorSummaries(token).catch(() => []),
+        api.healthFlags(token).catch(() => null),
         api.basicVitalsHistory(token).catch(() => []),
       ]);
     if (!mountedRef.current) return;
@@ -92,8 +89,7 @@ export function usePatientWorkspaceData(token: string | null) {
       appointments,
       medications,
       reminders,
-      riskPredictions,
-      doctorSummaries,
+      healthFlags,
       basicVitals,
     });
   }, [token]);

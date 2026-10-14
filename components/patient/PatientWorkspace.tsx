@@ -16,7 +16,6 @@ import { useToast } from "@/hooks/use-toast";
 import { usePatientWorkspaceData } from "@/hooks/patient/use-patient-workspace-data";
 import { useReportList } from "@/hooks/patient/use-report-list";
 import { useUploadQueue } from "@/hooks/patient/use-upload-queue";
-import { AiSummaryCard } from "./workspace/AiSummaryCard";
 import { AppointmentsSection } from "./workspace/AppointmentsSection";
 import { DoctorAccessCard } from "./workspace/DoctorAccessCard";
 import { formatVitalCardValue, getUpcomingAppointment, isReminderPending, isToday, scrollToSection } from "./workspace/helpers";
@@ -24,7 +23,8 @@ import { KpiRow } from "./workspace/KpiRow";
 import { NAV_ITEMS, QuickLinks, SettingsStrip, WorkspaceHeader, WorkspaceSidebar } from "./workspace/layout";
 import { MedicineScheduleCard } from "./workspace/MedicineScheduleCard";
 import { RemindersSection } from "./workspace/RemindersSection";
-import { HealthCategoriesCard, RecentReportsCard, RiskFlagsCard } from "./workspace/ReportsSection";
+import { HealthFlagsCard } from "./workspace/HealthFlagsCard";
+import { HealthCategoriesCard, RecentReportsCard } from "./workspace/ReportsSection";
 import { ToastBar } from "./workspace/ui";
 import { UploadCard } from "./workspace/UploadCard";
 import { VitalsSection } from "./workspace/VitalsSection";
@@ -61,7 +61,7 @@ export function PatientWorkspace({
   const upload = useUploadQueue({ token, notify, onUploaded: reportList.refresh });
   const [activeNav, setActiveNav] = useScrollSpy(SPY_SECTIONS, { fallback: "dashboard" });
 
-  const { reminders, riskPredictions, appointments, basicVitals, vitalsToday } = data;
+  const { reminders, appointments, basicVitals, vitalsToday } = data;
 
   // Pop-ups for today's reminders that are not taken or skipped, while the page is open.
   const popups = useMemo(
@@ -78,7 +78,8 @@ export function PatientWorkspace({
   useScheduledNotifications(popups, notifications.permission === "granted");
 
   const upcomingAppointment = useMemo(() => getUpcomingAppointment(appointments), [appointments]);
-  const criticalFlagCount = data.highRiskTotal + riskPredictions.filter((r) => r.risk_level === "High").length;
+  // Reports whose fixed-rule checks need prompt attention (an AI never sets this count).
+  const criticalFlagCount = data.healthFlags?.high_risk_reports ?? data.highRiskTotal;
   const pendingReminderCount = reminders.filter(isReminderPending).length;
 
   // A detailed reading wins; otherwise show a BP entered today through the simple log.
@@ -177,7 +178,7 @@ export function PatientWorkspace({
 
           <section className="grid gap-5 xl:grid-cols-2">
             <UploadCard upload={upload} onAllUploaded={() => void refreshAll()} />
-            <AiSummaryCard summary={data.doctorSummaries[0]} />
+            <HealthFlagsCard flags={data.healthFlags} onRetry={() => void refresh()} />
           </section>
 
           <MedicineScheduleCard
@@ -190,7 +191,7 @@ export function PatientWorkspace({
 
           <HealthCategoriesCard tiles={data.departmentTiles} activeDepartment={department} onSelect={selectDepartment} />
 
-          <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+          <section>
             <RecentReportsCard
               list={reportList}
               activeDepartment={department}
@@ -202,7 +203,6 @@ export function PatientWorkspace({
               onOpen={(report) => router.push(`/dashboard/patient/reports/${report.id}`)}
               onDownload={downloadReport}
             />
-            <RiskFlagsCard risks={riskPredictions} />
           </section>
 
           <AppointmentsSection token={token} doctors={data.doctors} appointments={appointments} notify={notify} onSaved={refresh} />

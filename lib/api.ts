@@ -6,11 +6,10 @@ import type {
   AuthUser,
   DailyVital,
   DepartmentTile,
-  DoctorSummary,
   DoctorDashboard,
   DoctorOverview,
   DoctorOption,
-  HealthRiskPrediction,
+  HealthFlags,
   MedicalDocument,
   MedicationSchedule,
   MedicineReminder,
@@ -354,11 +353,9 @@ export const api = {
       token,
     });
   },
-  riskPredictions(token: string) {
-    return apiRequest<HealthRiskPrediction[]>("/patient/risk-predictions", { token });
-  },
-  doctorSummaries(token: string) {
-    return apiRequest<DoctorSummary[]>("/patient/doctor-summaries", { token });
+  /** What the fixed rules found in the patient's reports, in everyday words (not AI). */
+  healthFlags(token: string) {
+    return apiRequest<HealthFlags>("/patient/health-flags", { token });
   },
   doctorDashboard(token: string) {
     return apiRequest<DoctorDashboard>("/doctor/dashboard", { token });

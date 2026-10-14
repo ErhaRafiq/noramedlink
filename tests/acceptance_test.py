@@ -87,6 +87,7 @@ FASTAPI_PATIENT_ROUTES = [
     ("POST", "/api/backend/patient/dashboard-otp"),
     ("POST", "/api/backend/emergency/requests"),
     ("GET", "/api/backend/patient/reports"),
+    ("GET", "/api/backend/patient/health-flags"),
     ("POST", "/api/backend/patient/reports/upload"),
     ("DELETE", "/api/backend/patient/reports/1"),
     ("POST", "/api/backend/nlp/summarize/saved-reports"),
@@ -1000,6 +1001,20 @@ def run_tests() -> None:
           response.status_code == 200 and isinstance(body.get("conditions_mentioned"), list), f"got {response.status_code}")
     check("every rule alert on it has a patient_message",
           all(w.get("patient_message") for w in body.get("rule_warnings", [])), f"warnings={body.get('rule_warnings')}")
+    with engine.begin() as conn:
+        conn.execute(text(
+            "update patient_reports set validation_status = 'HIGH_RISK', rule_warnings = :w where id = :id"),
+            {"id": report_c, "w": json.dumps([{"code": "KIDNEY_RISK_EGFR", "severity": "HIGH_RISK",
+                                                "message": "eGFR 25 is under 30.", "test": "eGFR",
+                                                "value_text": "25", "direction": "low"}])})
+    response = call("GET", "/api/backend/patient/health-flags", tok_c)
+    flags = response.json() if response.status_code == 200 else {}
+    check("health flags: the patient's own red flag, in everyday words, from the rules",
+          response.status_code == 200 and flags.get("high_risk_reports") == 1
+          and "kidney filtering rate" in " ".join(flags["reports"][0]["messages"]), f"got {response.status_code} {str(flags)[:200]}")
+    response = call("GET", "/api/backend/patient/health-flags", tok_a)
+    check("another patient does not see those flags",
+          response.status_code == 200 and all(r["report_id"] != report_c for r in response.json()["reports"]))
 
 
 def main() -> int:

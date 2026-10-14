@@ -115,7 +115,7 @@ def _text_was_read(report: PatientReport) -> bool:
     return report.ocr_status != "FAILED" or bool((report.extracted_text or "").strip())
 
 
-def _with_patient_message(warning: dict[str, Any]) -> dict[str, Any]:
+def with_patient_message(warning: dict[str, Any]) -> dict[str, Any]:
     """A rule alert with its everyday wording (alerts saved before it existed get it here)."""
     return warning if warning.get("patient_message") else {**warning, "patient_message": patient_message(warning)}
 
@@ -168,7 +168,7 @@ def report_to_out(report: PatientReport) -> PatientReportOut:
         summary=report.summary if _text_was_read(report) else None,
         extracted_entities=[item for item in list_field(report.extracted_entities) if isinstance(item, dict)],
         rule_warnings=[
-            _with_patient_message(item) for item in list_field(report.rule_warnings) if isinstance(item, dict)
+            with_patient_message(item) for item in list_field(report.rule_warnings) if isinstance(item, dict)
         ],
         validation_status=(report.validation_status or "NOT_VALIDATED") if _text_was_read(report) else "NOT_VALIDATED",
         validation_results=dict_field(report.validation_results),

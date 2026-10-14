@@ -218,16 +218,19 @@ export function ReportSummary({ report }: { report: MedicalDocument }) {
           <p className="mt-3 text-xs leading-5 text-emerald-900/70">{plain.note}</p>
         </div>
       ) : null}
-      <div className="mt-3 rounded-control border border-teal-100 bg-teal-50 p-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-teal-800">Clinical summary</h3>
-        <p className="mt-1.5 whitespace-pre-line text-sm leading-7 text-teal-950">{summaryText || "No summary is available for this report yet."}</p>
-      </div>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <SummaryList title="Key findings" values={clinical.key_findings ?? []} />
-        <SummaryList title="Conditions mentioned" values={clinical.detected_diseases ?? []} />
-        <SummaryList title="Medicines mentioned" values={clinical.medicines ?? []} />
-        <SummaryList title="Doctor notes" values={clinical.doctor_notes ?? []} />
-      </div>
+      {/* The clinical wording is for the doctor; the patient reads the plain-language summary above. */}
+      <details className="mt-3 rounded-control border border-teal-100 bg-teal-50" open={!report.patient_summary}>
+        <summary className="cursor-pointer px-4 py-2.5 text-sm font-medium text-teal-900">Details for your doctor (medical wording)</summary>
+        <div className="border-t border-teal-100 p-4">
+          <p className="whitespace-pre-line text-sm leading-7 text-teal-950">{summaryText || "No summary is available for this report yet."}</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <SummaryList title="Key findings" values={clinical.key_findings ?? []} />
+            <SummaryList title="Conditions mentioned" values={clinical.detected_diseases ?? []} />
+            <SummaryList title="Medicines mentioned" values={clinical.medicines ?? []} />
+            <SummaryList title="Doctor notes" values={clinical.doctor_notes ?? []} />
+          </div>
+        </div>
+      </details>
       <p className="mt-4 text-xs leading-5 text-ink-muted">
         {aiWritten
           ? buildMedicalDisclaimer()

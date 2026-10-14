@@ -163,6 +163,21 @@ export type MedicalDocument = {
 };
 
 /** A condition the report mentions, with its everyday name. Mentioned in the report, not a diagnosis. */
+/** The patient's health flags: what the fixed rules found in their own reports, in everyday words. */
+export type HealthFlagReport = {
+  report_id: number;
+  report_title: string;
+  upload_date: string;
+  severity: "HIGH_RISK" | "CAUTION";
+  messages: string[];
+};
+
+export type HealthFlags = {
+  reports: HealthFlagReport[];
+  high_risk_reports: number;
+  conditions_mentioned: (ConditionMentioned & { report_ids: number[] })[];
+};
+
 export type ConditionMentioned = {
   name: string;
   plain: string;

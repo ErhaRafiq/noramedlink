@@ -1,16 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { ArrowRight, ChevronRight, Download, Shield, X } from "lucide-react";
+import { ArrowRight, ChevronRight, Download, X } from "lucide-react";
 
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/cn";
 import { DEPARTMENTS, type DepartmentSlug } from "@/lib/departments";
 import { validationLabel } from "@/lib/patient-dashboard";
-import type { DepartmentTile, HealthRiskPrediction, MedicalDocument } from "@/lib/types";
+import type { DepartmentTile, MedicalDocument } from "@/lib/types";
 import type { useReportList } from "@/hooks/patient/use-report-list";
-import { departmentIcon, formatDate, getDepartmentMeta, RISKS_PREVIEW } from "./helpers";
+import { departmentIcon, formatDate, getDepartmentMeta } from "./helpers";
 import { DashCard } from "./ui";
 
 type ReportList = ReturnType<typeof useReportList>;
@@ -186,56 +185,5 @@ export function RecentReportsCard({
         </button>
       )}
     </DashCard>
-  );
-}
-
-export function RiskFlagsCard({ risks }: { risks: HealthRiskPrediction[] }) {
-  const [showAll, setShowAll] = useState(false);
-  const visible = showAll ? risks : risks.slice(0, RISKS_PREVIEW);
-
-  return (
-    <DashCard id="insights">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-base font-semibold text-ink">Risk &amp; Health Flags</h2>
-        {!showAll && risks.length > RISKS_PREVIEW && (
-          <button type="button" onClick={() => setShowAll(true)} className="text-xs font-semibold text-rose-500 hover:text-rose-600 flex items-center gap-1 transition">
-            View all ({risks.length}) <ArrowRight className="h-3 w-3" />
-          </button>
-        )}
-      </div>
-      <div className="space-y-3">
-        {risks.length === 0 ? (
-          <p className="p-3 text-sm text-slate-500">No health risk insights yet.</p>
-        ) : (
-          visible.map((r) => <RiskRow key={r.id} title={r.risk_title} reason={r.reason} level={r.risk_level} />)
-        )}
-      </div>
-      <div className="mt-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-100 flex items-start gap-2.5">
-        <Shield className="h-4 w-4 text-emerald-600 flex-shrink-0 mt-0.5" />
-        <p className="text-xs leading-5 text-emerald-700 font-medium">Please consult your doctor. These insights are not a diagnosis.</p>
-      </div>
-    </DashCard>
-  );
-}
-
-function RiskRow({ title, reason, level }: { title: string; reason: string; level: string }) {
-  const lv = level.toLowerCase();
-  const badgeCls =
-    lv === "monitor"
-      ? "bg-amber-50 text-amber-700 border-amber-100"
-      : lv.includes("low")
-        ? "bg-orange-50 text-orange-700 border-orange-100"
-        : "bg-rose-50 text-rose-700 border-rose-100";
-
-  return (
-    <div className="p-3.5 rounded-2xl border border-rose-50 bg-rose-50/40 hover:border-rose-100 transition">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-ink">{title}</p>
-          <p className="text-xs text-slate-500 mt-0.5">{reason}</p>
-        </div>
-        <span className={cn("text-[11px] font-semibold px-2.5 py-1 rounded-full border flex-shrink-0", badgeCls)}>{level}</span>
-      </div>
-    </div>
   );
 }

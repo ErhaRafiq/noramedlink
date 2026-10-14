@@ -68,6 +68,24 @@ test.describe("patient dashboard", () => {
     await page.goto("/dashboard/patient");
     await expect(page.getByText("No reports uploaded yet.")).toBeVisible();
     await expect(page.getByText("No vitals recorded yet.")).toBeVisible();
+    await expect(page.getByText("The app's checks have not marked anything in your reports.")).toBeVisible();
+  });
+
+  test("health flags come from the fixed rules, in everyday words, with no AI risk levels", async ({ page }) => {
+    const { users, attentionReportId } = fixtures();
+    await signInAs(page, users.patient);
+    await page.goto("/dashboard/patient");
+    const card = page.locator("#insights");
+    await expect(card.getByRole("heading", { name: "Health flags" })).toBeVisible();
+    await expect(card.getByText("Needs prompt attention", { exact: true })).toBeVisible();
+    await expect(card.getByText(/Your kidney filtering rate \(eGFR\) reading of 25/)).toBeVisible();
+    await expect(card.getByText("Diabetes")).toBeVisible();
+    await card.getByRole("link", { name: /e2e attention panel/ }).click();
+    await expect(page).toHaveURL(new RegExp(`/dashboard/patient/reports/${attentionReportId}$`));
+    // The AI-set risk levels and the old doctor summary are no longer on the patient's dashboard.
+    await page.goto("/dashboard/patient");
+    await expect(page.getByRole("heading", { name: "Health summary" })).toHaveCount(0);
+    await expect(page.getByText("Risk & Health Flags")).toHaveCount(0);
   });
 
   test("vitals: both values are required, then the reading is listed", async ({ page }) => {

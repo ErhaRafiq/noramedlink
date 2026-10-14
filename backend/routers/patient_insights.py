@@ -8,8 +8,9 @@ from dependencies import get_patient_profile, require_patient
 from models import DoctorSummary, HealthRiskPrediction, HealthTip, MedicineHistory, User
 from rate_limit import AI_LIMIT, limiter
 from routers.patient_medicines import patient_medicine_query
-from schemas import DoctorSummaryOut, HealthRiskPredictionOut, HealthTipOut
+from schemas import DoctorSummaryOut, HealthFlagsOut, HealthRiskPredictionOut, HealthTipOut
 from services.openai_service import fallback_notice, generate_openai_json, generate_openai_text
+from services.patient_flags import health_flags
 from services.patient_insights import (
     annotate_fallback,
     build_doctor_summary,
@@ -55,6 +56,13 @@ def summary_to_out(summary: DoctorSummary) -> DoctorSummaryOut:
         summary_text=summary.summary_text,
         generated_at=summary.generated_at,
     )
+
+
+@router.get("/health-flags", response_model=HealthFlagsOut)
+def list_health_flags(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+    """What the app's fixed rules found in the patient's own reports, in everyday words (the patient
+    dashboard's "Health flags"; replaces the AI-set risk levels there)."""
+    return health_flags(db, current_user.id)
 
 
 @router.get("/risk-predictions", response_model=list[HealthRiskPredictionOut])

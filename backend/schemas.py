@@ -597,3 +597,27 @@ class ClinicalSummaryStatusOut(BaseModel):
 class ClinicalSummaryRegenerateOut(BaseModel):
     summary: ClinicalSummaryVersionOut
     created: bool  # False: nothing had changed, so the current version stands
+
+
+# --- Patient health flags (fixed rules, everyday words) ----------------------------------------
+
+
+class HealthFlagReportOut(BaseModel):
+    report_id: int
+    report_title: str
+    upload_date: datetime
+    severity: Literal["HIGH_RISK", "CAUTION"]
+    messages: list[str]
+
+
+class HealthFlagConditionOut(BaseModel):
+    name: str
+    plain: str
+    chronic: bool
+    report_ids: list[int]
+
+
+class HealthFlagsOut(BaseModel):
+    reports: list[HealthFlagReportOut]
+    high_risk_reports: int
+    conditions_mentioned: list[HealthFlagConditionOut]
