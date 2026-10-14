@@ -63,8 +63,10 @@ def validate_medical_rules(
     structured_fields: dict[str, Any] | None = None,
     entities: list[dict[str, Any]] | None = None,
     uncertain_values: list[dict[str, Any]] | None = None,
+    ocr_rows: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
-    """`uncertain_values`: numbers OCR read with low confidence (ocr_layout.uncertain_values)."""
+    """`uncertain_values`: numbers OCR read with low confidence (ocr_layout.uncertain_values).
+    `ocr_rows`: the OCR rows, so each value carries its own confidence (as in the clinical summary)."""
     source_text = text or ""
     fields = structured_fields or {}
     entity_rows = entities or []
@@ -110,7 +112,8 @@ def validate_medical_rules(
     # Lab values and blood pressure are read once (icse.entities, the reader the clinical summary
     # uses too) and judged once (lab_rules), so a value is never flagged in one place and passed in
     # the other. Every reading counts; a value that cannot be used is "check against the original".
-    for entity in extract_entities(source_text, fields=fields):
+    values = extract_entities(source_text, fields=fields, ocr_rows=ocr_rows)
+    for entity in values:
         assessment = assess(entity)
         warning = warning_for(assessment) if assessment else None
         if warning:
@@ -119,6 +122,10 @@ def validate_medical_rules(
 
     # Numbers OCR was unsure of are never judged as read: the report is at least CAUTION and they are
     # listed to check against the original. (The number in the text is left exactly as OCR read it.)
+    # A test value or blood pressure read with low confidence is already listed above, value by value
+    # (VALUE_NEEDS_CHECK); this lists the other uncertain numbers (doses, for example).
+    judged = {(e["ocr_row"], cell) for e in values if e.get("ocr_row") for cell in e.get("ocr_cells", [])}
+    uncertain_values = [v for v in uncertain_values or [] if (v["line"], v["text"]) not in judged]
     if uncertain_values:
         listed = ", ".join(f'{v["text"]} (in "{v["line"][:60]}")' for v in uncertain_values[:8])
         more = f" and {len(uncertain_values) - 8} more" if len(uncertain_values) > 8 else ""

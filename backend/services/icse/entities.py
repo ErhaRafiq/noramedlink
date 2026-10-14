@@ -18,8 +18,9 @@ from typing import Any
 
 from services import knowledge
 from services.lab_rules import looks_like_unit, plausible_blood_pressure
+from services.ocr_layout import RANGE_CELL
 
-ENTITIES_VERSION = 4  # bump when extraction changes, so stored entities can be rebuilt
+ENTITIES_VERSION = 5  # bump when extraction changes, so stored entities can be rebuilt
 MENTIONED = "mentioned in report"
 SUGGESTION = "model suggestion"
 
@@ -493,6 +494,51 @@ def _report_date(text: str) -> dict[str, Any] | None:
     return None
 
 
+# --- OCR confidence per value ---------------------------------------------------------------------
+
+
+def _norm_line(line: str) -> str:
+    from services.ocr_space_service import clean_ocr_text  # the cleaning the stored text went through
+
+    return " ".join(clean_ocr_text(line).replace("|", " ").split())
+
+
+def _apply_ocr_confidence(entities: list[dict[str, Any]], text: str, rows: list[dict]) -> None:
+    """Give each test value and blood pressure the OCR score of the cells it was read from.
+
+    The value's confidence is the lowest score among its number cell and its unit cell. A line
+    that is not an OCR row (a digital page's text layer, or a line the patient has corrected)
+    keeps confidence None and is marked as read from the text. Matching is on the identity-free
+    text, so a row carrying the patient's name never matches and is never stored.
+    """
+    if not rows:
+        return
+    by_line: dict[str, dict] = {}
+    for row in rows:
+        by_line.setdefault(_norm_line(row["text"]), row)
+    for entity in entities:
+        if entity.get("type") not in ("test_result", "vital") or entity.get("position") is None:
+            continue
+        start = text.rfind("\n", 0, entity["position"]) + 1
+        end = text.find("\n", entity["position"])
+        row = by_line.get(_norm_line(text[start : end if end >= 0 else len(text)]))
+        if row is None:
+            entity["read_by"] = "text"
+            continue
+        entity["read_by"] = "ocr"
+        numbers = [c for c in row["cells"] if re.search(r"\d", c["text"]) and not RANGE_CELL.match(c["text"])]
+        value = str(entity.get("value") or "")
+        cells = [c for c in numbers if value and any(t.startswith(value) for t in c["text"].split())]
+        if not cells:
+            cells = numbers  # the number cannot be told apart: the least certain number in the row counts
+        unit = entity.get("unit")
+        cells += [c for c in row["cells"] if unit and c["text"].strip() == unit and c not in cells]
+        if cells:
+            entity["confidence"] = round(min(c["score"] for c in cells), 4)
+            entity["ocr_row"] = row["text"]
+            entity["ocr_cells"] = [c["text"] for c in cells]
+
+
 # --- BioBERT (secondary) --------------------------------------------------------------------------
 
 _BIOBERT_TYPES = {"Disease": "condition", "Symptom": "symptom", "Medicine": "medication"}
@@ -537,11 +583,15 @@ def _entity(kind: str, name: str, match: re.Match, **extra) -> dict[str, Any]:
 
 
 def extract_entities(
-    text: str, biobert_entities: list[dict[str, Any]] | None = None, fields: dict[str, Any] | None = None
+    text: str,
+    biobert_entities: list[dict[str, Any]] | None = None,
+    fields: dict[str, Any] | None = None,
+    ocr_rows: list[dict] | None = None,
 ) -> list[dict[str, Any]]:
     """All typed entities in one report's text (identifiers already removed), in text order, then
-    values from structured fields that the text did not already give. The per-report rules and the
-    clinical summary both read values through this function only."""
+    values from structured fields that the text did not already give. With `ocr_rows`, each value
+    carries the OCR score of its cells. The per-report rules and the clinical summary both read
+    values through this function only."""
     text = text or ""
     family = _family_spans(text)
     allergies, allergy_spans = _allergies(text)
@@ -559,5 +609,6 @@ def extract_entities(
     if printed_date:
         entities.append(printed_date)
     entities.sort(key=lambda e: e["position"] if e["position"] is not None else 0)
+    _apply_ocr_confidence(entities, text, ocr_rows or [])
     entities += _field_entities(fields or {}, entities)
     return entities + _biobert_suggestions(biobert_entities or [], entities)
