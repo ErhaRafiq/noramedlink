@@ -13,6 +13,7 @@ from models import ClinicalSummary, User
 from pagination import Page, PageParams, page_params, paginate
 from rate_limit import AI_LIMIT, limiter
 from schemas import (
+    AI_WORDED_NOTE,
     RULE_BASED_NOTE,
     ClinicalSummaryRegenerateOut,
     ClinicalSummaryStatusOut,
@@ -50,7 +51,7 @@ def _out(summary: ClinicalSummary) -> ClinicalSummaryVersionOut:
         patient_id=summary.patient_id,
         summary_text=summary.summary_text,
         content=summary.content_json or {},
-        note=RULE_BASED_NOTE,
+        note=RULE_BASED_NOTE if summary.source == "rule_based" else AI_WORDED_NOTE,
     )
 
 
@@ -70,11 +71,11 @@ def get_clinical_summary(patient_id: int, doctor: User = Depends(require_doctor)
 
 @router.post("/regenerate", response_model=ClinicalSummaryRegenerateOut)
 @limiter.limit(AI_LIMIT)
-def regenerate_clinical_summary(
+async def regenerate_clinical_summary(
     request: Request, patient_id: int, doctor: User = Depends(require_doctor), db: Session = Depends(get_db)
 ):
     patient = _patient(patient_id, doctor, db)
-    summary, created = versions.regenerate(db, patient, doctor)
+    summary, created = await versions.regenerate(db, patient, doctor)
     return ClinicalSummaryRegenerateOut(summary=_out(summary), created=created)
 
 

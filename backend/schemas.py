@@ -572,6 +572,13 @@ RULE_BASED_NOTE = (
 )
 
 
+AI_WORDED_NOTE = (
+    "Key findings: AI-generated wording of the rule-built findings below; advisory, verify with a clinician. "
+    "Every flag and severity is set by fixed rules, not by the AI; conditions and allergies are as "
+    "mentioned in reports, not confirmed diagnoses."
+)
+
+
 class ClinicalSummaryVersionMeta(BaseModel):
     version: int
     generated_at: datetime

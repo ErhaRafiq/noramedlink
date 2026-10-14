@@ -25,6 +25,7 @@ from models import ClinicalSummary, Medication, MedicineHistory, PatientReport, 
 from services.icse.entities import ENTITIES_VERSION, extract_entities
 from services.icse.flags import printed_date
 from services.icse.summary import SUMMARY_VERSION, build_content, render_text
+from services.icse.wording import reword_key_findings
 from services.lab_rules import LAB_RULES_VERSION
 from services.privacy import patient_identity_patterns, redact_identifiers
 
@@ -187,15 +188,23 @@ def status(db: Session, patient: User) -> dict[str, Any]:
     }
 
 
-def regenerate(db: Session, patient: User, doctor: User, today: date | None = None) -> tuple[ClinicalSummary, bool]:
+async def regenerate(
+    db: Session, patient: User, doctor: User, today: date | None = None
+) -> tuple[ClinicalSummary, bool]:
     """Build the summary now. A new version is added only when the inputs changed; returns
-    (the current version, whether it is new)."""
+    (the current version, whether it is new). With an AI key, the AI rewords "Key findings" only
+    (services/icse/wording.py); every flag and severity stays the rules'."""
     inputs = gather(db, patient)
     existing = current_version(db, patient.id)
     if existing and existing.input_fingerprint == inputs["fingerprint"]:
         return existing, False
     content = build_content(inputs["sources"], inputs["medications"], inputs["unreadable"], today or date.today())
     previous = (existing.content_json or {}).get("inputs", {}).get("manifest") if existing else None
+    ai_text, provider, ai_note = await reword_key_findings(content, patient_identity_patterns(patient))
+    if ai_text:
+        content["key_findings"] = {"text": ai_text, "source": provider, "rule_text": content["key_findings"]["text"]}
+    else:
+        content["key_findings"]["ai_not_used"] = ai_note
     content["inputs"] = {
         "manifest": inputs["manifest"],
         "reports_used": sum(1 for s in inputs["sources"] if s["kind"] == "report"),
@@ -215,7 +224,7 @@ def regenerate(db: Session, patient: User, doctor: User, today: date | None = No
         input_fingerprint=inputs["fingerprint"],
         content_json=content,
         summary_text=render_text(content),
-        source="rule_based",
+        source=provider or "rule_based",
         is_current=True,
     )
     db.add(summary)
