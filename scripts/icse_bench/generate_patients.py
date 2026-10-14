@@ -193,6 +193,7 @@ def note(rng: random.Random, patient: dict, day: date, kind: str) -> Report:
     report.add("")
     bp = f"{rng.randint(110, 165)}/{rng.randint(70, 100)}"
     report.add(f"VITALS: BP {bp} mmHg, Pulse {rng.randint(64, 104)} /min, Temp 98.{rng.randint(2, 9)} F")
+    report.expect("vital", "Blood Pressure", value=bp)
     report.add(f"PLAN: Review in {rng.choice(['two weeks', 'one month', '6 weeks'])}. Continue current treatment.")
     report.add("SYNTHETIC TEST REPORT - NOT REAL PATIENT DATA")
     return report
