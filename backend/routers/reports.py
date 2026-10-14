@@ -255,12 +255,19 @@ async def update_report(
             report.original_file_name,
             manual_department or (report.department.name if report.department else None),
         )
+        # Keep the OCR rows: lines the patient changed are theirs, while numbers OCR was unsure of on
+        # lines left as read are still listed to check. The OCR's own confidence is kept as it was.
+        previous = dict_field(report.structured_data_json)
+        if previous.get("ocr_rows"):
+            ocr_result["structured_data_json"]["ocr_rows"] = previous["ocr_rows"]
+        ocr_result["structured_data_json"]["text_edited_by_patient"] = True
+        ocr_confidence = report.ocr_confidence
         final_department = manual_department or str(ocr_result.get("department_name") or "General")
         report.department = get_department(db, final_department)
         analysis = await analyze_report_result(ocr_result, final_department)
         summary = str(analysis.get("summary_text") or ocr_result.get("summary") or "")
         apply_ocr_result(report, ocr_result, final_department, summary)
-        report.ocr_confidence = 0.9
+        report.ocr_confidence = ocr_confidence
         report.ocr_status = "REVIEWED"
     elif manual_department:
         report.department = get_department(db, manual_department)
