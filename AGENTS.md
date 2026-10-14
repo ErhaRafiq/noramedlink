@@ -103,8 +103,8 @@ The app needs **two terminals running at the same time**: backend and frontend.
 | Backend lint + format | `cd backend; .\venv\Scripts\python.exe -m ruff check .; .\venv\Scripts\python.exe -m ruff format .` |
 | Production build | `npm run build` (can run while `npm run dev` is running; Next 16 keeps dev output in `.next/dev`) |
 | Backend unit tests | `cd backend; .\venv\Scripts\python.exe -m pytest` (no database, no network; `backend/tests/`) |
-| Acceptance tests | `backend\venv\Scripts\python.exe tests\acceptance_test.py` (both servers running) |
-| Browser (e2e) tests | `npm run test:e2e` (both servers running; report in `test-results/e2e-report`) |
+| Acceptance tests | Start the backend with `$env:DISABLE_PAID_SERVICES="1"`, then `$env:DISABLE_PAID_SERVICES="1"; backend\venv\Scripts\python.exe tests\acceptance_test.py` (both servers running; no AI or OCR.space call is made) |
+| Browser (e2e) tests | Same backend as above, then `$env:DISABLE_PAID_SERVICES="1"; npm run test:e2e` (report in `test-results/e2e-report`) |
 | Screenshots for review | `npm run screenshots` (dev server running; uses the installed Microsoft Edge) |
 | Phone overflow check | `node scripts/find-overflow.mjs http://localhost:3000/<page>` (lists elements wider than 390px) |
 | Backend smoke tests | `$env:HF_HUB_OFFLINE="1"; backend\venv\Scripts\python.exe backend\test_quick.py` |
@@ -196,8 +196,9 @@ Test data belongs in tests, never in UI fallbacks.
   - refuse to run unless every database URL points to localhost (check the hostname only);
   - create users only with the `phase0-test-` email prefix;
   - delete only those users and their rows (and upload folders) in a `finally` block.
-- **Never call paid or external services in tests** (OpenAI, Groq, OCR.space). Tests that would
-  must skip when a key is configured.
+- **Never call paid or external services in tests** (Gemini, OpenAI, Groq, OCR.space). Tests that would
+  must skip when a key is configured. `DISABLE_PAID_SERVICES=1` (backend and test process) makes the
+  backend ignore every AI and OCR.space key, so the whole suite runs with no paid call.
 - Safety logic (red-flag rules, interaction rules, state transitions) needs unit tests with
   explicit cases, including the cases listed in the brief. Unit tests live in `backend/tests/`
   (pytest): no database, no network, and `conftest.py` blanks every AI and OCR key.
