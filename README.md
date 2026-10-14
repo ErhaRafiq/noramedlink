@@ -109,8 +109,13 @@ Open **http://localhost:3000**.
    (score under 0.90) are left exactly as read and listed on the report page as "check against the
    original report"; the report is then at least CAUTION.
 4. Rule-based checks set the report's validation status (`SAFE`, `CAUTION`, `HIGH_RISK` or
-   `NOT_VALIDATED`). With an OpenAI or Groq key the AI writes the summary; without one, the summary is
-   built by fixed rules and quotes the report's own Impression/Conclusion. The page says which.
+   `NOT_VALIDATED`). With a Gemini, OpenAI or Groq key the AI writes the patient's summary; without
+   one, it is built by fixed rules from the values the app read. The page says which. Either way the
+   summary and the alerts use everyday words: each medical term gets everyday wording, with the term
+   once in brackets ("kidney waste level (Creatinine)"), and a "Words you might see" list explains
+   the terms on the report. Urgent alerts are shown in red, points to discuss in amber, and
+   conditions the report mentions (for example diabetes) are highlighted as "mentioned in your
+   report", never as a diagnosis.
 5. The patient reviews the text on the report page, corrects it and saves, or re-reads the file.
 
 If no text can be read, the report is saved as not validated, with no summary, and the report page says
