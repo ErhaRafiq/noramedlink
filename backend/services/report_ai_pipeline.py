@@ -4,6 +4,7 @@ from typing import Any
 
 from services.ai_guard import numbers_not_in_source
 from services.biobert_service import extract_medical_entities
+from services.icse.entities import ENTITIES_VERSION, extract_entities
 from services.openai_service import fallback_notice, generate_openai_json, generate_openai_text
 from services.privacy import IDENTITY_FIELDS, redact_identifiers
 from services.report_breakdown import measured_values, report_conclusion
@@ -354,6 +355,9 @@ async def run_report_ai_pipeline(
     source_text = redact_identifiers(formatted_text.strip() or cleaned_text.strip(), identity)
 
     entities, entity_metadata = await extract_medical_entities(source_text, fields)
+    # Typed entities for the clinical summary: rules and the knowledge base first, BioBERT only as
+    # a low-confidence suggestion. Built from the same identity-free text.
+    clinical_entities = extract_entities(source_text, entities)
     validation = validate_medical_rules(source_text, fields, entities, uncertain_values)
     summary_json, summary_source, summary_warning = await _generate_summary_json(
         source_text,
@@ -376,6 +380,8 @@ async def run_report_ai_pipeline(
     return {
         "entities": entities,
         "entity_metadata": entity_metadata,
+        "clinical_entities": clinical_entities,
+        "clinical_entities_version": ENTITIES_VERSION,
         "validation_results": validation,
         "rule_warnings": validation.get("warnings", []),
         "validation_status": validation.get("status", "CAUTION"),

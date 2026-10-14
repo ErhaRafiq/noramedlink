@@ -104,6 +104,7 @@ async def test_report_pipeline_keeps_identity_out_of_entities_summaries_and_prom
     assert leaky_world, "the AI stub was not called"
     assert_no_identity("AI prompts", leaky_world)
     assert_no_identity("entities", result["entities"])
+    assert_no_identity("clinical entities", result["clinical_entities"])
     assert_no_identity("clinical summary", result["clinical_summary_json"])
     assert_no_identity("patient summary", result["patient_summary"])
     assert_no_identity("rule warnings", result["rule_warnings"])

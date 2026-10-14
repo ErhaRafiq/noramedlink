@@ -236,6 +236,12 @@ async def analyze_report_result(ocr_result: dict[str, Any], department_name: str
 
     structured_payload["bio_bert_entities"] = analysis["entities"]
     structured_payload["entity_metadata"] = analysis["entity_metadata"]
+    if "clinical_entities" in analysis:
+        structured_payload["clinical_entities"] = analysis["clinical_entities"]
+        structured_payload["clinical_entities_version"] = analysis["clinical_entities_version"]
+    else:  # the pipeline failed: say so rather than keep entities from an older reading
+        structured_payload.pop("clinical_entities", None)
+        structured_payload.pop("clinical_entities_version", None)
     structured_payload["rule_validation"] = analysis["validation_results"]
     structured_payload["rule_warnings"] = analysis["rule_warnings"]
     structured_payload["ai_summary"] = analysis["clinical_summary_json"]
