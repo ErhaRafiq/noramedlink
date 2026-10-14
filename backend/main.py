@@ -15,6 +15,7 @@ from routers import (
     admin,
     appointments,
     auth,
+    clinical_summary,
     dashboard_access,
     doctor,
     emergency,
@@ -80,6 +81,7 @@ app.include_router(patient_medicines.router)
 app.include_router(patient_insights.router)
 app.include_router(reports.router)
 app.include_router(doctor.router)
+app.include_router(clinical_summary.router)
 app.include_router(ocr.router)
 app.include_router(nlp.router)
 app.include_router(appointments.router)

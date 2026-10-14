@@ -58,6 +58,10 @@ DOCTOR_ROUTES = [
     ("GET", "/api/backend/doctor/overview"),
     ("POST", "/api/backend/doctor/access/unlock"),
     ("POST", "/api/backend/doctor/access/end"),
+    ("GET", "/api/backend/doctor/patients/1/clinical-summary"),
+    ("POST", "/api/backend/doctor/patients/1/clinical-summary/regenerate"),
+    ("GET", "/api/backend/doctor/patients/1/clinical-summary/versions"),
+    ("GET", "/api/backend/doctor/patients/1/clinical-summary/versions/1"),
 ]
 PATIENT_ROUTES = [
 ]
@@ -136,6 +140,7 @@ USER_OWNED_ROWS = [
     ("health_tips", "patient_id"),
     ("health_risk_predictions", "patient_id"),
     ("doctor_summaries", "patient_id"),
+    ("clinical_summaries", "patient_id"),
     ("patient_profiles", "user_id"),
     ("doctor_profiles", "user_id"),
 ]
@@ -922,6 +927,71 @@ def run_tests() -> None:
                                                    "password": "wrong-password"})
     check("another email from the same client is still allowed (401, not 429)", other.status_code == 401,
           f"got {other.status_code}")
+
+    print("\n[15] Clinical summary for doctors: active grant only, versions, out of date after changes")
+    patient_c = create_user("patient-summary", "PATIENT")
+    doctor_c = create_user("doctor-summary", "DOCTOR")
+    tok_c, tok_doctor_c = token_for(patient_c), token_for(doctor_c)
+    report_c = create_record(patient_c, f"{TEST_PREFIX}summary report")
+    base = f"/api/backend/doctor/patients/{patient_c}/clinical-summary"
+    for method, path in (("GET", base), ("POST", f"{base}/regenerate"), ("GET", f"{base}/versions")):
+        response = call(method, path, tok_doctor_c)
+        check(f"doctor without a grant: {method} {path.replace(base, '...')} -> 403", response.status_code == 403,
+              f"got {response.status_code}")
+    check("patient reading their own clinical summary -> 403", call("GET", base, tok_c).status_code == 403)
+    check("admin -> 403", call("GET", base, tok_admin).status_code == 403)
+    response = call("GET", f"/api/backend/doctor/patients/{doctor_2}/clinical-summary", tok_doctor_c)
+    check("a non-patient id -> 403 (same answer, nothing revealed)", response.status_code == 403, f"got {response.status_code}")
+
+    create_grant(doctor_c, patient_c, expires_in=timedelta(hours=1))
+    before = scalar("select md5(row(r.*)::text) from patient_reports r where id = :id", id=report_c)
+    response = call("GET", base, tok_doctor_c)
+    body = response.json() if response.status_code == 200 else {}
+    check("with a grant: no summary yet, out of date", response.status_code == 200 and body.get("summary") is None
+          and body.get("out_of_date") is True, f"got {response.status_code} {str(body)[:160]}")
+    response = call("POST", f"{base}/regenerate", tok_doctor_c)
+    body = response.json() if response.status_code == 200 else {}
+    summary = body.get("summary") or {}
+    content = summary.get("content") or {}
+    check("regenerate -> version 1 created", response.status_code == 200 and body.get("created") is True
+          and summary.get("version") == 1, f"got {response.status_code} {str(body)[:160]}")
+    abnormal = content.get("abnormal_results") or []
+    check("the low hemoglobin is an abnormal result, linked to its report",
+          any(f.get("subject") == "Hemoglobin" and any(s.get("report_id") == report_c for s in f.get("sources", []))
+              for f in abnormal), f"abnormal={str(abnormal)[:200]}")
+    check("a report with no stored entities was re-read for the summary",
+          (content.get("inputs") or {}).get("reports_reread") == 1, f"inputs={content.get('inputs', {}).get('reports_reread')}")
+    check("the rule-based note is attached and no 'safe'/'normal' wording",
+          "fixed rules" in summary.get("note", "") and " safe" not in summary.get("summary_text", "").lower()
+          and "normal" not in summary.get("summary_text", "").lower().replace("abnormal", ""))
+    check("building the summary did not change the report row",
+          scalar("select md5(row(r.*)::text) from patient_reports r where id = :id", id=report_c) == before)
+    response = call("POST", f"{base}/regenerate", tok_doctor_c)
+    check("regenerate with nothing changed -> no new version",
+          response.status_code == 200 and response.json().get("created") is False
+          and response.json()["summary"]["version"] == 1, f"got {response.status_code}")
+    check("current summary is up to date", call("GET", base, tok_doctor_c).json().get("out_of_date") is False)
+
+    create_record(patient_c, f"{TEST_PREFIX}summary report 2")
+    body = call("GET", base, tok_doctor_c).json()
+    check("after a new report -> out of date, saying what changed", body.get("out_of_date") is True
+          and "1 report(s) added" in (body.get("pending_change") or "") and body["summary"]["version"] == 1,
+          f"got {str(body)[:200]}")
+    response = call("POST", f"{base}/regenerate", tok_doctor_c)
+    check("regenerate -> version 2 with its trigger", response.status_code == 200
+          and response.json()["summary"]["version"] == 2 and "report(s) added" in response.json()["summary"]["trigger"],
+          f"got {response.status_code} {response.text[:160]}")
+    response = call("GET", f"{base}/versions", tok_doctor_c)
+    page = response.json() if response.status_code == 200 else {}
+    check("both versions are kept, newest first, only the newest current",
+          page.get("total") == 2 and [v["version"] for v in page.get("items", [])] == [2, 1]
+          and [v["is_current"] for v in page.get("items", [])] == [True, False], f"got {str(page)[:200]}")
+    check("an earlier version can be read", call("GET", f"{base}/versions/1", tok_doctor_c).status_code == 200)
+    check("a version that does not exist -> 404", call("GET", f"{base}/versions/99", tok_doctor_c).status_code == 404)
+    check("another doctor (no grant) cannot read a version -> 403",
+          call("GET", f"{base}/versions/1", tok_doctor_2).status_code == 403)
+    create_grant(doctor_c, patient_c, expires_in=timedelta(hours=-1))
+    check("after the grant expires -> 403", call("GET", base, tok_doctor_c).status_code == 403)
 
 
 def main() -> int:

@@ -514,3 +514,33 @@ export type DoctorOverview = {
     patientName: string;
   }>;
 };
+
+/** Clinical summary for doctors (GET /doctor/patients/{id}/clinical-summary). Built by fixed rules. */
+export type ClinicalSummaryVersionMeta = {
+  version: number;
+  generated_at: string;
+  trigger: string;
+  source: "rule_based" | string;
+  is_current: boolean;
+};
+
+export type ClinicalSummaryVersion = ClinicalSummaryVersionMeta & {
+  patient_id: number;
+  summary_text: string;
+  /** Sections: key_findings, abnormal_results, conditions, family_history, medications, allergies,
+   * flags, check_original, missing_data, notes, sources (see backend/services/icse/summary.py). */
+  content: Record<string, unknown>;
+  note: string;
+};
+
+export type ClinicalSummaryStatus = {
+  patient_id: number;
+  summary: ClinicalSummaryVersion | null;
+  out_of_date: boolean;
+  pending_change: string | null;
+};
+
+export type ClinicalSummaryRegenerateResult = {
+  summary: ClinicalSummaryVersion;
+  created: boolean;
+};

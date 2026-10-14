@@ -560,3 +560,38 @@ class MedicalAiAnalysisOut(BaseModel):
     doctor_summary: str | None
     created_at: datetime
     updated_at: datetime
+
+
+# --- Clinical summary for doctors (ICSE) -------------------------------------------------------
+
+RULE_BASED_NOTE = (
+    "Built by fixed rules from the patient's records. Advisory, for physician review; "
+    "conditions and allergies are as mentioned in reports, not confirmed diagnoses."
+)
+
+
+class ClinicalSummaryVersionMeta(BaseModel):
+    version: int
+    generated_at: datetime
+    trigger: str
+    source: str
+    is_current: bool
+
+
+class ClinicalSummaryVersionOut(ClinicalSummaryVersionMeta):
+    patient_id: int
+    summary_text: str
+    content: dict[str, Any]
+    note: str
+
+
+class ClinicalSummaryStatusOut(BaseModel):
+    patient_id: int
+    summary: ClinicalSummaryVersionOut | None
+    out_of_date: bool
+    pending_change: str | None  # what changed since the current version, when it is out of date
+
+
+class ClinicalSummaryRegenerateOut(BaseModel):
+    summary: ClinicalSummaryVersionOut
+    created: bool  # False: nothing had changed, so the current version stands
