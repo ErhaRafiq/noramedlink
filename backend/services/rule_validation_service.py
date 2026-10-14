@@ -162,7 +162,9 @@ def validate_medical_rules(
     text: str,
     structured_fields: dict[str, Any] | None = None,
     entities: list[dict[str, Any]] | None = None,
+    uncertain_values: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
+    """`uncertain_values`: numbers OCR read with low confidence (ocr_layout.uncertain_values)."""
     source_text = text or ""
     fields = structured_fields or {}
     entity_rows = entities or []
@@ -286,6 +288,22 @@ def validate_medical_rules(
         warnings.append(lab_warning)
         status = _highest_status(status, lab_warning["severity"])
 
+    # Numbers OCR was unsure of are never judged as read: the report is at least CAUTION and they are
+    # listed to check against the original. (The number in the text is left exactly as OCR read it.)
+    if uncertain_values:
+        listed = ", ".join(f'{v["text"]} (in "{v["line"][:60]}")' for v in uncertain_values[:8])
+        more = f" and {len(uncertain_values) - 8} more" if len(uncertain_values) > 8 else ""
+        warnings.append(
+            _warning(
+                "UNCERTAIN_OCR_VALUES",
+                "CAUTION",
+                f"{len(uncertain_values)} number(s) were read with low OCR confidence: {listed}{more}. "
+                "Check them against the original report before relying on them. For physician review.",
+                "; ".join(v["line"] for v in uncertain_values[:3]),
+            )
+        )
+        status = _highest_status(status, "CAUTION")
+
     if not _has_allergy_data(source_text, entity_rows):
         warnings.append(
             _warning(
@@ -324,6 +342,7 @@ def validate_medical_rules(
             "hypertension_indicators",
             "kidney_risk_indicators",
             "lab_reference_ranges",
+            "uncertain_ocr_values",
             "missing_allergy_data",
             "incomplete_ocr_text",
         ],

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from models import MedicalAiAnalysis, MedicalDepartment, PatientReport
 from schemas import PatientReportOut
 from services.file_access import file_access_url
+from services.ocr_layout import uncertain_values
 from services.ocr_space_service import (
     DEPARTMENTS,
     department_slug,
@@ -165,6 +166,10 @@ async def analyze_report_result(ocr_result: dict[str, Any], department_name: str
     cleaned_text = str(ocr_result.get("cleaned_text") or "").strip()
     formatted_text = str(ocr_result.get("formatted_text") or "").strip()
     structured_payload = dict_field(ocr_result.get("structured_data_json"))
+    # Numbers OCR was unsure of and that are still in the text as read (a line the patient has
+    # corrected is theirs, not OCR's). Recomputed at every analysis, so corrections clear them.
+    uncertain = uncertain_values(formatted_text or cleaned_text, structured_payload.get("ocr_rows") or [])
+    structured_payload["uncertain_values"] = uncertain
 
     try:
         analysis = await run_report_ai_pipeline(
@@ -172,6 +177,7 @@ async def analyze_report_result(ocr_result: dict[str, Any], department_name: str
             formatted_text=formatted_text,
             structured_payload=structured_payload,
             department_name=department_name,
+            uncertain_values=uncertain,
         )
     except Exception as exc:
         analysis = {

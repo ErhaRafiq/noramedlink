@@ -306,12 +306,13 @@ async def run_report_ai_pipeline(
     formatted_text: str,
     structured_payload: dict[str, Any],
     department_name: str,
+    uncertain_values: list[dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     fields = structured_payload.get("fields") if isinstance(structured_payload.get("fields"), dict) else {}
     source_text = formatted_text.strip() or cleaned_text.strip()
 
     entities, entity_metadata = await extract_medical_entities(source_text, fields)
-    validation = validate_medical_rules(source_text, fields, entities)
+    validation = validate_medical_rules(source_text, fields, entities, uncertain_values)
     summary_json, summary_source, summary_warning = await _generate_summary_json(
         source_text,
         department_name,

@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 import { FileText, ShieldCheck, Sparkles, type LucideIcon } from "lucide-react";
 
+import { Alert } from "@/components/ui/alert";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton, SkeletonCard } from "@/components/ui/skeleton";
 import { cn } from "@/lib/cn";
 import { formatDateTime } from "@/lib/datetime";
 import { buildMedicalDisclaimer, validationLabel } from "@/lib/patient-dashboard";
-import type { MedicalDocument } from "@/lib/types";
+import type { MedicalDocument, UncertainValue } from "@/lib/types";
 
 /** A titled card used by every section of the report page. */
 export function ReportCard({ icon: Icon, title, description, children }: { icon?: LucideIcon; title: string; description?: string; children: ReactNode }) {
@@ -84,9 +85,11 @@ export function ReportExtraction({ report }: { report: MedicalDocument }) {
   const fields = structuredFields(report);
   const entities = report.extracted_entities ?? report.structured_data_json?.bio_bert_entities ?? [];
   const warnings = report.rule_warnings ?? report.structured_data_json?.rule_warnings ?? [];
+  const uncertain = report.structured_data_json?.uncertain_values ?? [];
 
   return (
     <>
+      {uncertain.length > 0 ? <UncertainValues values={uncertain} /> : null}
       <ReportCard title="Extracted values" description="Fields read from the report text.">
         {fields.length > 0 ? (
           <div className="overflow-hidden rounded-control border border-line">
@@ -141,6 +144,24 @@ export function ReportExtraction({ report }: { report: MedicalDocument }) {
         )}
       </ReportCard>
     </>
+  );
+}
+
+/** Numbers OCR was unsure of. They are shown exactly as read; the rules do not rely on them. */
+function UncertainValues({ values }: { values: UncertainValue[] }) {
+  return (
+    <Alert tone="warning" title="Check these numbers against the original report">
+      <p>The scan was hard to read here, so these numbers may be wrong. They are shown exactly as read. If one is wrong, correct it in the report text.</p>
+      <ul className="mt-2 space-y-1">
+        {values.slice(0, 12).map((value, index) => (
+          <li key={`${value.line}-${value.text}-${index}`} className="break-words">
+            <span className="font-semibold">{value.text}</span>
+            <span className="opacity-80"> in &ldquo;{value.line}&rdquo;{value.page ? ` (page ${value.page})` : ""}</span>
+          </li>
+        ))}
+      </ul>
+      {values.length > 12 ? <p className="mt-1 opacity-80">and {values.length - 12} more</p> : null}
+    </Alert>
   );
 }
 

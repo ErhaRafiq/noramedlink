@@ -143,6 +143,8 @@ export type MedicalDocument = {
     llm_self_check?: Record<string, unknown>;
     confidence_level?: string;
     error?: string;
+    uncertain_values?: UncertainValue[];
+    text_edited_by_patient?: boolean;
     [key: string]: unknown;
   };
   summary?: string | null;
@@ -155,6 +157,14 @@ export type MedicalDocument = {
   summary_source?: string;
   ai_summary: string | null;
   patient_summary?: string | null;
+};
+
+/** A number OCR read with low confidence (below 0.90), still in the text as read. */
+export type UncertainValue = {
+  page?: number | null;
+  line: string;
+  text: string;
+  score: number;
 };
 
 export type MedicalEntity = {
