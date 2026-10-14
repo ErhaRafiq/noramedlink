@@ -59,6 +59,52 @@ def make_user(key: str, role: str, **options) -> dict:
     }
 
 
+def create_attention_record(user_id: int) -> int:
+    """A report with an urgent alert, a caution and a mentioned condition (synthetic, fixed values),
+    for the report page's "needs attention" panel."""
+    warnings = [
+        {"code": "KIDNEY_RISK_EGFR", "severity": "HIGH_RISK", "message": "eGFR 25 is under 30.",
+         "patient_message": "Your kidney filtering rate (eGFR) reading of 25 is below the range the app checks "
+                            "against. This needs prompt attention from a doctor."},
+        {"code": "HIGH_GLUCOSE", "severity": "CAUTION", "message": "Random Blood Sugar 230 is over 199.",
+         "patient_message": "Your blood sugar at any time of day (Random Blood Sugar) reading of 230 mg/dL is "
+                            "above the range the app checks against. Please show this to your doctor."},
+    ]  # fmt: skip
+    structured = {
+        "clinical_entities": [
+            {
+                "type": "condition",
+                "name": "diabetes mellitus",
+                "negated": False,
+                "chronic": True,
+                "method": "knowledge base",
+            }
+        ]
+    }
+    with base.engine.begin() as conn:
+        return conn.execute(
+            text(
+                """
+                insert into patient_reports (patient_id, title, original_file_name, file_url, file_type,
+                                             extracted_text, formatted_text, structured_data_json, summary,
+                                             extracted_entities, rule_warnings, validation_status,
+                                             validation_results, clinical_summary_json, llm_self_check,
+                                             summary_source, ocr_status)
+                values (:uid, :title, 'phase0-test.png', '', 'png', :text, :text, :structured, 'Advisory summary',
+                        '[]', :warnings, 'HIGH_RISK', '{}', '{}', '{}', 'rule_based', 'COMPLETED')
+                returning id
+                """
+            ),
+            {
+                "uid": user_id,
+                "title": f"{base.TEST_PREFIX}e2e attention panel {RUN}",
+                "text": "K/C/O DM. eGFR 25 mL/min. Random Blood Sugar 230 mg/dL.",
+                "structured": json.dumps(structured),
+                "warnings": json.dumps(warnings),
+            },
+        ).scalar_one()
+
+
 def setup(out_file: Path) -> None:
     base.assert_local_databases()
     base.cleanup_test_users()  # leftovers from an interrupted run
@@ -66,13 +112,22 @@ def setup(out_file: Path) -> None:
         "patient": make_user("patient", "PATIENT"),
         "patientEmpty": make_user("patient-empty", "PATIENT"),
         "doctor": make_user("doctor", "DOCTOR"),
-        "doctorPendingA": make_user("doctor-pending-a", "DOCTOR", doctor_status="pending"),
-        "doctorPendingB": make_user("doctor-pending-b", "DOCTOR", doctor_status="pending"),
+        "doctorPendingA": make_user(
+            "doctor-pending-a", "DOCTOR", doctor_status="pending"
+        ),
+        "doctorPendingB": make_user(
+            "doctor-pending-b", "DOCTOR", doctor_status="pending"
+        ),
         # Never reviewed by a test, so it stays pending (admin.spec approves A and rejects B).
-        "doctorUnreviewed": make_user("doctor-unreviewed", "DOCTOR", doctor_status="pending"),
+        "doctorUnreviewed": make_user(
+            "doctor-unreviewed", "DOCTOR", doctor_status="pending"
+        ),
         "admin": make_user("admin", "ADMIN"),
     }
-    report_id = base.create_record(users["patient"]["id"], f"{base.TEST_PREFIX}e2e blood panel {RUN}")
+    report_id = base.create_record(
+        users["patient"]["id"], f"{base.TEST_PREFIX}e2e blood panel {RUN}"
+    )
+    attention_report_id = create_attention_record(users["patient"]["id"])
     out_file.parent.mkdir(parents=True, exist_ok=True)
     out_file.write_text(
         json.dumps(
@@ -81,14 +136,19 @@ def setup(out_file: Path) -> None:
                 "password": PASSWORD,
                 "users": users,
                 "reportId": report_id,
+                "attentionReportId": attention_report_id,
                 "ocrKeySet": bool(settings.ocr_space_api_key),
-                "aiKeySet": bool(settings.gemini_api_key or settings.openai_api_key or settings.groq_api_key),
+                "aiKeySet": bool(
+                    settings.gemini_api_key
+                    or settings.openai_api_key
+                    or settings.groq_api_key
+                ),
             },
             indent=2,
         ),
         encoding="utf-8",
     )
-    print(f"e2e fixtures: {len(users)} phase0-test- users and 1 report created.")
+    print(f"e2e fixtures: {len(users)} phase0-test- users and 2 reports created.")
 
 
 def main() -> int:

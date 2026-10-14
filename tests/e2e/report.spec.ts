@@ -48,3 +48,39 @@ test.describe("report page", () => {
     await expectNoHorizontalScroll(page);
   });
 });
+
+test.describe("what needs attention on a report", () => {
+  test("urgent alerts are red, cautions amber, and mentioned conditions are highlighted, in everyday words", async ({ page }) => {
+    const { users, attentionReportId } = fixtures();
+    await signInAs(page, users.patient);
+    await page.goto(`/dashboard/patient/reports/${attentionReportId}`);
+
+    const urgent = page.getByRole("alert", { name: "Needs prompt attention" });
+    await expect(urgent).toBeVisible();
+    await expect(urgent).toContainText("Your kidney filtering rate (eGFR) reading of 25");
+    await expect(urgent).toContainText("call 1122");
+
+    const caution = page.getByRole("region", { name: "Points to go over with your doctor" });
+    await expect(caution).toContainText("blood sugar at any time of day");
+
+    const conditions = page.getByRole("region", { name: "Conditions mentioned in your report" });
+    await expect(conditions).toContainText("Diabetes");
+    await expect(conditions).toContainText("long-term");
+    await expect(conditions).toContainText("The app does not diagnose");
+  });
+
+  test("a report without alerts or conditions shows no attention panel", async ({ page }) => {
+    const { users, reportId } = fixtures();
+    await signInAs(page, users.patient);
+    await page.goto(`/dashboard/patient/reports/${reportId}`);
+    await expect(page.getByLabel("Report text")).toBeVisible();
+    await expect(page.getByRole("alert", { name: "Needs prompt attention" })).toHaveCount(0);
+  });
+
+  test("the attention panel fits a phone screen @mobile", async ({ page }) => {
+    await signInAs(page, fixtures().users.patient);
+    await page.goto(`/dashboard/patient/reports/${fixtures().attentionReportId}`);
+    await expect(page.getByRole("alert", { name: "Needs prompt attention" })).toBeVisible();
+    await expectNoHorizontalScroll(page);
+  });
+});

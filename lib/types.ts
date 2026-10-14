@@ -159,6 +159,14 @@ export type MedicalDocument = {
   patient_summary?: string | null;
   /** Who wrote patient_summary: "gemini", "openai", "groq" or "rule_based". */
   patient_summary_source?: string | null;
+  conditions_mentioned?: ConditionMentioned[];
+};
+
+/** A condition the report mentions, with its everyday name. Mentioned in the report, not a diagnosis. */
+export type ConditionMentioned = {
+  name: string;
+  plain: string;
+  chronic: boolean;
 };
 
 /** A number OCR read with low confidence (below 0.90), still in the text as read. */
@@ -181,6 +189,8 @@ export type RuleWarning = {
   severity: "SAFE" | "CAUTION" | "HIGH_RISK" | string;
   message: string;
   evidence?: string;
+  /** The same alert in everyday words, for patients (the clinical message is for doctors). */
+  patient_message?: string;
 };
 
 export type AiClinicalSummary = {

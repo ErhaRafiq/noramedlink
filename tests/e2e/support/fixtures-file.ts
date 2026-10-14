@@ -19,6 +19,7 @@ export type Fixtures = {
   run: string;
   password: string;
   reportId: number;
+  attentionReportId: number;
   ocrKeySet: boolean;
   aiKeySet: boolean;
   users: Record<"patient" | "patientEmpty" | "doctor" | "doctorPendingA" | "doctorPendingB" | "doctorUnreviewed" | "admin", TestUser>;

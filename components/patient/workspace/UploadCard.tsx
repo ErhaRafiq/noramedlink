@@ -3,6 +3,8 @@
 import { useState, type ChangeEvent } from "react";
 import { AlertCircle, Camera, CheckCircle2, FilePlus2, Loader2, Sparkles, Upload, X } from "lucide-react";
 
+import { ReportAttention } from "@/components/patient/report/ReportAttention";
+
 import { cn } from "@/lib/cn";
 import { UPLOAD_ACCEPT } from "@/lib/image";
 import { DEPARTMENTS } from "@/lib/departments";
@@ -205,6 +207,7 @@ function UploadQueueRow({ item, onRemove }: { item: FileQueueItem; onRemove: () 
             </p>
           </div>
         )}
+        {item.step === "done" && item.report && <ReportAttention report={item.report} compact />}
       </div>
 
       {item.step === "idle" && (

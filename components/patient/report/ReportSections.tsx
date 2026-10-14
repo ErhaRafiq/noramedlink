@@ -134,8 +134,11 @@ export function ReportExtraction({ report }: { report: MedicalDocument }) {
                 key={`${warning.code}-${index}`}
                 className={cn("rounded-control border p-3 text-sm", WARNING_TONES[warning.severity ?? ""] ?? "border-teal-100 bg-teal-50 text-teal-900")}
               >
-                <p className="font-semibold">{warning.message}</p>
-                {warning.evidence ? <p className="mt-1 text-xs opacity-80">{warning.evidence}</p> : null}
+                <p className="font-semibold">{warning.patient_message ?? warning.message}</p>
+                {warning.patient_message && warning.patient_message !== warning.message ? (
+                  <p className="mt-1 text-xs opacity-80">For your doctor: {warning.message}</p>
+                ) : null}
+                {warning.evidence ? <p className="mt-1 text-xs opacity-80">From the report: {warning.evidence}</p> : null}
               </li>
             ))}
           </ul>

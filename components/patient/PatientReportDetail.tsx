@@ -16,6 +16,7 @@ import { formatDateTime } from "@/lib/datetime";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useReportDetail, type ActionResult } from "@/hooks/patient/use-report-detail";
 import { ReportEditor } from "./report/ReportEditor";
+import { ReportAttention } from "./report/ReportAttention";
 import { ReportDetailSkeleton, ReportExtraction, ReportFilePreview, ReportStats, ReportSummary } from "./report/ReportSections";
 
 const BACK_HREF = "/dashboard/patient#recent-reports";
@@ -76,6 +77,7 @@ export function PatientReportDetail({ reportId }: { reportId: number }) {
               <p className="mt-1 text-sm text-ink-muted">Uploaded {formatDateTime(report.upload_date)}</p>
             </header>
             <ReportStats report={report} />
+            <ReportAttention report={report} />
             {notice ? (
               <Alert tone={notice.ok ? "success" : "error"} className="mt-6">
                 {notice.message}
