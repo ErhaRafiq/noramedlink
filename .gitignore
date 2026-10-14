@@ -81,3 +81,4 @@ backend/models/
 # OCR benchmark: synthetic samples and phone photos, and the benchmark virtualenv
 /ocr_samples/
 /.venv-ocr-bench*/
+/icse_samples/

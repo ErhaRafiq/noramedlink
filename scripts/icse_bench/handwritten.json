@@ -1,0 +1,73 @@
+{
+  "_note": "Hand-written synthetic snippets with phrasing the generator does not use. NOT REAL PATIENT DATA. Written before the extractor was run on them; do not tune the ground truth to the output.",
+  "reports": [
+    {
+      "id": "hw01",
+      "text": "45 yr old male, known diabetic and hypertensive for 10 yrs. No DM in family? Pt denies TB contact.\nOn Glucophage XR 500 1+0+1 and Tab Concor 5mg once daily.\nAspirin was discontinued after GI bleed.\nSensitive to penicillin (rash).",
+      "entities": [
+        {"type": "condition", "name": "diabetes mellitus", "negated": false},
+        {"type": "condition", "name": "hypertension", "negated": false},
+        {"type": "medication", "name": "metformin", "status": "mentioned"},
+        {"type": "medication", "name": "bisoprolol", "status": "mentioned", "dose": "5mg", "frequency": "once daily"},
+        {"type": "medication", "name": "aspirin", "status": "stopped"},
+        {"type": "allergy", "name": "penicillin"}
+      ]
+    },
+    {
+      "id": "hw02",
+      "text": "Hb: 9.8 g/dl (L)\nTLC 13.2 x10^9/L H\nK+ 5.9 mmol/L\nS. Creatinine 2.1 mg/dl (0.6-1.3) High\nRBS 245 mg/dl",
+      "entities": [
+        {"type": "test_result", "name": "Hemoglobin", "value": "9.8"},
+        {"type": "test_result", "name": "WBC Count", "value": "13.2"},
+        {"type": "test_result", "name": "Potassium", "value": "5.9"},
+        {"type": "test_result", "name": "Creatinine", "value": "2.1"},
+        {"type": "test_result", "name": "Random Blood Sugar", "value": "245"}
+      ]
+    },
+    {
+      "id": "hw03",
+      "text": "Diagnosis: Community acquired pneumonia. Rule out dengue.\nPMH: asthma since childhood, no known heart disease.\nAdvised: Augmentin 1 g BD x 7 days, Panadol PRN, continue Ventolin inhaler.\nAllergy: nil",
+      "entities": [
+        {"type": "condition", "name": "pneumonia", "negated": false},
+        {"type": "condition", "name": "dengue", "negated": false},
+        {"type": "condition", "name": "asthma", "negated": false},
+        {"type": "medication", "name": "amoxicillin and clavulanic acid", "status": "mentioned"},
+        {"type": "medication", "name": "paracetamol", "status": "mentioned"},
+        {"type": "medication", "name": "salbutamol", "status": "mentioned"},
+        {"type": "allergy_status", "name": "no known allergies"}
+      ]
+    },
+    {
+      "id": "hw04",
+      "text": "Pt with CKD stage 3 and IHD, s/p CABG. Hep C treated 2019.\nMeds: warfarin 3 mg, lasix 40mg OD, Lipitor 40.\nWarfarin held for procedure. Allergic to sulfa and NSAIDs.\nNegative for HIV.",
+      "entities": [
+        {"type": "condition", "name": "chronic kidney disease", "negated": false},
+        {"type": "condition", "name": "ischaemic heart disease", "negated": false},
+        {"type": "condition", "name": "chronic hepatitis C", "negated": false},
+        {"type": "medication", "name": "warfarin", "status": "mentioned"},
+        {"type": "medication", "name": "warfarin", "status": "stopped"},
+        {"type": "medication", "name": "furosemide", "status": "mentioned"},
+        {"type": "medication", "name": "atorvastatin", "status": "mentioned"},
+        {"type": "allergy", "name": "sulfa"},
+        {"type": "allergy", "name": "nsaids"},
+        {"type": "condition", "name": "HIV disease", "negated": true}
+      ]
+    },
+    {
+      "id": "hw05",
+      "text": "FBS 132, HbA1c 8.1%. Lipids: TC 240 mg/dl, LDL 160, HDL 35, TG 310.\nTSH 6.8 mIU/L - subclinical hypothyroidism.\nNo h/o epilepsy or stroke.",
+      "entities": [
+        {"type": "test_result", "name": "Fasting Blood Sugar", "value": "132"},
+        {"type": "test_result", "name": "HbA1c", "value": "8.1"},
+        {"type": "test_result", "name": "Total Cholesterol", "value": "240"},
+        {"type": "test_result", "name": "LDL Cholesterol", "value": "160"},
+        {"type": "test_result", "name": "HDL Cholesterol", "value": "35"},
+        {"type": "test_result", "name": "Triglycerides", "value": "310"},
+        {"type": "test_result", "name": "TSH", "value": "6.8"},
+        {"type": "condition", "name": "hypothyroidism", "negated": false},
+        {"type": "condition", "name": "epilepsy", "negated": true},
+        {"type": "condition", "name": "stroke", "negated": true}
+      ]
+    }
+  ]
+}
