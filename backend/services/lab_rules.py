@@ -20,6 +20,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 DEMO = "app rule (demo), not a clinical standard"
+LAB_RULES_VERSION = 1  # bump when a range, unit or threshold changes: stored summaries go out of date
 SEVERITY_RANK = {"INFO": 0, "CAUTION": 1, "HIGH_RISK": 2}
 LOW_CONFIDENCE = 0.90
 CHECK_ORIGINAL = "check against the original report"
