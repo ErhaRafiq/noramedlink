@@ -16,6 +16,7 @@ from schemas import (
     MedicineSafetyCheckResponse,
 )
 from services.medicine_safety import check_medicine_safety
+from services.mscie.context import build_context
 from services.openai_service import fallback_notice, generate_openai_json
 from services.patient_insights import annotate_fallback, clean_ai_text
 
@@ -128,11 +129,13 @@ async def medicine_safety_check(
 ):
     profile = get_patient_profile(db, current_user)
     medicines = patient_medicine_query(db, profile).order_by(MedicineHistory.created_at.desc()).all()
+    # The same engine and record the doctor's check uses (MSCIE): conditions, labs and medicines.
     status_label, reason, warnings = check_medicine_safety(
         payload.medicine_name,
         payload.dosage,
         payload.known_allergies,
         medicines,
+        build_context(db, current_user),
     )
     ai_result = await generate_openai_json(
         instructions=(

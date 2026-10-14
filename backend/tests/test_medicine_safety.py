@@ -1,4 +1,4 @@
-"""Deterministic medicine-safety rules (services/medicine_safety.py), AGENTS.md 6.1 and 6.2."""
+"""The patient's medicine-safety check (services/medicine_safety.py) on the MSCIE engine, AGENTS.md 6.1, 6.2."""
 
 from types import SimpleNamespace
 
@@ -67,10 +67,12 @@ def test_previous_reaction_to_the_medicine_is_high_risk():
         ("Warfarin", "Aspirin", "High Risk"),
         ("Aspirin", "Warfarin", "High Risk"),
         ("Warfarin", "Ibuprofen", "High Risk"),
-        ("Sildenafil", "Nitrate", "High Risk"),
-        ("Aspirin", "Ibuprofen", "Caution"),
+        ("Sildenafil", "Glyceryl trinitrate", "High Risk"),  # contraindicated (ONC list)
+        # Two NSAIDs: a major duplicate in the shared MSCIE rules (it was "Caution" in the old, smaller list).
+        ("Aspirin", "Ibuprofen", "High Risk"),
         ("Insulin", "Glimepiride", "Caution"),
-        ("Metformin", "Contrast", "Caution"),
+        ("Clopidogrel", "Omeprazole", "Caution"),
+        ("Lisinopril", "Spironolactone", "High Risk"),
     ],
 )
 def test_listed_interactions(requested, saved_name, expected):
@@ -79,11 +81,12 @@ def test_listed_interactions(requested, saved_name, expected):
 
 
 def test_high_risk_is_not_lowered_by_a_later_caution():
-    # Warfarin + aspirin and warfarin + ibuprofen (high risk), then aspirin + ibuprofen (caution).
+    # Aspirin with warfarin (two high-risk rules: NSAID and antiplatelet), with ibuprofen (a major NSAID
+    # duplicate), and a moderate antiplatelet + NSAID caution, listed last.
     status, _, warnings = check("Aspirin", saved=history("Warfarin", "Ibuprofen"))
     assert status == "High Risk"
-    assert len(warnings) == 3
-    assert warnings[-1].startswith("Aspirin with ibuprofen")
+    assert len(warnings) == 4
+    assert "time the doses apart" in warnings[-1]
 
 
 @pytest.mark.parametrize("dosage", ["double dose", "take EXTRA at night", "repeat if needed"])
@@ -93,6 +96,6 @@ def test_unclear_dosage_wording_is_caution(dosage):
 
 
 def test_reason_joins_the_warnings():
-    status, reason, warnings = check("Aspirin", dosage="double", saved=history("Ibuprofen"))
+    status, reason, warnings = check("Paracetamol", dosage="double", saved=history("Metformin"))
     assert status == "Caution"
     assert reason == " ".join(warnings)

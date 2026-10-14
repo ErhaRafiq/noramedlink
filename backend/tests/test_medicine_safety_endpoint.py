@@ -12,6 +12,7 @@ from database import get_db
 from dependencies import require_patient
 from main import app
 from routers import patient_medicines
+from services.mscie.engine import PatientContext
 from services.openai_service import OpenAIResult
 
 URL = "/patient/medicine-safety/check"
@@ -29,6 +30,7 @@ class EmptyQuery:
 def client(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(patient_medicines, "get_patient_profile", lambda db, user: SimpleNamespace(user_id=user.id))
     monkeypatch.setattr(patient_medicines, "patient_medicine_query", lambda db, profile: EmptyQuery())
+    monkeypatch.setattr(patient_medicines, "build_context", lambda db, user: PatientContext())  # no database here
     app.dependency_overrides[require_patient] = lambda: SimpleNamespace(id=1, role="patient")
     app.dependency_overrides[get_db] = lambda: None
     try:
