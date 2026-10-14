@@ -993,6 +993,14 @@ def run_tests() -> None:
     create_grant(doctor_c, patient_c, expires_in=timedelta(hours=-1))
     check("after the grant expires -> 403", call("GET", base, tok_doctor_c).status_code == 403)
 
+    print("\n[16] Everyday wording for patients")
+    response = call("GET", f"/api/backend/patient/reports/{report_c}", tok_c)
+    body = response.json() if response.status_code == 200 else {}
+    check("a patient's report carries conditions_mentioned (a list)",
+          response.status_code == 200 and isinstance(body.get("conditions_mentioned"), list), f"got {response.status_code}")
+    check("every rule alert on it has a patient_message",
+          all(w.get("patient_message") for w in body.get("rule_warnings", [])), f"warnings={body.get('rule_warnings')}")
+
 
 def main() -> int:
     assert_local_databases()
