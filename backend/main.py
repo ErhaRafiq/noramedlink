@@ -23,6 +23,7 @@ from routers import (
     medical_ai,
     medications,
     medicine_reminders,
+    mscie,
     nlp,
     ocr,
     patient,
@@ -82,6 +83,7 @@ app.include_router(patient_insights.router)
 app.include_router(reports.router)
 app.include_router(doctor.router)
 app.include_router(clinical_summary.router)
+app.include_router(mscie.router)
 app.include_router(ocr.router)
 app.include_router(nlp.router)
 app.include_router(appointments.router)

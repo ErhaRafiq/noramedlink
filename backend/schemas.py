@@ -628,3 +628,81 @@ class HealthFlagsOut(BaseModel):
     reports: list[HealthFlagReportOut]
     high_risk_reports: int
     conditions_mentioned: list[HealthFlagConditionOut]
+
+
+# --- Medication safety and prescribing (MSCIE, Module 4) ------------------------------------------
+
+
+class PrescriptionItemIn(BaseModel):
+    medicine: str = Field(min_length=2, max_length=160)
+    dose: str | None = Field(default=None, max_length=60)
+    frequency: str | None = Field(default=None, max_length=60)
+    duration: str | None = Field(default=None, max_length=60)
+    instructions: str | None = Field(default=None, max_length=500)
+    # The medicine this one replaces, when the doctor chose a suggested alternative.
+    replaced_medicine: str | None = Field(default=None, max_length=160)
+
+
+class MedicationCheckRequest(BaseModel):
+    items: list[PrescriptionItemIn] = Field(min_length=1, max_length=10)
+
+
+class OverrideIn(BaseModel):
+    alert_id: str = Field(min_length=1, max_length=300)
+    justification: str = Field(min_length=20, max_length=1000)
+
+
+class PrescriptionCreate(BaseModel):
+    items: list[PrescriptionItemIn] = Field(min_length=1, max_length=10)
+    overrides: list[OverrideIn] = Field(default_factory=list, max_length=50)
+    notes: str | None = Field(default=None, max_length=1000)
+
+
+class MedicineSearchOut(BaseModel):
+    name: str
+    generic: str
+    brand: str | None
+    classes: list[str]
+    match: int
+
+
+class MedicationCheckOut(BaseModel):
+    """Alerts per proposed medicine (with rule, source and patient evidence), ranked alternatives,
+    and the patient context the check used. Advisory: the physician decides."""
+
+    context: dict[str, Any]
+    items: list[dict[str, Any]]
+    worst: str | None
+    requires_justification: list[dict[str, Any]]
+    note: str
+
+
+class PrescriptionOut(BaseModel):
+    id: int
+    patient_id: int
+    doctor_name: str
+    status: str
+    notes: str | None
+    created_at: datetime
+    cancelled_at: datetime | None
+    items: list[dict[str, Any]]
+    overrides: list[dict[str, Any]]
+    alerts_at_confirmation: list[dict[str, Any]]
+
+
+class PatientPrescriptionOut(BaseModel):
+    id: int
+    doctor_name: str
+    status: str
+    created_at: datetime
+    items: list[dict[str, Any]]
+
+
+class LabelEvidenceOut(BaseModel):
+    generic: str
+    available: bool
+    reason: str | None = None
+    sections: dict[str, str | None] | None = None
+    set_id: str | None = None
+    effective_time: str | None = None
+    source: str | None = None

@@ -20,19 +20,14 @@ from schemas import (
     ClinicalSummaryVersionMeta,
     ClinicalSummaryVersionOut,
 )
-from services.dashboard_access import has_active_grant
+from services.dashboard_access import patient_with_active_grant
 from services.icse import versions
 
 router = APIRouter(prefix="/doctor/patients/{patient_id}/clinical-summary", tags=["clinical-summary"])
 
 
 def _patient(patient_id: int, doctor: User, db: Session) -> User:
-    patient = db.get(User, patient_id) if has_active_grant(db, doctor.id, patient_id) else None
-    if patient is None or patient.role.lower() != "patient":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="You do not have active access to this patient's records."
-        )
-    return patient
+    return patient_with_active_grant(db, doctor, patient_id)
 
 
 def _meta(summary: ClinicalSummary) -> dict:
