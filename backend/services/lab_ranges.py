@@ -23,6 +23,9 @@ _READING = (
 
 
 _TIME_UNIT = re.compile(r"^(?:hrs?|hours?|h|mins?|minutes?)\b")
+# Words between a test name and a number that show the number belongs to a different test:
+# "LDL/HDL ratio 3.1", "Creatinine Clearance 95", "Hb electrophoresis: HbA 97 %".
+_OTHER_TEST = re.compile(r"ratio|clearance|electrophoresis|excretion|index|\bhb[a-z]", re.IGNORECASE)
 
 # Every way reports name a blood glucose reading. All of them are checked, not just the first.
 GLUCOSE_ALIASES = [
@@ -58,8 +61,8 @@ def _readings(text: str, aliases: list[str], convert: Callable[[float, str], flo
     for alias in aliases:
         pattern = _READING.format(alias=re.escape(alias))
         for match in re.finditer(pattern, compact, flags=re.IGNORECASE):
-            if "ratio" in match.group("gap").lower():
-                continue  # "LDL/HDL ratio 3.1" is not an LDL or HDL value
+            if _OTHER_TEST.search(match.group("gap")):
+                continue  # a ratio, a clearance or an electrophoresis fraction is not this test's value
             unit = match.group("unit").strip().lower()
             if _TIME_UNIT.match(unit):
                 continue  # "Blood sugar 2 hours after meal": 2 is a time, not a reading
@@ -143,7 +146,7 @@ class LabRange:
 
 
 LAB_RANGES = [
-    LabRange("HEMOGLOBIN", "Hemoglobin", ["hemoglobin", "haemoglobin", "hb"], "g/dL", 12.0, 17.5, hemoglobin_g_dl),
+    LabRange("HEMOGLOBIN", "Hemoglobin", ["hemoglobin", "haemoglobin", "hb"], "g/dL", 12.0, 17.5, hemoglobin_g_dl, all_readings=True),
     LabRange("WBC", "White blood cells", ["white blood cells", "white blood cell count", "wbc", "tlc"], "x10^9/L", 4.0, 11.0, per_nanolitre),
     LabRange("PLATELETS", "Platelets", ["platelet count", "platelets", "plt"], "x10^9/L", 150.0, 450.0, per_nanolitre),
     LabRange("GLUCOSE", "Glucose", GLUCOSE_ALIASES, "mg/dL", low=70.0, convert=glucose_mg_dl, all_readings=True),

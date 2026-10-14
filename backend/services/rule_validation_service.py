@@ -6,7 +6,6 @@ from services.lab_ranges import (
     check_lab_ranges,
     creatinine_mg_dl,
     glucose_mg_dl,
-    read_value,
     read_values,
 )
 
@@ -85,17 +84,19 @@ _BP_WITH_LABEL = re.compile(r"\b(?:bp|b\.p\.?|blood\s*pressure)\b[^0-9\n]{0,15}(
 _BP_WITH_UNIT = re.compile(r"\b(\d{2,3})\s*/\s*(\d{2,3})\s*mm\s*hg\b", re.I)
 
 
-def _blood_pressure(field_value: str, text: str) -> tuple[int, int, str] | None:
+def _blood_pressures(field_value: str, text: str) -> list[tuple[int, int, str]]:
+    """Every plausible blood pressure reading (the structured field and each one in the text)."""
     candidates = []
     field_match = re.search(r"(\d{2,3})\s*/\s*(\d{2,3})", field_value)
     if field_match:
         candidates.append(field_match)
-    candidates += [m for pattern in (_BP_WITH_LABEL, _BP_WITH_UNIT) for m in [pattern.search(text)] if m]
+    candidates += [m for pattern in (_BP_WITH_LABEL, _BP_WITH_UNIT) for m in pattern.finditer(text)]
+    readings: dict[tuple[int, int], tuple[int, int, str]] = {}
     for match in candidates:
         systolic, diastolic = int(match.group(1)), int(match.group(2))
         if 60 <= systolic <= 260 and 30 <= diastolic <= 160 and systolic > diastolic:  # plausible readings only
-            return systolic, diastolic, f"{systolic}/{diastolic}"
-    return None
+            readings.setdefault((systolic, diastolic), (systolic, diastolic, f"{systolic}/{diastolic}"))
+    return list(readings.values())
 
 
 def _converted_field(fields: dict[str, Any], keys: list[str], convert) -> tuple[float | None, str | None]:
@@ -126,13 +127,17 @@ def _glucose_readings(fields: dict[str, Any], text: str) -> list[tuple[float, st
     return unique
 
 
-def _lab_value(fields, keys, text, aliases, convert) -> tuple[float | None, str | None]:
+def _lab_values(fields, keys, text, aliases, convert) -> list[tuple[float, str]]:
+    """Every value of a test: the structured field and each reading in the text, without repeats."""
+    readings: list[tuple[float, str]] = []
     value, evidence = _converted_field(fields, keys, convert)
-    if value is None:
-        reading = read_value(text, aliases, convert)
-        if reading:
-            value, evidence = reading.value, reading.evidence
-    return value, evidence
+    if value is not None:
+        readings.append((value, evidence or ""))
+    readings += [(r.value, r.evidence) for r in read_values(text, aliases, convert)]
+    unique: dict[float, str] = {}
+    for value, evidence in readings:
+        unique.setdefault(value, evidence)
+    return list(unique.items())
 
 
 def _medicine_names(entities: list[dict[str, Any]], text: str) -> list[str]:
@@ -237,9 +242,11 @@ def validate_medical_rules(
         )
         status = _highest_status(status, "CAUTION")
 
-    blood_pressure = _blood_pressure(str(fields.get("blood_pressure") or ""), " ".join(source_text.split()))
-    if blood_pressure:
-        systolic, diastolic, bp_evidence = blood_pressure
+    # Every reading of creatinine, eGFR, hemoglobin and blood pressure is checked, like glucose: a
+    # repeat value (a second page, a second formula) was missed when only the first was read.
+    for systolic, diastolic, bp_evidence in _blood_pressures(
+        str(fields.get("blood_pressure") or ""), " ".join(source_text.split())
+    ):
         if systolic >= 180 or diastolic >= 120:
             severity = "HIGH_RISK"
         elif systolic >= 140 or diastolic >= 90:
@@ -258,8 +265,11 @@ def validate_medical_rules(
             status = _highest_status(status, severity)
 
     # umol/L values are converted to mg/dL; before, "Creatinine 88 umol/L" (normal) raised an alert.
-    creatinine, creatinine_evidence = _lab_value(fields, ["creatinine"], source_text, ["creatinine"], creatinine_mg_dl)
-    if creatinine is not None and creatinine > 1.3:
+    for creatinine, creatinine_evidence in _lab_values(
+        fields, ["creatinine"], source_text, ["creatinine"], creatinine_mg_dl
+    ):
+        if creatinine <= 1.3:
+            continue
         warnings.append(
             _warning(
                 "KIDNEY_RISK_CREATININE",
@@ -270,10 +280,9 @@ def validate_medical_rules(
         )
         status = _highest_status(status, "CAUTION")
 
-    egfr, egfr_evidence = _field_value(fields, ["egfr", "e_gfr"])
-    if egfr is None:
-        egfr, egfr_evidence = _value_near(source_text, ["egfr", "e-gfr"])
-    if egfr is not None and egfr < 60:
+    for egfr, egfr_evidence in _lab_values(fields, ["egfr", "e_gfr"], source_text, ["egfr", "e-gfr"], lambda v, _: v):
+        if egfr >= 60:
+            continue
         warnings.append(
             _warning(
                 "KIDNEY_RISK_EGFR",

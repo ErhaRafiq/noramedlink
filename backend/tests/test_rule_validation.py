@@ -131,3 +131,32 @@ def test_rule_result_sentence_never_calls_a_report_normal_or_safe(status, expect
 
     sentence = _rule_check_sentence({"status": status, "warnings": [{"severity": "CAUTION"}]})
     assert expected in sentence and "safe" not in sentence.lower()
+
+
+# Every reading of creatinine, eGFR, hemoglobin and blood pressure is checked (a repeat on a second
+# page or a second formula used to be missed), and a number belonging to a different test is not read.
+@pytest.mark.parametrize(
+    ("snippet", "code", "severity"),
+    [
+        ("Creatinine 1.0 mg/dL. Page 2. Repeat Creatinine 2.4 mg/dL.", "KIDNEY_RISK_CREATININE", "CAUTION"),
+        ("Creatinine Clearance 95 mL/min. Serum Creatinine 2.4 mg/dL.", "KIDNEY_RISK_CREATININE", "CAUTION"),
+        ("eGFR (MDRD) 70 mL/min. eGFR (CKD-EPI) 25 mL/min.", "KIDNEY_RISK_EGFR", "HIGH_RISK"),
+        ("Hemoglobin 13.5 g/dL. Repeat Hemoglobin 7.9 g/dL.", "HEMOGLOBIN_LOW", "CAUTION"),
+        ("BP 120/80 mmHg on arrival, BP 190/110 mmHg later.", "HYPERTENSION_INDICATOR", "HIGH_RISK"),
+    ],
+)
+def test_a_repeated_reading_is_checked(snippet, code, severity):
+    result = validate_medical_rules(f"{BASE} {snippet}")
+    assert code in codes(result)
+    assert result["status"] == severity
+
+
+@pytest.mark.parametrize(
+    "snippet",
+    [
+        "Creatinine Clearance 95 mL/min. Serum Creatinine 1.0 mg/dL.",  # 95 is the clearance
+        "Hb electrophoresis: HbA 97 %, HbA2 2.5 %. Hemoglobin 13.9 g/dL.",  # 97 is not a hemoglobin of 9.7
+    ],
+)
+def test_a_number_from_a_different_test_raises_nothing(snippet):
+    assert codes(validate_medical_rules(f"{BASE} {snippet}")) == {"NO_RULE_ALERTS"}
