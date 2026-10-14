@@ -1,0 +1,25 @@
+for_drug,alternative,use,reason,source
+class:NSAID,paracetamol,pain and fever,"Pain relief without the bleeding, kidney and heart risks of NSAIDs.",ONC-DDI
+omeprazole,pantoprazole,acid suppression,Pantoprazole interferes less with clopidogrel's activation.,FDA-LABEL (clopidogrel)
+esomeprazole,pantoprazole,acid suppression,Pantoprazole interferes less with clopidogrel's activation.,FDA-LABEL (clopidogrel)
+class:fluoroquinolone,amoxicillin,bacterial infection,A different antibiotic class; the choice depends on the infection.,FDA-LABEL (amoxicillin)
+class:fluoroquinolone,azithromycin,bacterial infection,A different antibiotic class; the choice depends on the infection.,FDA-LABEL (azithromycin)
+class:fluoroquinolone,cefixime,bacterial infection,A different antibiotic class; the choice depends on the infection.,FDA-LABEL (cefixime)
+class:macrolide,amoxicillin,bacterial infection,A different antibiotic class; the choice depends on the infection.,FDA-LABEL (amoxicillin)
+class:macrolide,cefixime,bacterial infection,A different antibiotic class; the choice depends on the infection.,FDA-LABEL (cefixime)
+class:penicillin,azithromycin,bacterial infection,A non-beta-lactam antibiotic for a penicillin allergy; the choice depends on the infection.,AAAAI-2022
+class:penicillin,cefixime,bacterial infection,Another class with low cross-reactivity with penicillin (the check still flags it).,AAAAI-2022
+class:cephalosporin,azithromycin,bacterial infection,A non-beta-lactam antibiotic; the choice depends on the infection.,AAAAI-2022
+class:sulfonylurea,sitagliptin,type 2 diabetes,A low risk of low blood sugar.,FDA-LABEL (sitagliptin)
+class:sulfonylurea,metformin,type 2 diabetes,A low risk of low blood sugar; first-line for type 2 diabetes.,FDA-LABEL (metformin)
+class:sulfonylurea,empagliflozin,type 2 diabetes,A low risk of low blood sugar.,FDA-LABEL (empagliflozin)
+metformin,sitagliptin,type 2 diabetes,Usable with reduced kidney function at an adjusted dose.,FDA-LABEL (sitagliptin)
+empagliflozin,sitagliptin,type 2 diabetes,Usable with reduced kidney function at an adjusted dose.,FDA-LABEL (sitagliptin)
+class:beta blocker,amlodipine,high blood pressure,Lowers blood pressure without affecting the airways.,GINA
+class:ACE inhibitor,amlodipine,high blood pressure,Lowers blood pressure without raising potassium.,FDA-LABEL (amlodipine)
+class:ARB,amlodipine,high blood pressure,Lowers blood pressure without raising potassium.,FDA-LABEL (amlodipine)
+hydrochlorothiazide,amlodipine,high blood pressure,Lowers blood pressure without raising uric acid.,FDA-LABEL (amlodipine)
+hydrochlorothiazide,losartan,high blood pressure,Lowers blood pressure and modestly lowers uric acid.,FDA-LABEL (losartan)
+tramadol,paracetamol,pain,Pain relief without tramadol's seizure risk.,FDA-LABEL (tramadol)
+carbamazepine,levetiracetam,epilepsy,Few drug interactions (no effect on warfarin).,FDA-LABEL (levetiracetam)
+phenytoin,levetiracetam,epilepsy,Few drug interactions (no effect on warfarin).,FDA-LABEL (levetiracetam)

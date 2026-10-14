@@ -1,0 +1,11 @@
+id,allergy_class,target,severity,effect,management,source
+AX-001,penicillin,class:penicillin,contraindicated,The same class as the recorded allergy.,Do not use; choose another class.,AAAAI-2022
+AX-002,penicillin,class:cephalosporin,moderate,Cross-reactivity is uncommon (about 1-2%) and higher with similar side chains.,"Use with caution, or choose another class; consider testing if the reaction history is unclear.",AAAAI-2022
+AX-003,cephalosporin,class:cephalosporin,contraindicated,The same class as the recorded allergy.,Do not use; choose another class.,AAAAI-2022
+AX-004,cephalosporin,class:penicillin,moderate,Cross-reactivity is uncommon and depends on side-chain similarity.,Use with caution or choose another class.,AAAAI-2022
+AX-005,NSAID,class:NSAID,contraindicated,NSAIDs (including aspirin) can cross-react in NSAID hypersensitivity.,Do not use; for pain prefer paracetamol.,AAAAI-2022
+AX-006,macrolide,class:macrolide,contraindicated,The same class as the recorded allergy.,Do not use; choose another class.,AAAAI-2022
+AX-007,fluoroquinolone,class:fluoroquinolone,contraindicated,The same class as the recorded allergy.,Do not use; choose another class.,AAAAI-2022
+AX-008,sulfonamide,furosemide,minor,Cross-reactivity between antibiotic and non-antibiotic sulfonamides is unlikely.,No change usually needed; check the reaction history.,AAAAI-2022
+AX-009,sulfonamide,hydrochlorothiazide,minor,Cross-reactivity between antibiotic and non-antibiotic sulfonamides is unlikely.,No change usually needed; check the reaction history.,AAAAI-2022
+AX-010,sulfonamide,class:sulfonylurea,minor,Cross-reactivity between antibiotic and non-antibiotic sulfonamides is unlikely.,No change usually needed; check the reaction history.,AAAAI-2022

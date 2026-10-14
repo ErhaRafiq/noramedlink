@@ -1,0 +1,5 @@
+factor,weight,description
+safety,0.5,"Worst alert for this patient after re-checking the alternative: none 1.0, minor 0.9, moderate 0.6, major 0.2 (contraindicated alternatives are never suggested)."
+renal_fit,0.2,"1.0 if no kidney or potassium rule applies to this patient, 0.6 if a dose adjustment or caution applies."
+previous_response,0.2,"1.0 taken before without a recorded problem, 0.6 never taken, 0.2 stopped or a side effect recorded."
+simplicity,0.1,"1.0 once daily, 0.8 twice daily, 0.6 three or more times a day."

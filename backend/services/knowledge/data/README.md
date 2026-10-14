@@ -17,7 +17,14 @@ with pandera.
 | `conditions.csv` | 31 | a condition with its ICD-10 code | entity extraction, ICSE flags |
 | `lab_tests.csv` | 48 | a lab test and the names labs print | entity extraction, lab rules |
 | `plain_terms.csv` | 152 | a medical term → everyday wording | patient summaries and alerts |
-| `sources.csv` | 8 | a source cited by the rows above | all tables |
+| `interactions.csv` | 31 | a drug-drug (or class-class) interaction | MSCIE |
+| `contraindications.csv` | 19 | a drug or class vs a condition or a lab threshold | MSCIE |
+| `allergy_cross_reactivity.csv` | 10 | an allergy class → a drug or class it affects | MSCIE |
+| `dose_limits.csv` | 23 | a medicine's usual maximum single and daily dose | MSCIE |
+| `duplicate_classes.csv` | 10 | a class where two medicines together is a duplicate | MSCIE |
+| `alternatives.csv` | 24 | a safer candidate for the same use | MSCIE |
+| `ranking_weights.csv` | 4 | a ranking factor and its weight (sums to 1) | MSCIE |
+| `sources.csv` | 14 | a source cited by the rows above | all tables |
 
 ## medicines.csv
 
@@ -65,3 +72,26 @@ with pandera.
   shorthand.
 - **Limitations:** English only; the app's own wording of standard patient-information meanings,
   awaiting clinician review.
+
+## Module 4 (MSCIE) tables
+
+Medicine references are a generic from `medicines.csv` or `class:<class>` (a class one of those
+medicines has); the schema tests reject any reference that does not exist. Severities:
+`contraindicated` and `major` are high risk (a doctor must write a justification to override),
+`moderate` is a caution, `minor` is information.
+
+- **interactions.csv** (`id`, `a`, `b`, `severity`, `effect`, `management`, `source`): 31 pairs,
+  mostly from the ONC high-priority list (Phansalkar 2012) and FDA prescribing information.
+  Limitations: a curated subset for about 60 medicines, not a complete interaction database.
+- **contraindications.csv** (`id`, `drug`, `exclude`, `condition` or `lab_test`/`lab_operator`/
+  `lab_value`, `severity`, ...): drug-disease and drug-lab rules (eGFR, potassium) from FDA labels,
+  KDIGO, GINA and the EMA domperidone review. Lab tests are the shared lab rules' names.
+- **allergy_cross_reactivity.csv**: same-class and cross-class rules from the 2022 drug-allergy
+  practice parameter (penicillin-cephalosporin cross-reactivity is uncommon: a caution).
+- **dose_limits.csv**: usual adult maximum single and daily doses (mg) from FDA labels and the EMA;
+  no paediatric, weight-based or renal dosing (renal rules are in contraindications.csv).
+- **duplicate_classes.csv**: classes where two medicines together duplicate the effect.
+- **alternatives.csv**: candidates for the same use, each re-checked against the patient before it
+  is shown; a contraindicated candidate is never suggested. Choosing among them is clinical.
+- **ranking_weights.csv**: the transparent scoring weights (safety 0.5, kidney fit 0.2, previous
+  response 0.2, simplicity 0.1); the evaluation notebook shows how the ranking changes with them.

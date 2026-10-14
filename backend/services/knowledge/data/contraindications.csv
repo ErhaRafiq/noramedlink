@@ -1,0 +1,20 @@
+id,drug,exclude,condition,lab_test,lab_operator,lab_value,severity,effect,management,source
+CI-001,metformin,,,eGFR,<,30,contraindicated,Risk of lactic acidosis when the kidneys clear metformin poorly.,Do not use metformin.,FDA-LABEL (metformin)
+CI-002,metformin,,,eGFR,<,45,moderate,Starting metformin is not recommended at an eGFR of 30-45.,"Do not start; if already taking it, review the benefit and the dose.",FDA-LABEL (metformin)
+CI-003,class:NSAID,aspirin,chronic kidney disease,,,,major,NSAIDs can worsen kidney function.,Avoid; for pain prefer paracetamol.,KDIGO
+CI-004,class:NSAID,aspirin,,eGFR,<,30,major,NSAIDs can worsen kidney function.,Avoid; for pain prefer paracetamol.,KDIGO
+CI-005,class:NSAID,aspirin,heart failure,,,,major,NSAIDs cause fluid retention and can worsen heart failure.,Avoid.,FDA-LABEL (ibuprofen)
+CI-006,class:NSAID,aspirin,ischaemic heart disease,,,,moderate,NSAIDs raise the risk of heart attack and stroke.,Use the lowest dose for the shortest time; consider paracetamol.,FDA-LABEL (ibuprofen)
+CI-007,class:NSAID,,asthma,,,,moderate,NSAIDs and aspirin can trigger bronchospasm in some people with asthma.,Ask about previous reactions to aspirin or NSAIDs.,FDA-LABEL (ibuprofen)
+CI-008,class:beta blocker,,asthma,,,,moderate,Beta blockers (even cardioselective ones) can trigger bronchospasm.,"Avoid if possible; if needed, a cardioselective one at a low dose, with review.",GINA
+CI-009,spironolactone,,,Potassium,>,5,contraindicated,Starting spironolactone with potassium over 5.0 mmol/L risks dangerous hyperkalaemia.,Do not start.,FDA-LABEL (spironolactone)
+CI-010,class:ACE inhibitor,,,Potassium,>,5.5,major,ACE inhibitors raise potassium further.,Avoid or correct potassium first; monitor.,FDA-LABEL (lisinopril)
+CI-011,class:ARB,,,Potassium,>,5.5,major,ARBs raise potassium further.,Avoid or correct potassium first; monitor.,FDA-LABEL (losartan)
+CI-012,empagliflozin,,,eGFR,<,30,moderate,Not recommended to start for blood sugar control below an eGFR of 30.,Choose another option for blood sugar control.,FDA-LABEL (empagliflozin)
+CI-013,class:sulfonylurea,,chronic kidney disease,,,,moderate,Higher risk of low blood sugar when the kidneys clear the medicine slowly.,Start low and monitor blood sugar.,FDA-LABEL (glimepiride)
+CI-014,class:fluoroquinolone,,epilepsy,,,,moderate,Fluoroquinolones can lower the seizure threshold.,Avoid if another antibiotic is suitable.,FDA-LABEL (ciprofloxacin)
+CI-015,tramadol,,epilepsy,,,,major,Tramadol can cause seizures.,Avoid; choose another analgesic.,FDA-LABEL (tramadol)
+CI-016,prednisolone,,diabetes mellitus,,,,moderate,Steroids raise blood sugar.,Monitor blood sugar; diabetes treatment may need adjusting.,FDA-LABEL (prednisolone)
+CI-017,hydrochlorothiazide,,gout,,,,moderate,Thiazides raise uric acid and can trigger gout.,Consider another antihypertensive.,FDA-LABEL (hydrochlorothiazide)
+CI-018,domperidone,,heart failure,,,,major,Risk of a serious abnormal heart rhythm in people with heart disease.,Avoid.,EMA-DOMP
+CI-019,sitagliptin,,,eGFR,<,45,moderate,Sitagliptin needs a lower dose when kidney function is reduced.,"Use 50 mg daily at an eGFR of 30-45, and 25 mg daily below 30.",FDA-LABEL (sitagliptin)

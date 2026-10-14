@@ -1,0 +1,11 @@
+class,severity,effect,source
+anticoagulant,major,Two anticoagulants together greatly raise bleeding risk (only when bridging under supervision).,FDA-LABEL (warfarin)
+NSAID,major,Two NSAIDs add stomach and kidney risk without more benefit.,FDA-LABEL (ibuprofen)
+sulfonylurea,major,Two sulfonylureas add low-blood-sugar risk without more benefit.,FDA-LABEL (glimepiride)
+ACE inhibitor,moderate,Two ACE inhibitors duplicate the same effect.,FDA-LABEL (lisinopril)
+ARB,moderate,Two ARBs duplicate the same effect.,FDA-LABEL (losartan)
+beta blocker,moderate,Two beta blockers duplicate the same effect (slow heart rate and low blood pressure).,FDA-LABEL (bisoprolol)
+statin,moderate,Two statins duplicate the same effect and raise the risk of muscle side effects.,FDA-LABEL (atorvastatin)
+proton pump inhibitor,moderate,Two PPIs duplicate the same effect.,FDA-LABEL (omeprazole)
+fluoroquinolone,moderate,Two antibiotics of the same class duplicate the same effect.,FDA-LABEL (ciprofloxacin)
+antihistamine,moderate,Two antihistamines add drowsiness without more benefit.,FDA-LABEL (cetirizine)

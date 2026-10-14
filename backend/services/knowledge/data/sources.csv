@@ -7,3 +7,9 @@ NHS,"NHS Health A to Z, nhs.uk."
 PK-PACK,Brand name and active ingredient as printed on the product pack sold in Pakistan; verify against the DRAP (Drug Regulatory Authority of Pakistan) product registration.
 RX,Common prescription abbreviations as written on prescriptions.
 WHO-ATC,"WHO Collaborating Centre for Drug Statistics Methodology, ATC/DDD Index (atcddd.fhi.no). Generic names are WHO International Nonproprietary Names (INN)."
+ONC-DDI,"Phansalkar S, et al. High-priority drug-drug interactions for use in electronic health records. J Am Med Inform Assoc. 2012;19(5):735-743 (the ONC high-priority list)."
+FDA-LABEL,"U.S. FDA prescribing information (DailyMed / openFDA drug label) for the named medicine: Contraindications, Warnings, Drug Interactions, Dosage and Administration."
+KDIGO,"KDIGO clinical practice guidelines (CKD evaluation and management; diabetes management in CKD), kdigo.org."
+EMA-DOMP,"European Medicines Agency, PRAC review of domperidone (2014): cardiac risks, a maximum of 30 mg a day in adults, contraindications."
+GINA,"Global Initiative for Asthma, GINA report (ginasthma.org): medicines that can worsen asthma, including beta blockers."
+AAAAI-2022,"Khan DA, et al. Drug allergy: a 2022 practice parameter update. J Allergy Clin Immunol. 2022;150(6):1333-1393."
