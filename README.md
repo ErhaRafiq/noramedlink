@@ -100,11 +100,14 @@ Open **http://localhost:3000**.
    `backend/uploads/<patient id>/<department>/`. Files are served only to the owner, or to a
    doctor with an active access grant, through short-lived signed links.
 3. The text is read on the server. A PDF's own text layer is used when it has one; scanned pages and
-   photos are read with local OCR (RapidOCR). Nothing is sent to an outside service unless
-   `OCR_SPACE_API_KEY` is set, in which case OCR.space is used instead. The first upload downloads the
-   OCR model once (about 9 MB, checksum-verified) into `backend/models/`; to fetch it ahead of time, run
-   `.\venv\Scripts\python.exe -m services.local_ocr --download` from `backend/`. A two-page scan takes
-   about 30-60 seconds on a laptop CPU.
+   photos are read with local OCR (RapidOCR 3 with the PP-OCRv5 models), and the text boxes are put
+   back into table rows so each value stays next to its test. Nothing is sent to an outside service
+   unless `OCR_SPACE_API_KEY` is set, in which case OCR.space is used instead. The first upload
+   downloads the two OCR models once (about 13 MB, checksum-verified) into `backend/models/`; to fetch
+   them ahead of time, run `.\venv\Scripts\python.exe -m services.local_ocr --download` from
+   `backend/`. A scanned page takes about 5-6 seconds on a laptop CPU. Numbers OCR was unsure of
+   (score under 0.90) are left exactly as read and listed on the report page as "check against the
+   original report"; the report is then at least CAUTION.
 4. Rule-based checks set the report's validation status (`SAFE`, `CAUTION`, `HIGH_RISK` or
    `NOT_VALIDATED`). With an OpenAI or Groq key the AI writes the summary; without one, the summary is
    built by fixed rules and quotes the report's own Impression/Conclusion. The page says which.

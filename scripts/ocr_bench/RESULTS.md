@@ -29,3 +29,13 @@ All engines read digital PDFs from the text layer (identical rows omitted).
 - `doctr` / `rows_doctr`: docTR 1.1 (fast_base + crnn_vgg16_bn), its own layout / our rows.
 
 The 6 values `rows_v5` misses are all "number right, unit misread or missing".
+
+## Implemented (ocr-quality)
+
+`rows_v5` is now the app's OCR (`backend/services/local_ocr.py` + `ocr_layout.py`), benchmarked as
+the `app` engine: identical text to `rows_v5`, 0 wrong numbers on digital, scan and harsh-scan
+samples, about 5.9 s per scanned page. The numbers are never changed; each cell keeps its OCR
+score, and numbers scored under 0.90 (reference ranges excluded) are listed as "check against the
+original report". On the 16 scanned samples that is 2 of 445 number cells: "3.7" (correct, but
+unsure) and a stray "8". The threshold will be revisited with the phone photos. "current" is kept
+as the baseline (RapidOCR 1.4 with PP-OCRv3, run from the bench venv).
