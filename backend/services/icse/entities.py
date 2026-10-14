@@ -17,7 +17,7 @@ from typing import Any
 
 from services import knowledge
 
-ENTITIES_VERSION = 1  # bump when extraction changes, so stored entities can be rebuilt
+ENTITIES_VERSION = 2  # bump when extraction changes, so stored entities can be rebuilt
 MENTIONED = "mentioned in report"
 SUGGESTION = "model suggestion"
 
@@ -181,13 +181,60 @@ def _first(pattern: re.Pattern, text: str) -> str | None:
 # --- conditions -----------------------------------------------------------------------------------
 
 
-def _conditions(text: str, excluded: list[tuple[int, int]]) -> list[dict[str, Any]]:
+# Family history is never the patient's own condition, positive or negated. A heading or a relative
+# ("Family history: DM", "Fam hx of HTN", "mother has asthma") marks the rest of the sentence; "in
+# (the) family" right after a condition marks that condition.
+_RELATIVES = (
+    r"mother|father|brother|sister|siblings?|parents?|grandmother|grandfather|grandparents?|aunt|uncle|"
+    r"son|daughter|cousin"
+)
+_FAMILY_START = re.compile(
+    r"\b(?:family\s+history|fam(?:ily)?\.?\s*hx|fhx|f/h|family\s+h/o)\b|"
+    rf"\b(?:{_RELATIVES})s?(?:'s)?\s*(?::|-|\b(?:has|had|have|with|is|was|were|suffers? from|suffered from|"
+    r"died of|died from|diagnosed with|known case of|k/c/o)\b)",
+    re.IGNORECASE,
+)
+_SENTENCE_END = re.compile(r"\.(?!\d)|[;\n]|\b(?:patient|pt)\b", re.IGNORECASE)  # "... and patient has HTN"
+_IN_FAMILY_AFTER = re.compile(r"^\W{0,3}(?:in (?:the )?family|runs in (?:the )?family)\b", re.IGNORECASE)
+_RELATIVE = re.compile(rf"\b({_RELATIVES})s?\b", re.IGNORECASE)
+
+
+def _family_spans(text: str) -> list[tuple[int, int]]:
+    spans = []
+    for match in _FAMILY_START.finditer(text):
+        end = _SENTENCE_END.search(text, match.end())
+        spans.append((match.start(), end.start() if end else len(text)))
+    return spans
+
+
+def _in_family(text: str, start: int, end: int, family: list[tuple[int, int]]) -> bool:
+    return any(s <= start < e for s, e in family) or bool(_IN_FAMILY_AFTER.search(text[end : end + 30]))
+
+
+def _conditions(text: str, excluded: list[tuple[int, int]], family: list[tuple[int, int]]) -> list[dict[str, Any]]:
     entities = []
     for mention in knowledge.find_conditions(text):
         if any(s <= mention.start < e for s, e in excluded):
             continue
         before = _clause_before(text, mention.start, 80)
         negated = _negated(text, mention.start, mention.end)
+        if _in_family(text, mention.start, mention.end, family):
+            span_start = next((s for s, e in family if s <= mention.start < e), mention.start)
+            relative = _RELATIVE.search(text[span_start : mention.start])
+            entities.append(
+                {
+                    "type": "family_history",  # a separate type: never read as the patient's condition
+                    "name": mention.info.name,
+                    "relative": relative.group(1).lower() if relative else None,
+                    "negated": negated,
+                    "text": mention.text,
+                    "position": mention.start,
+                    "certainty": MENTIONED,
+                    "method": "knowledge base",
+                    "confidence": None,
+                }
+            )
+            continue
         entities.append(
             {
                 "type": "condition",
@@ -314,11 +361,15 @@ def _entity(kind: str, name: str, match: re.Match, **extra) -> dict[str, Any]:
 def extract_entities(text: str, biobert_entities: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
     """All typed entities in one report's text (identifiers already removed), in text order."""
     text = text or ""
+    family = _family_spans(text)
     allergies, allergy_spans = _allergies(text)
+    # A relative's allergy or medicine ("mother allergic to penicillin", "father on insulin") is not
+    # the patient's: dropped.
+    allergies = [a for a in allergies if not any(s <= a["position"] < e for s, e in family)]
     entities = [
         *_test_results(text),
-        *_medications(text, allergy_spans),
-        *_conditions(text, allergy_spans),
+        *_medications(text, allergy_spans + family),
+        *_conditions(text, allergy_spans, family),
         *allergies,
     ]
     entities.sort(key=lambda e: e["position"] if e["position"] is not None else 0)

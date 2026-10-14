@@ -128,6 +128,49 @@ def test_negation_does_not_cross_into_the_next_clause():
     assert conditions["hypertension"]["negated"] is False
 
 
+# --- family history ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "name", "relative"),
+    [
+        ("Family history of diabetes.", "diabetes mellitus", None),
+        ("Fam hx of HTN.", "hypertension", None),
+        ("FHx: asthma", "asthma", None),
+        ("Family history: father DM, mother HTN", "diabetes mellitus", "father"),
+        ("Mother has asthma.", "asthma", "mother"),
+        ("Father: IHD", "ischaemic heart disease", "father"),
+        ("Brother diagnosed with epilepsy.", "epilepsy", "brother"),
+        ("Diabetes runs in the family.", "diabetes mellitus", None),
+    ],
+)
+def test_family_history_is_never_the_patients_condition(text, name, relative):
+    entities = extract_entities(text)
+    assert of_type(entities, "condition") == []
+    family = by_name(entities, "family_history")
+    assert family[name]["relative"] == relative
+
+
+def test_negated_family_history_is_not_a_negated_patient_condition():
+    entities = extract_entities("No DM in family.")
+    assert of_type(entities, "condition") == []
+    assert by_name(entities, "family_history")["diabetes mellitus"]["negated"] is True
+
+
+def test_family_history_ends_with_its_sentence_and_the_patients_own_conditions_stay():
+    entities = extract_entities(
+        "Family history: mother has DM. Known case of HTN.\nFather has IHD and patient has asthma."
+    )
+    assert set(by_name(entities, "condition")) == {"hypertension", "asthma"}
+    assert set(by_name(entities, "family_history")) == {"diabetes mellitus", "ischaemic heart disease"}
+
+
+def test_a_relatives_medicine_or_allergy_is_not_the_patients():
+    entities = extract_entities("Family history: mother on insulin, allergic to penicillin.\nTab Metformin 500 mg BD")
+    assert [m["name"] for m in of_type(entities, "medication")] == ["metformin"]
+    assert of_type(entities, "allergy") == []
+
+
 # --- allergies --------------------------------------------------------------------------------
 
 

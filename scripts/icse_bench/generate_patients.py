@@ -144,6 +144,19 @@ def note(rng: random.Random, patient: dict, day: date, kind: str) -> Report:
     report.add(f"No history of {first[0]}. {second[0][0].upper() + second[0][1:]} ruled out on previous workup.")
     report.expect("condition", first[1], negated=True)
     report.expect("condition", second[1], negated=True)
+    taken = {c[1] for c in patient["conditions"]} | {first[1], second[1]}
+    family_text, family_name = rng.choice([c for c in CONDITIONS if c[1] not in taken])
+    relative = rng.choice(["mother", "father", "brother", "sister"])
+    report.add(
+        rng.choice(
+            [
+                f"Family history: {relative} has {family_text}.",
+                f"Fam hx of {family_text} ({relative}).",
+                f"{relative.capitalize()} is a known case of {family_text}.",
+            ]
+        )
+    )
+    report.expect("family_history", family_name)
     report.add(
         rng.choice(["Denies chest pain or fever.", "Complains of fatigue for two weeks.", "No shortness of breath."])
     )

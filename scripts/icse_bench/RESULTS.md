@@ -18,15 +18,20 @@ fairer measure.
 
 | | Precision | Recall | F1 |
 |---|---|---|---|
-| Rules + knowledge base | 100% (372/372) | 100% | 100% |
-| With BioBERT suggestions | 87.5% (53 extra) | 100% | 93.4% |
+| Rules + knowledge base | 100% (383/383) | 100% | 100% |
+| With BioBERT suggestions | 88.5% (50 extra) | 100% | 93.9% |
 
-- Dose 89/89, frequency 89/89, unit 168/168, the report's own H/L flag 82/82.
-- BioBERT added 44 medicine, 9 condition and 20 symptom suggestions. Medicine precision fell from
-  100% to 69%.
+- Dose 85/85, frequency 85/85, unit 168/168, the report's own H/L flag 78/78.
+- Family history ("Family history: mother has X", "Fam hx of X (father)", "Brother is a known case
+  of X"): 18/18 recorded as `family_history`, none as a patient condition.
+- BioBERT added 45 medicine, 5 condition and 19 symptom suggestions. Medicine precision fell from
+  100% to 68%.
 - The texts contain 36 conditions and free-text medicines that are deliberately outside the
-  knowledge base. The rules find none of them, by design. BioBERT found 18, and they are labelled
+  knowledge base. The rules find none of them, by design. BioBERT found 12, and they are labelled
   "model suggestion" with confidence ≤ 0.5.
+
+(Numbers from the Batch 2 generator, which added family-history lines; Batch 1's run had 372
+entities and the same 100%.)
 
 ## 1b. Hand-written harder phrasing (5 snippets, 38 entities)
 
@@ -35,6 +40,7 @@ fairer measure.
 | First run (held out, before any fix) | 94.4% | 89.5% | 91.9% |
 | After two general fixes | 94.7% | 94.7% | 94.7% |
 | After fixes, with BioBERT suggestions | 94.7% | 94.7% | 94.7% |
+| After family history (Batch 2) | 94.7% | 94.7% | 94.7% |
 
 The two fixes were the allergy phrasing "sensitive to / hypersensitivity to" (with "(rash)" no
 longer read as part of the allergen) and the condition names "Hep B / Hep C". Once these fixes
@@ -42,7 +48,9 @@ were made, the set is no longer held out.
 
 Remaining errors, left as known limitations:
 
-- "No DM in family" is read as a negated patient condition. Family history is not separated yet.
+- "No DM in family" (fixed in Batch 2): now recorded as negated `family_history`, not as a patient
+  condition. The ground truth predates that type, so the benchmark still counts it as one extra;
+  the ground truth was not edited.
 - "Pt denies TB contact" is read as negated tuberculosis.
 - "TC 240" and "TG 310" in the middle of a sentence are missed. Short abbreviations count only at
   the start of a table row, to avoid false matches, so the error is a miss rather than a wrong

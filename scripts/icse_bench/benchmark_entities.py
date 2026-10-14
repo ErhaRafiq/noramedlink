@@ -24,7 +24,7 @@ from services import knowledge  # noqa: E402
 from services.biobert_service import extract_medical_entities  # noqa: E402
 from services.icse.entities import extract_entities  # noqa: E402
 
-TYPES = ["test_result", "medication", "condition", "allergy", "allergy_status"]
+TYPES = ["test_result", "medication", "condition", "family_history", "allergy", "allergy_status"]
 
 
 def key(entity: dict) -> tuple:
