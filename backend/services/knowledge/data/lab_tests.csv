@@ -1,0 +1,49 @@
+name,aliases,row_abbreviations,panel
+Hemoglobin,hemoglobin;haemoglobin,Hb;HB;HGB,CBC
+RBC Count,rbc count;red blood cell count;red cell count,RBC,CBC
+Hematocrit,hematocrit;haematocrit;packed cell volume,HCT;PCV,CBC
+MCV,mean corpuscular volume,MCV,CBC
+MCH,mean corpuscular hemoglobin,MCH,CBC
+MCHC,mean corpuscular hemoglobin concentration,MCHC,CBC
+WBC Count,wbc count;white blood cell count;white blood cells;total leucocyte count;total leukocyte count,WBC;TLC,CBC
+Platelet Count,platelet count;platelets,PLT,CBC
+Neutrophils,neutrophils,,CBC
+Lymphocytes,lymphocytes,,CBC
+Monocytes,monocytes,,CBC
+Eosinophils,eosinophils,,CBC
+ESR,erythrocyte sedimentation rate,ESR,CBC
+Fasting Blood Sugar,fasting blood sugar;fasting blood glucose;fasting glucose;fasting plasma glucose;fasting sugar,FBS;FPG,Glucose
+Random Blood Sugar,random blood sugar;random blood glucose;random glucose;random sugar,RBS,Glucose
+Post Prandial Blood Sugar,post prandial blood sugar;postprandial blood sugar;post prandial glucose;postprandial glucose;post prandial,PPBS,Glucose
+Blood Glucose,blood glucose;blood sugar;serum glucose;plasma glucose;glucose;sugar,,Glucose
+HbA1c,hba1c;hb a1c;glycated hemoglobin;glycosylated hemoglobin,,Glucose
+Urea,urea;blood urea;serum urea,,Kidney
+Blood Urea Nitrogen,blood urea nitrogen;urea nitrogen,BUN,Kidney
+Creatinine,creatinine;serum creatinine,,Kidney
+eGFR,egfr;e-gfr;estimated gfr,,Kidney
+Uric Acid,uric acid;serum uric acid,,Kidney
+Sodium,sodium;serum sodium,Na,Electrolytes
+Potassium,potassium;serum potassium,K,Electrolytes
+Chloride,chloride;serum chloride,Cl,Electrolytes
+Total Bilirubin,total bilirubin;bilirubin total;bilirubin,,Liver
+Direct Bilirubin,direct bilirubin;conjugated bilirubin,,Liver
+ALT,alt (sgpt);alanine aminotransferase;sgpt,ALT,Liver
+AST,ast (sgot);aspartate aminotransferase;sgot,AST,Liver
+Alkaline Phosphatase,alkaline phosphatase,ALP,Liver
+Albumin,albumin;serum albumin,,Liver
+Total Protein,total protein,,Liver
+GGT,gamma gt;gamma glutamyl transferase,GGT,Liver
+Total Cholesterol,total cholesterol;serum cholesterol;cholesterol,,Lipid
+LDL Cholesterol,ldl cholesterol;ldl-c;ldl,,Lipid
+HDL Cholesterol,hdl cholesterol;hdl-c;hdl,,Lipid
+VLDL Cholesterol,vldl cholesterol;vldl,,Lipid
+Triglycerides,triglycerides;triglyceride,TG,Lipid
+TSH,tsh;thyroid stimulating hormone,,Thyroid
+Free T4,free t4;ft4,,Thyroid
+Free T3,free t3;ft3,,Thyroid
+Vitamin D,vitamin d;25-oh vitamin d;25 hydroxy vitamin d,,Other
+Vitamin B12,vitamin b12,,Other
+Ferritin,ferritin;serum ferritin,,Other
+CRP,c-reactive protein;c reactive protein,CRP,Other
+Oxygen Saturation,oxygen saturation;spo2;sp02,,Vitals
+Troponin,troponin;troponin i;troponin t,,Cardiac

@@ -1,0 +1,153 @@
+aliases,abbreviations,plain,explain,source
+complete blood count;complete blood picture;full blood count,CBC;CBP;FBC,full blood count,A blood test that counts the different cells in your blood.,MEDLINEPLUS
+hemoglobin;haemoglobin,Hb;HB;HGB;Hgb,oxygen-carrying blood protein,The protein in red blood cells that carries oxygen around your body.,MEDLINEPLUS
+rbc count;red blood cell count;red cell count;erythrocytes,RBC,red cell count,"How many red blood cells, the cells that carry oxygen, are in your blood.",MEDLINEPLUS
+hematocrit;haematocrit;packed cell volume,HCT;PCV,share of blood made of red cells,How much of your blood is made up of red blood cells.,MEDLINEPLUS
+mean corpuscular volume,MCV,average red cell size,The average size of your red blood cells.,MEDLINEPLUS
+mean corpuscular hemoglobin;mean corpuscular haemoglobin,MCH,average oxygen protein per red cell,How much oxygen-carrying protein each red blood cell holds on average.,MEDLINEPLUS
+mean corpuscular hemoglobin concentration;mean corpuscular haemoglobin concentration,MCHC,how packed red cells are with oxygen protein,How concentrated the oxygen-carrying protein is inside your red blood cells.,MEDLINEPLUS
+red cell distribution width,RDW,variation in red cell size,How much your red blood cells differ in size from one another.,MEDLINEPLUS
+wbc count;white blood cell count;total leucocyte count;total leukocyte count;leukocytes;leucocytes,WBC;TLC,white cell count,"How many white blood cells, the cells that fight infection, are in your blood.",MEDLINEPLUS
+platelet count;platelets;thrombocytes,PLT,clotting cell count,How many of the small cells that help blood clot are in your blood.,MEDLINEPLUS
+neutrophils;polymorphs,,main infection-fighting white cells,The most common white blood cells; they fight bacteria.,MEDLINEPLUS
+lymphocytes,,virus-fighting white cells,White blood cells that help fight viruses and make antibodies.,MEDLINEPLUS
+monocytes,,clean-up white cells,White blood cells that remove germs and dead cells.,MEDLINEPLUS
+eosinophils,,allergy-related white cells,White blood cells linked to allergies and some infections.,MEDLINEPLUS
+basophils,,rare allergy-related white cells,A small group of white blood cells involved in allergic reactions.,MEDLINEPLUS
+erythrocyte sedimentation rate;sedimentation rate,ESR,blood settling rate (an inflammation sign),How fast red blood cells settle in a tube; a faster rate can be a sign of inflammation.,MEDLINEPLUS
+c-reactive protein;c reactive protein,CRP,inflammation marker,A protein the liver makes when there is inflammation in the body.,MEDLINEPLUS
+fasting blood sugar;fasting blood glucose;fasting glucose;fasting plasma glucose;fasting sugar,FBS;FPG,blood sugar after not eating,Your blood sugar measured after not eating for about 8 hours.,MEDLINEPLUS
+random blood sugar;random blood glucose;random glucose;random sugar,RBS,blood sugar at any time of day,"Your blood sugar measured at any time, whether or not you have eaten.",MEDLINEPLUS
+post prandial blood sugar;postprandial blood sugar;post prandial glucose;postprandial glucose;post prandial;postprandial,PPBS;PPG,blood sugar after a meal,Your blood sugar measured about two hours after eating.,MEDLINEPLUS
+glucose;blood glucose;serum glucose;plasma glucose,,blood sugar,"The amount of sugar in your blood, your body's main source of energy.",MEDLINEPLUS
+hba1c;hb a1c;glycated hemoglobin;glycated haemoglobin;glycosylated hemoglobin;a1c,,average blood sugar over about 3 months,A blood test that shows your average blood sugar over the past two to three months.,MEDLINEPLUS
+urea;blood urea;serum urea,,kidney waste (urea),A waste product from breaking down protein; the kidneys remove it from the blood.,MEDLINEPLUS
+blood urea nitrogen;urea nitrogen,BUN,kidney waste level,"A measure of urea, a waste product the kidneys remove from the blood.",MEDLINEPLUS
+creatinine;serum creatinine,,kidney waste level,A waste product from your muscles that healthy kidneys filter out of the blood.,MEDLINEPLUS
+egfr;e-gfr;estimated gfr;estimated glomerular filtration rate;glomerular filtration rate,GFR,kidney filtering rate,An estimate of how well your kidneys are filtering your blood.,MEDLINEPLUS
+creatinine clearance,,kidney clearing rate,How well the kidneys clear a waste product from the blood into the urine.,MEDLINEPLUS
+uric acid;serum uric acid,,uric acid (a waste linked to gout),A waste product in the blood; high levels can lead to gout.,MEDLINEPLUS
+serum sodium;sodium,Na,body salt (sodium) level,"A salt in your blood that helps control water balance, nerves and muscles.",MEDLINEPLUS
+serum potassium;potassium,,potassium (a salt for heart and muscles),"A salt in your blood that your heart, nerves and muscles need to work properly.",MEDLINEPLUS
+serum chloride;chloride,Cl,body salt (chloride) level,A salt in your blood that helps keep fluids balanced.,MEDLINEPLUS
+electrolytes;serum electrolytes,,body salts,"Salts and minerals in your blood, such as sodium and potassium.",MEDLINEPLUS
+liver function test;liver function tests,LFT;LFTs,liver tests,Blood tests that show how well your liver is working.,MEDLINEPLUS
+renal function test;renal function tests;kidney function test;kidney function tests,RFT;RFTs;KFT,kidney tests,Blood tests that show how well your kidneys are working.,MEDLINEPLUS
+total bilirubin;bilirubin total;bilirubin;serum bilirubin,,yellow pigment from old red cells,A yellow substance made when old red blood cells break down; the liver clears it.,MEDLINEPLUS
+direct bilirubin;conjugated bilirubin,,processed yellow pigment,The part of this yellow pigment that the liver has already processed.,MEDLINEPLUS
+alanine aminotransferase;alt (sgpt);sgpt,ALT,liver enzyme,An enzyme mostly found in the liver; it can rise when liver cells are irritated or damaged.,MEDLINEPLUS
+aspartate aminotransferase;ast (sgot);sgot,AST,liver and muscle enzyme,"An enzyme found in the liver, heart and muscles.",MEDLINEPLUS
+alkaline phosphatase,ALP,liver and bone enzyme,An enzyme found mainly in the liver and bones.,MEDLINEPLUS
+gamma gt;gamma glutamyl transferase;gamma-glutamyl transferase,GGT,liver enzyme (GGT),An enzyme mainly found in the liver and bile ducts.,MEDLINEPLUS
+serum albumin;albumin,,main blood protein,A protein made by the liver that keeps fluid in your blood vessels.,MEDLINEPLUS
+total protein;serum protein,,total blood protein,The total amount of protein in your blood.,MEDLINEPLUS
+lipid profile;lipid panel;lipids,,blood fats test,Blood tests that measure cholesterol and other fats in your blood.,MEDLINEPLUS
+total cholesterol;serum cholesterol;cholesterol,TC,total blood fat (cholesterol),"A waxy fat in your blood; your body needs some, but too much can build up in blood vessels.",MEDLINEPLUS
+ldl cholesterol;ldl-c;ldl;low density lipoprotein;low-density lipoprotein,LDL,"""bad"" cholesterol",The kind of cholesterol that can build up in the walls of blood vessels.,MEDLINEPLUS
+hdl cholesterol;hdl-c;hdl;high density lipoprotein;high-density lipoprotein,HDL,"""good"" cholesterol",The kind of cholesterol that helps carry other cholesterol away from blood vessels.,MEDLINEPLUS
+vldl cholesterol;vldl,VLDL,very low density cholesterol,A kind of cholesterol that mostly carries fats from food.,MEDLINEPLUS
+triglycerides;triglyceride;serum triglycerides,TG,blood fats from food,A type of fat in your blood that comes from food and stores energy.,MEDLINEPLUS
+thyroid stimulating hormone;thyroid-stimulating hormone;tsh,TSH,thyroid control hormone,A hormone from the brain that tells the thyroid gland how much hormone to make.,MEDLINEPLUS
+free t4;ft4;free thyroxine;thyroxine,T4,thyroid hormone (T4),"The main hormone made by the thyroid gland, which controls how your body uses energy.",MEDLINEPLUS
+free t3;ft3;triiodothyronine,T3,thyroid hormone (T3),An active thyroid hormone that controls how your body uses energy.,MEDLINEPLUS
+serum ferritin;ferritin,,stored iron,A protein that stores iron; it shows how much iron your body has in reserve.,MEDLINEPLUS
+serum iron,,iron in the blood,The amount of iron in your blood.,MEDLINEPLUS
+troponin;troponin i;troponin t,,heart muscle protein,A protein released into the blood when the heart muscle is under strain or damaged.,MEDLINEPLUS
+oxygen saturation;spo2;sp02,SpO2;SPO2,blood oxygen level,"How much oxygen your blood is carrying, usually measured with a clip on your finger.",MEDLINEPLUS
+urinalysis;urine routine examination;urine r/e;urine detailed report,UDR,urine test,"A test of your urine that looks at its colour, chemicals and cells.",MEDLINEPLUS
+pus cells,,white cells in urine,"White blood cells found in urine, which can be a sign of infection.",MEDLINEPLUS
+proteinuria,,protein in the urine,"Protein leaking into the urine, which can be a sign that the kidneys need checking.",MEDLINEPLUS
+glycosuria;glucosuria,,sugar in the urine,Sugar found in the urine.,MEDLINEPLUS
+hematuria;haematuria,,blood in the urine,Blood found in the urine.,NHS
+diabetes mellitus;type 2 diabetes mellitus;type 1 diabetes mellitus,DM;T2DM;T1DM,diabetes,A long-term condition where blood sugar is too high.,NHS
+hypertension;essential hypertension;hypertensive,HTN,high blood pressure,When the force of blood against the artery walls stays too high.,NHS
+hypotension,,low blood pressure,When blood pressure is lower than usual.,NHS
+chronic kidney disease;chronic renal failure;chronic renal disease,CKD,long-term kidney disease,When the kidneys slowly lose their ability to filter the blood over months or years.,NHS
+acute kidney injury;acute renal failure,AKI,sudden kidney problem,When the kidneys suddenly stop working as well as they should.,NHS
+chronic obstructive pulmonary disease,COPD,long-term lung disease that narrows the airways,A long-term lung condition that makes breathing harder.,NHS
+ischaemic heart disease;ischemic heart disease;coronary artery disease;coronary heart disease,IHD;CAD;CHD,heart disease from narrowed arteries,When the blood vessels that feed the heart become narrowed.,NHS
+myocardial infarction,MI,heart attack,When blood flow to part of the heart is suddenly blocked.,NHS
+heart failure;congestive heart failure;cardiac failure,CHF,weak heart pumping,When the heart does not pump blood around the body as well as it should.,NHS
+atrial fibrillation,AF,irregular heartbeat,A heart rhythm problem that makes the heartbeat irregular and often fast.,NHS
+cerebrovascular accident,CVA,stroke,When blood supply to part of the brain is cut off.,NHS
+hypothyroidism;hypothyroid,,underactive thyroid,When the thyroid gland does not make enough hormone.,NHS
+hyperthyroidism;thyrotoxicosis,,overactive thyroid,When the thyroid gland makes too much hormone.,NHS
+dyslipidaemia;dyslipidemia;hyperlipidaemia;hyperlipidemia;hypercholesterolaemia;hypercholesterolemia,,high blood fats,When the levels of cholesterol or other fats in the blood are not in balance.,NHS
+anaemia;anemia;iron deficiency anaemia;iron deficiency anemia,,low red blood cells (anaemia),When you have fewer red blood cells or less oxygen-carrying protein than usual.,NHS
+epilepsy;seizure disorder,,seizure condition,A condition of the brain that causes repeated seizures (fits).,NHS
+hepatitis b;chronic hepatitis b,HBV,hepatitis B (a liver infection),A virus that infects the liver.,NHS
+hepatitis c;chronic hepatitis c,HCV,hepatitis C (a liver infection),A virus that infects the liver.,NHS
+tuberculosis;pulmonary tuberculosis,TB,TB (a lung infection),A bacterial infection that mainly affects the lungs.,NHS
+non-alcoholic fatty liver disease;hepatic steatosis;fatty liver,NAFLD,fat build-up in the liver,When extra fat is stored in the liver.,NHS
+polycystic ovary syndrome;polycystic ovarian syndrome,PCOS,a hormone condition affecting the ovaries,A common condition that affects how the ovaries work.,NHS
+osteoarthritis,,wear-and-tear joint disease,A condition that makes joints painful and stiff over time.,NHS
+rheumatoid arthritis,,joint inflammation disease,"A condition where the body's defences attack the joints, causing pain and swelling.",NHS
+osteoporosis,,"thin, weak bones",A condition that makes bones weak and more likely to break.,NHS
+pneumonia,,chest infection in the lungs,An infection that causes swelling in the small air sacs of the lungs.,NHS
+urinary tract infection,UTI,urine infection,"An infection anywhere in the urinary system, such as the bladder.",NHS
+enteric fever,,typhoid fever,A bacterial infection spread through contaminated food or water.,NHS
+hyperglycaemia;hyperglycemia,,high blood sugar,When there is too much sugar in the blood.,NHS
+hypoglycaemia;hypoglycemia,,low blood sugar,When the sugar level in the blood drops too low.,NHS
+hyperkalaemia;hyperkalemia,,high potassium,When there is too much potassium in the blood.,NHS
+hypokalaemia;hypokalemia,,low potassium,When there is too little potassium in the blood.,NHS
+hyponatraemia;hyponatremia,,low body salt (sodium),When there is too little sodium in the blood.,NHS
+hypernatraemia;hypernatremia,,high body salt (sodium),When there is too much sodium in the blood.,NHS
+thrombocytopenia,,low clotting cells,When there are fewer clotting cells than usual in the blood.,NHS
+leukocytosis;leucocytosis,,high white cell count,When there are more white blood cells than usual.,MEDLINEPLUS
+leukopenia;leucopenia,,low white cell count,When there are fewer white blood cells than usual.,MEDLINEPLUS
+jaundice,,yellowing of the skin and eyes,"Yellow skin or eyes, often linked to the liver.",NHS
+tachycardia,,fast heartbeat,A heart rate faster than usual.,NHS
+bradycardia,,slow heartbeat,A heart rate slower than usual.,NHS
+dyspnoea;dyspnea,SOB,shortness of breath,Difficulty breathing or feeling out of breath.,NHS
+oedema;edema,,swelling from fluid,Swelling caused by fluid building up in the body.,NHS
+pleural effusion,,fluid around the lungs,Fluid collecting in the space around the lungs.,NHS
+effusion,,fluid build-up,Extra fluid collecting somewhere in the body.,MEDLINEPLUS
+cardiomegaly,,enlarged heart,A heart that looks bigger than usual on a scan or X-ray.,MEDLINEPLUS
+hepatomegaly,,enlarged liver,A liver that is bigger than usual.,MEDLINEPLUS
+splenomegaly,,enlarged spleen,A spleen that is bigger than usual.,MEDLINEPLUS
+hepatosplenomegaly,,enlarged liver and spleen,Both the liver and the spleen are bigger than usual.,MEDLINEPLUS
+cholelithiasis;gall stones;gallstones,,gallstones,Small stones that form in the gallbladder.,NHS
+cholecystitis,,swollen gallbladder,"Inflammation of the gallbladder, often caused by gallstones.",NHS
+nephrolithiasis;renal calculi;renal calculus;renal stones;urolithiasis,,kidney stones,Hard stones that form in the kidneys or urinary tract.,NHS
+hydronephrosis,,swollen kidney from blocked urine,Swelling of a kidney when urine cannot drain out properly.,NHS
+calculus;calculi,,stone,A small hard stone that forms inside an organ.,MEDLINEPLUS
+lesion;lesions,,area that looks different,An area of tissue that looks different from the tissue around it; it can have many causes.,MEDLINEPLUS
+opacity;opacities,,hazy area on the image,A cloudy or white area on an X-ray or scan.,MEDLINEPLUS
+consolidation,,filled-in area of lung,Part of the lung filled with fluid or other material instead of air.,MEDLINEPLUS
+infiltrate;infiltrates;infiltration,,patchy area in the lung,A patchy shadow on a chest image where something has filled the lung tissue.,MEDLINEPLUS
+nodule;nodules,,small lump,"A small, rounded lump of tissue.",MEDLINEPLUS
+cyst;cysts,,fluid-filled sac,A small sac filled with fluid.,NHS
+calcification;calcifications,,calcium deposit,A small build-up of calcium in body tissue.,MEDLINEPLUS
+degenerative changes;degenerative,,wear-and-tear changes,Changes that come with age and use over time.,MEDLINEPLUS
+stenosis,,narrowing,A narrowing of a passage or blood vessel in the body.,MEDLINEPLUS
+hypertrophy,,thickening,"When part of the body, such as a muscle, becomes thicker or larger.",MEDLINEPLUS
+atrophy,,shrinking,When part of the body becomes smaller or wastes away.,MEDLINEPLUS
+benign,,not cancer,Not cancer.,NHS
+malignant;malignancy,,cancerous,Cancerous; able to spread.,NHS
+bilateral,,on both sides,On both the left and the right side.,MEDLINEPLUS
+unilateral,,on one side,On one side only.,MEDLINEPLUS
+unremarkable,,nothing unusual seen,The doctor did not see anything unusual in that part.,MEDLINEPLUS
+impression,,doctor's conclusion,The reporting doctor's summary of what they found.,MEDLINEPLUS
+idiopathic,,of unknown cause,With no known cause.,MEDLINEPLUS
+asymptomatic,,without symptoms,Not causing any symptoms.,MEDLINEPLUS
+afebrile,,without fever,Not having a fever.,MEDLINEPLUS
+febrile,,with fever,Having a fever.,MEDLINEPLUS
+renal,,kidney,To do with the kidneys.,MEDLINEPLUS
+hepatic,,liver,To do with the liver.,MEDLINEPLUS
+cardiac,,heart,To do with the heart.,MEDLINEPLUS
+pulmonary,,lung,To do with the lungs.,MEDLINEPLUS
+electrocardiogram,ECG;EKG,heart tracing,A test that records the electrical activity of your heart.,NHS
+echocardiogram,Echo;ECHO,heart ultrasound,An ultrasound scan of the heart.,NHS
+ultrasonography;sonography,USG,ultrasound scan,A scan that uses sound waves to make pictures of the inside of the body.,NHS
+computed tomography,CT,detailed X-ray scan,A scan that uses X-rays and a computer to make detailed pictures of the inside of the body.,NHS
+magnetic resonance imaging,MRI,detailed magnetic scan,A scan that uses strong magnets to make detailed pictures of the inside of the body.,NHS
+known case of,K/C/O;KCO,known to have,The patient is already known to have this condition.,RX
+history of,H/O;h/o,history of,Has had this before.,RX
+complains of,C/O;c/o,complains of,The symptoms the patient reported.,RX
+no known drug allergies;no known allergies,NKDA;NKA,no known medicine allergies,No allergy to any medicine is known.,RX
+once daily;once a day,OD,once a day,Take it once each day.,RX
+twice daily;twice a day,BD;BID,twice a day,Take it two times each day.,RX
+thrice daily;three times a day,TDS;TID,three times a day,Take it three times each day.,RX
+four times a day,QID;QDS,four times a day,Take it four times each day.,RX
+at bedtime,HS,at bedtime,Take it at bedtime.,RX
+as needed;when required,PRN;SOS,only when needed,Take it only when you need it.,RX

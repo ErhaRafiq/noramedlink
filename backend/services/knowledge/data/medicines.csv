@@ -1,0 +1,60 @@
+generic,aliases,atc,classes,high_alert,source
+paracetamol,acetaminophen,N02BE01,analgesic;antipyretic,False,WHO-ATC
+ibuprofen,,M01AE01,NSAID;analgesic,False,WHO-ATC
+diclofenac,,M01AB05,NSAID;analgesic,False,WHO-ATC
+mefenamic acid,,M01AG01,NSAID;analgesic,False,WHO-ATC
+aspirin,acetylsalicylic acid,B01AC06,antiplatelet;NSAID;salicylate,False,WHO-ATC
+clopidogrel,,B01AC04,antiplatelet,False,WHO-ATC
+warfarin,,B01AA03,anticoagulant,True,WHO-ATC; high alert: ISMP
+heparin,,B01AB01,anticoagulant,True,WHO-ATC; high alert: ISMP
+enoxaparin,,B01AB05,anticoagulant,True,WHO-ATC; high alert: ISMP
+metformin,,A10BA02,antidiabetic;biguanide,False,WHO-ATC
+glimepiride,,A10BB12,antidiabetic;sulfonylurea,True,WHO-ATC; high alert: ISMP (sulfonylurea hypoglycaemics)
+gliclazide,,A10BB09,antidiabetic;sulfonylurea,True,WHO-ATC; high alert: ISMP (sulfonylurea hypoglycaemics)
+sitagliptin,,A10BH01,antidiabetic;DPP-4 inhibitor,False,WHO-ATC
+empagliflozin,,A10BK03,antidiabetic;SGLT2 inhibitor,False,WHO-ATC
+insulin,insulin glargine;insulin aspart;regular insulin;nph insulin;mixtard,A10A,antidiabetic;insulin,True,WHO-ATC (group A10A); high alert: ISMP
+amlodipine,,C08CA01,antihypertensive;calcium channel blocker,False,WHO-ATC
+losartan,,C09CA01,antihypertensive;ARB,False,WHO-ATC
+lisinopril,,C09AA03,antihypertensive;ACE inhibitor,False,WHO-ATC
+bisoprolol,,C07AB07,antihypertensive;beta blocker,False,WHO-ATC
+atenolol,,C07AB03,antihypertensive;beta blocker,False,WHO-ATC
+hydrochlorothiazide,hctz,C03AA03,diuretic;antihypertensive,False,WHO-ATC
+furosemide,frusemide,C03CA01,diuretic,False,WHO-ATC
+spironolactone,,C03DA01,diuretic,False,WHO-ATC
+atorvastatin,,C10AA05,statin;lipid-lowering,False,WHO-ATC
+rosuvastatin,,C10AA07,statin;lipid-lowering,False,WHO-ATC
+glyceryl trinitrate,nitroglycerin;nitroglycerine;gtn,C01DA02,nitrate;antianginal,False,WHO-ATC
+isosorbide mononitrate,,C01DA14,nitrate;antianginal,False,WHO-ATC
+sildenafil,,G04BE03,PDE5 inhibitor,False,WHO-ATC
+omeprazole,,A02BC01,proton pump inhibitor,False,WHO-ATC
+esomeprazole,,A02BC05,proton pump inhibitor,False,WHO-ATC
+pantoprazole,,A02BC02,proton pump inhibitor,False,WHO-ATC
+domperidone,,A03FA03,antiemetic,False,WHO-ATC
+metronidazole,,P01AB01,antibiotic;antiprotozoal,False,WHO-ATC
+amoxicillin,amoxycillin,J01CA04,antibiotic;penicillin,False,WHO-ATC
+amoxicillin and clavulanic acid,co-amoxiclav;amoxicillin clavulanate;amoxicillin/clavulanic acid,J01CR02,antibiotic;penicillin,False,WHO-ATC
+benzylpenicillin,penicillin g,J01CE01,antibiotic;penicillin,False,WHO-ATC
+azithromycin,,J01FA10,antibiotic;macrolide,False,WHO-ATC
+ciprofloxacin,,J01MA02,antibiotic;fluoroquinolone,False,WHO-ATC
+levofloxacin,,J01MA12,antibiotic;fluoroquinolone,False,WHO-ATC
+ceftriaxone,,J01DD04,antibiotic;cephalosporin,False,WHO-ATC
+cefixime,,J01DD08,antibiotic;cephalosporin,False,WHO-ATC
+cefradine,cephradine,J01DB09,antibiotic;cephalosporin,False,WHO-ATC
+salbutamol,albuterol,R03AC02,bronchodilator,False,WHO-ATC
+montelukast,,R03DC03,antiasthmatic,False,WHO-ATC
+prednisolone,,H02AB06,corticosteroid,False,WHO-ATC
+levothyroxine,thyroxine;l-thyroxine,H03AA01,thyroid hormone,False,WHO-ATC
+carbimazole,,H03BB01,antithyroid,False,WHO-ATC
+loratadine,,R06AX13,antihistamine,False,WHO-ATC
+cetirizine,,R06AE07,antihistamine,False,WHO-ATC
+tramadol,,N02AX02,opioid;analgesic,True,WHO-ATC; high alert: ISMP (opioids)
+pregabalin,,N03AX16,antiepileptic;neuropathic pain,False,WHO-ATC
+valproic acid,sodium valproate;valproate,N03AG01,antiepileptic,False,WHO-ATC
+levetiracetam,,N03AX14,antiepileptic,False,WHO-ATC
+carbamazepine,,N03AF01,antiepileptic,False,WHO-ATC
+phenytoin,,N03AB02,antiepileptic,False,WHO-ATC
+folic acid,,B03BB01,vitamin,False,WHO-ATC
+ferrous sulfate,ferrous sulphate,B03AA07,iron supplement,False,WHO-ATC
+colecalciferol,cholecalciferol;vitamin d3,A11CC05,vitamin,False,WHO-ATC
+calcium carbonate,,A12AA04,mineral supplement,False,WHO-ATC

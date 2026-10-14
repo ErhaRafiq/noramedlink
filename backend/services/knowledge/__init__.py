@@ -9,17 +9,29 @@ case-sensitive for abbreviations ("DM", "HTN", "K"), so ordinary words are not m
 
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass, field
 from functools import cache
 from pathlib import Path
 
+from services.knowledge.tables import records
+
 DATA = Path(__file__).resolve().parent / "data"
 
 
 def _load(name: str) -> dict:
-    return json.loads((DATA / name).read_text(encoding="utf-8"))
+    """A dataset assembled from the CSV tables (services/knowledge/tables.py)."""
+    if name == "medications":
+        return {
+            "generics": [{**row, "name": row["generic"]} for row in records("medicines")],
+            "brands": records("brands"),
+            "drug_classes_for_allergies": {r["allergy_word"]: r["classes"] for r in records("allergy_classes")},
+        }
+    if name == "conditions":
+        return {"conditions": records("conditions")}
+    if name == "lab_tests":
+        return {"tests": records("lab_tests")}
+    raise KeyError(name)
 
 
 def _alternation(names: list[str]) -> str:
@@ -60,7 +72,7 @@ class Mention:
 
 @cache
 def _medication_index() -> tuple[dict[str, MedicationInfo], re.Pattern]:
-    data = _load("medications.json")
+    data = _load("medications")
     generics = {g["name"]: g for g in data["generics"]}
     index: dict[str, MedicationInfo] = {}
 
@@ -101,7 +113,7 @@ def find_medications(text: str) -> list[Mention]:
 @cache
 def allergy_classes() -> dict[str, tuple[str, ...]]:
     """Allergy words that name a drug class ("penicillin", "sulfa drugs") -> classes."""
-    return {k: tuple(v) for k, v in _load("medications.json")["drug_classes_for_allergies"].items()}
+    return {k: tuple(v) for k, v in _load("medications")["drug_classes_for_allergies"].items()}
 
 
 # --- conditions ---------------------------------------------------------------------------------
@@ -119,7 +131,7 @@ class ConditionInfo:
 def _condition_index() -> tuple[dict[str, ConditionInfo], re.Pattern, dict[str, ConditionInfo], re.Pattern | None]:
     names: dict[str, ConditionInfo] = {}
     abbreviations: dict[str, ConditionInfo] = {}
-    for item in _load("conditions.json")["conditions"]:
+    for item in _load("conditions")["conditions"]:
         info = ConditionInfo(item["name"], item["icd10"], item["chronic"], item["source"])
         for synonym in [item["name"], *item["synonyms"]]:
             names[synonym.lower()] = info
@@ -152,7 +164,7 @@ class LabTestInfo:
 def _lab_index() -> tuple[dict[str, LabTestInfo], re.Pattern, re.Pattern | None, re.Pattern | None]:
     index: dict[str, LabTestInfo] = {}
     row_only: dict[str, LabTestInfo] = {}
-    for item in _load("lab_tests.json")["tests"]:
+    for item in _load("lab_tests")["tests"]:
         info = LabTestInfo(item["name"], item["panel"])
         for alias in [item["name"], *item["aliases"]]:
             index[alias.lower()] = info

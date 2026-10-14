@@ -1,6 +1,6 @@
 """Everyday wording for patient-facing text (summaries and rule alerts).
 
-The dictionary is services/knowledge/data/plain_terms.json (a demo knowledge base, not clinically
+The dictionary is services/knowledge/data/plain_terms.csv (a demo knowledge base, not clinically
 reviewed). A medical term becomes its everyday wording, with the term itself in brackets the first
 time it appears, so the patient can find it on the printed report and say it to their doctor:
 
@@ -13,14 +13,13 @@ alone, and running the rewrite twice changes nothing more.
 
 from __future__ import annotations
 
-import json
 import re
 from dataclasses import dataclass
 from functools import cache
-from pathlib import Path
 from typing import Any
 
-DATA = Path(__file__).resolve().parent / "knowledge" / "data" / "plain_terms.json"
+from services.knowledge.tables import records
+
 GLOSSARY_HEADING = "Words you might see"
 # The patient summary's section headings (AI and rule-based): never rewritten.
 SECTION_HEADINGS = {
@@ -47,7 +46,7 @@ class PlainTerm:
 def _index() -> tuple[dict[str, PlainTerm], dict[str, PlainTerm], re.Pattern]:
     names: dict[str, PlainTerm] = {}
     abbreviations: dict[str, PlainTerm] = {}
-    for item in json.loads(DATA.read_text(encoding="utf-8"))["terms"]:
+    for item in records("plain_terms"):
         term = PlainTerm((item["aliases"] or item["abbreviations"])[0], item["plain"], item["explain"], item["source"])
         for alias in item["aliases"]:
             names[alias.lower()] = term

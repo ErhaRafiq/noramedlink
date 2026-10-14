@@ -2,3 +2,6 @@
 -r requirements.txt
 ruff==0.14.0
 pytest==8.3.4
+# Schema validation of the CSV knowledge bases (tests/test_knowledge_data.py).
+pandera==0.21.0
+multimethod==1.12  # pandera 0.21 needs multimethod 1.x

@@ -1,0 +1,32 @@
+name,synonyms,abbreviations,icd10,chronic,source
+diabetes mellitus,diabetes;diabetes mellitus;type 2 diabetes;type 2 diabetes mellitus;type 1 diabetes;diabetic,DM;T2DM;T1DM,E10-E14,True,ICD-10
+hypertension,hypertension;high blood pressure;essential hypertension;hypertensive,HTN,I10,True,ICD-10
+chronic kidney disease,chronic kidney disease;chronic renal failure;chronic renal disease,CKD,N18,True,ICD-10
+asthma,asthma;bronchial asthma,,J45,True,ICD-10
+chronic obstructive pulmonary disease,chronic obstructive pulmonary disease,COPD,J44,True,ICD-10
+ischaemic heart disease,ischaemic heart disease;ischemic heart disease;coronary artery disease,IHD;CAD,I25,True,ICD-10
+heart failure,heart failure;congestive heart failure;cardiac failure,CHF,I50,True,ICD-10
+atrial fibrillation,atrial fibrillation,,I48,True,ICD-10
+stroke,stroke;cerebrovascular accident,CVA,I64,True,ICD-10
+hypothyroidism,hypothyroidism;hypothyroid,,E03,True,ICD-10
+hyperthyroidism,hyperthyroidism;thyrotoxicosis,,E05,True,ICD-10
+dyslipidaemia,dyslipidaemia;dyslipidemia;hyperlipidaemia;hyperlipidemia;hypercholesterolaemia;hypercholesterolemia,,E78,True,ICD-10
+anaemia,anaemia;anemia;iron deficiency anaemia;iron deficiency anemia,,D50-D64,False,ICD-10
+epilepsy,epilepsy;seizure disorder,,G40,True,ICD-10
+chronic hepatitis B,hepatitis b;hep b;chronic hepatitis b,HBV,B18.1,True,ICD-10
+chronic hepatitis C,hepatitis c;hep c;chronic hepatitis c,HCV,B18.2,True,ICD-10
+HIV disease,hiv infection;hiv disease,HIV,B20-B24,True,ICD-10
+tuberculosis,tuberculosis;pulmonary tuberculosis,TB,A15-A19,False,ICD-10
+osteoarthritis,osteoarthritis,,M15-M19,True,ICD-10
+rheumatoid arthritis,rheumatoid arthritis,,M05-M06,True,ICD-10
+gout,gout;gouty arthritis,,M10,True,ICD-10
+fatty liver disease,fatty liver;non-alcoholic fatty liver disease;hepatic steatosis,NAFLD,K76.0,True,ICD-10
+polycystic ovary syndrome,polycystic ovary syndrome;polycystic ovarian syndrome,PCOS,E28.2,True,ICD-10
+depression,depression;depressive disorder,,F32-F33,True,ICD-10
+obesity,obesity;obese,,E66,True,ICD-10
+osteoporosis,osteoporosis,,M80-M81,True,ICD-10
+migraine,migraine,,G43,True,ICD-10
+pneumonia,pneumonia,,J18,False,ICD-10
+urinary tract infection,urinary tract infection,UTI,N39.0,False,ICD-10
+typhoid fever,typhoid;typhoid fever;enteric fever,,A01.0,False,ICD-10
+dengue,dengue;dengue fever,,A90,False,ICD-10

@@ -1,16 +1,15 @@
 """Everyday wording in patient-facing text (services/plain_language.py, services/patient_summary.py)."""
 
-import json
 import re
 
 import pytest
 
 from services import knowledge, report_ai_pipeline
 from services.icse.entities import extract_entities
+from services.knowledge.tables import records
 from services.openai_service import OpenAIResult
 from services.patient_summary import build_patient_summary
 from services.plain_language import (
-    DATA,
     find_terms,
     glossary,
     patient_message,
@@ -21,7 +20,8 @@ from services.plain_language import (
 from services.report_service import conditions_mentioned
 from services.rule_validation_service import validate_medical_rules
 
-ENTRIES = json.loads(DATA.read_text(encoding="utf-8"))
+TERMS = records("plain_terms")
+SOURCES = {row["key"] for row in records("sources")}
 # Names the app knows that are already everyday words.
 EVERYDAY = {"asthma", "stroke", "gout", "obesity", "depression", "migraine", "dengue", "typhoid fever",
             "Vitamin D", "Vitamin B12", "HIV disease"}  # fmt: skip
@@ -31,30 +31,30 @@ EVERYDAY = {"asthma", "stroke", "gout", "obesity", "depression", "migraine", "de
 
 
 def test_every_entry_is_complete_and_sourced():
-    for entry in ENTRIES["terms"]:
+    for entry in TERMS:
         assert entry["aliases"] or entry["abbreviations"]
         assert entry["plain"] and entry["explain"].endswith(".")
-        assert entry["source"] in ENTRIES["_meta"]["sources"]
+        assert entry["source"] in SOURCES
         text = (entry["plain"] + " " + entry["explain"]).lower()
         assert " safe" not in text and "normal" not in text
 
 
 def test_everyday_wording_never_needs_explaining_itself():
-    for entry in ENTRIES["terms"]:
+    for entry in TERMS:
         assert unexplained_terms(entry["plain"]) == [], entry["plain"]
         assert unexplained_terms(entry["explain"]) == [], entry["explain"]
 
 
 @pytest.mark.parametrize("kind", ["lab", "condition"])
 def test_every_test_and_condition_the_app_knows_has_everyday_wording(kind):
-    data = knowledge._load("lab_tests.json" if kind == "lab" else "conditions.json")
+    data = knowledge._load("lab_tests" if kind == "lab" else "conditions")
     names = [t["name"] for t in data["tests" if kind == "lab" else "conditions"]]
     missing = [n for n in names if n not in EVERYDAY and not find_terms(n)]
     assert missing == []
 
 
 def test_one_letter_and_ambiguous_abbreviations_are_not_in_the_dictionary():
-    abbreviations = {a for e in ENTRIES["terms"] for a in e["abbreviations"]}
+    abbreviations = {a for e in TERMS for a in e["abbreviations"]}
     assert all(len(a) > 1 for a in abbreviations)
     assert "RA" not in abbreviations  # rheumatoid arthritis or right atrium
 
