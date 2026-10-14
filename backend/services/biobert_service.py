@@ -17,7 +17,8 @@ LABEL_MAP = {
     "sign_symptom": "Symptom",
     "symptom": "Symptom",
     "lab_value": "Lab Value",
-    "diagnostic_procedure": "Lab Value",
+    "diagnostic_procedure": "Procedure",
+    "therapeutic_procedure": "Procedure",
     "test": "Lab Value",
     "biological_structure": "Anatomy",
     "anatomy": "Anatomy",
@@ -84,6 +85,41 @@ LAB_FIELD_HINTS = {
     "troponin",
     "blood_pressure",
 }
+
+
+# The model (trained on case reports) also tags age, sex, dates, places, occupations and more.
+# Only these labels are kept; everything else is dropped (it is not medical, and it is where a
+# patient's own details used to leak in).
+MEDICAL_LABELS = {"Disease", "Medicine", "Symptom", "Lab Value", "Procedure", "Anatomy", "Dosage"}
+LABEL_MAP["dosage"] = "Dosage"
+# Words the model tags in report headers that are not medical findings.
+_NOT_ENTITIES = {
+    "age",
+    "sex",
+    "gender",
+    "cnic",
+    "mr",
+    "mrn",
+    "name",
+    "lab",
+    "labs",
+    "demo",
+    "syn",
+    "report",
+    "date",
+    "ref",
+}
+
+
+def _is_medical(entity: dict[str, Any]) -> bool:
+    text = str(entity.get("text") or "").strip().lower()
+    return (
+        entity.get("label") in MEDICAL_LABELS
+        and len(re.sub(r"[^a-z]", "", text)) >= 3  # no fragments such as "l", "mc" or "##v"
+        and "##" not in text
+        and "removed" not in text  # an identifier the privacy filter took out
+        and text not in _NOT_ENTITIES
+    )
 
 
 def _normalize_label(label: str) -> str:
@@ -192,7 +228,8 @@ def _load_pipeline():
         "ner",
         model=BIOBERT_MODEL,
         tokenizer=BIOBERT_MODEL,
-        aggregation_strategy="simple",
+        # "first" keeps whole words; "simple" split them into fragments ("cre", "##atinine").
+        aggregation_strategy="first",
     )
 
 
@@ -212,13 +249,15 @@ def _run_biobert(text: str) -> list[dict[str, Any]]:
                 "source": "biobert",
             }
         )
-    return _merge_entities(entities)
+    return _merge_entities([entity for entity in entities if _is_medical(entity)])
 
 
 async def extract_medical_entities(
     text: str,
     structured_fields: dict[str, Any] | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    """Medical entities from report text. Callers pass text with identifiers already removed
+    (report_ai_pipeline does), so a patient's name can never become an entity."""
     cleaned_text = " ".join((text or "").split())
     if not cleaned_text:
         return [], {

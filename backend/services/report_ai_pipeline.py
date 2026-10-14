@@ -5,6 +5,7 @@ from typing import Any
 from services.ai_guard import numbers_not_in_source
 from services.biobert_service import extract_medical_entities
 from services.openai_service import fallback_notice, generate_openai_json, generate_openai_text
+from services.privacy import IDENTITY_FIELDS, redact_identifiers
 from services.report_breakdown import measured_values, report_conclusion
 from services.rule_validation_service import validate_medical_rules
 
@@ -340,9 +341,17 @@ async def run_report_ai_pipeline(
     structured_payload: dict[str, Any],
     department_name: str,
     uncertain_values: list[dict[str, Any]] | None = None,
+    identity: list | None = None,
 ) -> dict[str, Any]:
+    # Privacy: the patient's identity is removed before entity extraction, rules, summaries and AI
+    # prompts, so none of them can carry it (stored entities, stored summaries, external AI).
     fields = structured_payload.get("fields") if isinstance(structured_payload.get("fields"), dict) else {}
-    source_text = formatted_text.strip() or cleaned_text.strip()
+    fields = {
+        key: redact_identifiers(str(value), identity) if isinstance(value, str) else value
+        for key, value in fields.items()
+        if str(key).lower() not in IDENTITY_FIELDS
+    }
+    source_text = redact_identifiers(formatted_text.strip() or cleaned_text.strip(), identity)
 
     entities, entity_metadata = await extract_medical_entities(source_text, fields)
     validation = validate_medical_rules(source_text, fields, entities, uncertain_values)

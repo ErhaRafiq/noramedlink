@@ -20,6 +20,7 @@ from services.patient_insights import (
     validate_ai_health_tips,
     validate_ai_risk_predictions,
 )
+from services.privacy import patient_identity_patterns, redact_identifiers
 
 router = APIRouter(prefix="/patient", tags=["patient"])
 
@@ -83,7 +84,9 @@ async def generate_risk_predictions(
             "Use only the supplied reports and medicine history. Do not diagnose. "
             "Return up to 3 items with risk_title, risk_level (Low, Medium, High), reason, and recommendation."
         ),
-        prompt=patient_context_for_ai(documents, medicines),
+        prompt=redact_identifiers(
+            patient_context_for_ai(documents, medicines), patient_identity_patterns(current_user)
+        ),
     )
     generated = validate_ai_risk_predictions(ai_result.data)
     if not generated:
@@ -127,7 +130,9 @@ async def generate_health_tips(
             "Return exactly 4 items using these categories: Food to prefer, Food to avoid, "
             "Lifestyle advice, When to consult a doctor. Each item needs category, tip_text, and based_on_data."
         ),
-        prompt=patient_context_for_ai(documents, medicines),
+        prompt=redact_identifiers(
+            patient_context_for_ai(documents, medicines), patient_identity_patterns(current_user)
+        ),
     )
     generated = validate_ai_health_tips(ai_result.data)
     if not generated:
@@ -178,7 +183,9 @@ async def generate_doctor_summary(
             "Do not diagnose or prescribe. Include sections: Patient Overview, Key Medical Findings, "
             "Current Concerns, Medicine History, Possible Risks, Important Notes for Doctor."
         ),
-        prompt=patient_context_for_ai(documents, medicines, risks),
+        prompt=redact_identifiers(
+            patient_context_for_ai(documents, medicines, risks), patient_identity_patterns(current_user)
+        ),
     )
     if ai_result.text:
         # The name is added here, after generation, so it is never sent to the LLM.

@@ -2,6 +2,7 @@ from services.ai_guard import numbers_not_in_source
 from services.ocr_service import detect_report_type
 from services.ocr_space_service import detect_keywords
 from services.openai_service import fallback_notice, generate_openai_text
+from services.privacy import redact_identifiers
 
 DISCLAIMER = "This is not a medical diagnosis. Please consult a doctor."
 
@@ -32,7 +33,9 @@ def build_rule_based_summary(text: str, category: str | None = None) -> str:
     )
 
 
-async def summarize_with_optional_llm(text: str, category: str | None = None) -> tuple[str, str, str | None]:
+async def summarize_with_optional_llm(
+    text: str, category: str | None = None, identity: list | None = None
+) -> tuple[str, str, str | None]:
     """A plain-language summary of pasted or saved report text, for a reader with no medical training.
 
     The rules' alerts are shown next to it on the page, so the AI only explains the report.
@@ -53,7 +56,7 @@ async def summarize_with_optional_llm(text: str, category: str | None = None) ->
             "treatment. Plain text only, no markdown symbols such as ** or #. About 300 words at most. "
             "End with: This is not a medical diagnosis. Please consult a doctor."
         ),
-        prompt=f"Report category: {category or 'not selected'}\n\nReport text:\n{text[:12000]}",
+        prompt=f"Report category: {category or 'not selected'}\n\nReport text:\n{redact_identifiers(text[:12000], identity)}",
     )
 
     if result.text:

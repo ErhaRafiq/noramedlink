@@ -72,7 +72,8 @@ if DATABASE_BACKEND == "postgresql":
 else:
     engine_options["connect_args"] = {"check_same_thread": False}
 
-engine = create_engine(DATABASE_URL, **engine_options)
+# hide_parameters: a failed statement is logged without its values (report text, names), only the SQL.
+engine = create_engine(DATABASE_URL, hide_parameters=True, **engine_options)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine, expire_on_commit=False)
 
 

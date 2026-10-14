@@ -7,6 +7,7 @@ from models import PatientReport, User
 from rate_limit import AI_LIMIT, limiter
 from schemas import SummarizeRequest, SummaryResponse
 from services.nlp_service import summarize_with_optional_llm
+from services.privacy import patient_identity_patterns
 from services.report_breakdown import build_breakdown
 
 router = APIRouter(prefix="/nlp", tags=["nlp"])
@@ -36,7 +37,9 @@ def _check_length(text: str) -> str:
 async def summarize(request: Request, payload: SummarizeRequest, current_user: User = Depends(get_current_user)):
     """Summarize pasted report text. Requires a signed-in user (it was public before)."""
     text = _check_length(payload.text)
-    summary, method, warning = await summarize_with_optional_llm(text, payload.category)
+    summary, method, warning = await summarize_with_optional_llm(
+        text, payload.category, patient_identity_patterns(current_user)
+    )
     return SummaryResponse(summary=summary, method=method, warning=warning, **build_breakdown(text))
 
 
@@ -73,5 +76,7 @@ async def summarize_saved_reports(
             status_code=status.HTTP_404_NOT_FOUND, detail="No readable saved report text found for this patient yet."
         )
     text = combined[:MAX_TEXT]
-    summary, method, warning = await summarize_with_optional_llm(text, "medical-report")
+    summary, method, warning = await summarize_with_optional_llm(
+        text, "medical-report", patient_identity_patterns(current_user)
+    )
     return SummaryResponse(summary=summary, method=method, warning=warning, **build_breakdown(text))

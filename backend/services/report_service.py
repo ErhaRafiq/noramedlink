@@ -17,6 +17,7 @@ from services.ocr_space_service import (
     department_slug,
     normalize_department_name,
 )
+from services.privacy import patient_identity_patterns, redact_identifiers
 from services.report_ai_pipeline import run_report_ai_pipeline
 
 
@@ -163,13 +164,18 @@ def report_to_out(report: PatientReport) -> PatientReportOut:
     )
 
 
-async def analyze_report_result(ocr_result: dict[str, Any], department_name: str) -> dict[str, Any]:
+async def analyze_report_result(ocr_result: dict[str, Any], department_name: str, patient=None) -> dict[str, Any]:
+    """`patient` (the report owner) lets the pipeline remove their own name, phone and CNIC."""
     cleaned_text = str(ocr_result.get("cleaned_text") or "").strip()
     formatted_text = str(ocr_result.get("formatted_text") or "").strip()
     structured_payload = dict_field(ocr_result.get("structured_data_json"))
     # Numbers OCR was unsure of and that are still in the text as read (a line the patient has
     # corrected is theirs, not OCR's). Recomputed at every analysis, so corrections clear them.
-    uncertain = uncertain_values(formatted_text or cleaned_text, structured_payload.get("ocr_rows") or [])
+    # Matched against the identity-free text, so no listed line can carry the patient's name.
+    identity = patient_identity_patterns(patient)
+    uncertain = uncertain_values(
+        redact_identifiers(formatted_text or cleaned_text, identity), structured_payload.get("ocr_rows") or []
+    )
     structured_payload["uncertain_values"] = uncertain
 
     try:
@@ -179,6 +185,7 @@ async def analyze_report_result(ocr_result: dict[str, Any], department_name: str
             structured_payload=structured_payload,
             department_name=department_name,
             uncertain_values=uncertain,
+            identity=identity,
         )
     except Exception as exc:
         analysis = {

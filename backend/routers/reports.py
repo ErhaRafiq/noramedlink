@@ -200,7 +200,7 @@ async def upload_report(
             )
         final_department = manual_department or str(ocr_result.get("department_name") or "General")
         report.department = get_department(db, final_department)
-        analysis = await analyze_report_result(ocr_result, final_department)
+        analysis = await analyze_report_result(ocr_result, final_department, current_user)
         summary = str(analysis.get("summary_text") or ocr_result.get("summary") or "")
         apply_ocr_result(report, ocr_result, final_department, summary)
     except OcrError as exc:
@@ -264,7 +264,7 @@ async def update_report(
         ocr_confidence = report.ocr_confidence
         final_department = manual_department or str(ocr_result.get("department_name") or "General")
         report.department = get_department(db, final_department)
-        analysis = await analyze_report_result(ocr_result, final_department)
+        analysis = await analyze_report_result(ocr_result, final_department, current_user)
         summary = str(analysis.get("summary_text") or ocr_result.get("summary") or "")
         apply_ocr_result(report, ocr_result, final_department, summary)
         report.ocr_confidence = ocr_confidence
@@ -317,7 +317,7 @@ async def regenerate_report_ocr(
         ocr_result.get("department_name") or (report.department.name if report.department else "General")
     )
     report.department = get_department(db, final_department)
-    analysis = await analyze_report_result(ocr_result, final_department)
+    analysis = await analyze_report_result(ocr_result, final_department, current_user)
     summary = str(analysis.get("summary_text") or ocr_result.get("summary") or "")
     apply_ocr_result(report, ocr_result, final_department, summary)
     db.add(create_report_ai_analysis(report))
