@@ -208,3 +208,40 @@ def test_biobert_only_adds_low_confidence_suggestions_for_what_the_rules_missed(
 
 def test_empty_text():
     assert extract_entities("") == []
+
+
+# --- report date, blood pressure, look-alike tests (Batch 2) ----------------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Collected: 15-Sep-2026 10:05 AM | Reported: 16-Sep-2026", "2026-09-15"),  # the sample date wins
+        ("Reported: 16-Sep-2026", "2026-09-16"),
+        ("Date: 07/02/2026", "2026-02-07"),  # day first
+        ("Date of visit: 3 March 2026", "2026-03-03"),
+        ("MR No: 43102/2609", None),
+        ("Date: 31/02/2026", None),  # not a real date
+    ],
+)
+def test_the_printed_report_date(text, expected):
+    dates = of_type(extract_entities(text), "report_date")
+    assert [d["value"] for d in dates] == ([expected] if expected else [])
+
+
+def test_every_blood_pressure_reading_and_only_real_ones():
+    readings = of_type(extract_entities("BP 120/80. Repeat BP 190/110 mmHg. MR 43102/2609. BP 300/20"), "vital")
+    assert [(r["value"], r["readable"]) for r in readings] == [("120/80", True), ("190/110", True), ("300/20", False)]
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("Creatinine Clearance 95 mL/min\nSerum Creatinine 2.4 mg/dL", [("Creatinine", "2.4")]),
+        ("Hb electrophoresis: HbA 97 %, HbA2 2.5 %", []),
+        ("BUN 30 mg/dL\nBlood Urea 64 mg/dL", [("Blood Urea Nitrogen", "30"), ("Urea", "64")]),
+        ("eGFR (MDRD) 70 mL/min\neGFR (CKD-EPI) 25 mL/min", [("eGFR", "70"), ("eGFR", "25")]),
+    ],
+)
+def test_a_number_belonging_to_a_different_test_is_not_read_as_this_one(text, expected):
+    assert [(e["name"], e["value"]) for e in of_type(extract_entities(text), "test_result")] == expected

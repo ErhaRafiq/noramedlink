@@ -13,11 +13,12 @@ report is not a confirmed diagnosis. The caller passes text with identifiers alr
 from __future__ import annotations
 
 import re
+from datetime import date
 from typing import Any
 
 from services import knowledge
 
-ENTITIES_VERSION = 2  # bump when extraction changes, so stored entities can be rebuilt
+ENTITIES_VERSION = 3  # bump when extraction changes, so stored entities can be rebuilt
 MENTIONED = "mentioned in report"
 SUGGESTION = "model suggestion"
 
@@ -260,6 +261,10 @@ _UNIT = re.compile(r"^\s*(/?[a-zA-Zµμ%][\w%/^µμ.*]*(?:/[\w.]+)?)")
 _RANGE = re.compile(r"(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)|([<>]\s*\d+(?:\.\d+)?)")
 _FLAG = re.compile(r"(?:^|\s)\(?(H|L|HIGH|LOW|High|Low)\)?\s*$")
 UNREADABLE = "[?]"
+# Words between a test name and a number that show the number belongs to a different test.
+_OTHER_TEST = re.compile(
+    r"\b(?:clearance|ratio|electrophoresis|index|excretion|variant|fraction|HbA2?|HbF|HbS)\b", re.IGNORECASE
+)
 
 
 def _test_results(text: str) -> list[dict[str, Any]]:
@@ -277,6 +282,8 @@ def _test_results(text: str) -> list[dict[str, Any]]:
                 continue
             if not value or len(segment[: value.start()].strip(" :-=")) > 25:
                 continue  # no number close after the name: a heading or a sentence, not a result
+            if _OTHER_TEST.search(segment[: value.start()]):
+                continue  # "Creatinine Clearance 95", "Hb electrophoresis: HbA 97 %": a different test
             rest = segment[value.end() :]
             unit = _UNIT.match(rest)
             after_unit = rest[unit.end() :] if unit else rest
@@ -313,6 +320,92 @@ def _result(mention, offset, value, unit=None, reference=None, flag=None, readab
         "method": "rules",
         "confidence": None,  # filled from the report's OCR confidence when the summary is built
     }
+
+
+# --- vitals: blood pressure -----------------------------------------------------------------------
+
+# Only where the text says it is a blood pressure: "BP"/"blood pressure" just before, or "mmHg" just
+# after. Any "a/b" (dates, IDs) is not one.
+_BP_LABELLED = re.compile(
+    r"\b(?:BP|B\.P\.?|blood\s*pressure)\b[^0-9\n]{0,15}(\d{2,3})\s*/\s*(\d{2,3})\b", re.IGNORECASE
+)
+_BP_WITH_UNIT = re.compile(r"\b(\d{2,3})\s*/\s*(\d{2,3})\s*mm\s*hg\b", re.IGNORECASE)
+
+
+def _blood_pressures(text: str) -> list[dict[str, Any]]:
+    found: dict[int, re.Match] = {}
+    for pattern in (_BP_LABELLED, _BP_WITH_UNIT):
+        for match in pattern.finditer(text):
+            found.setdefault(match.start(1), match)  # "BP 150/95 mmHg" matches both: one reading
+    entities = []
+    for position in sorted(found):
+        match = found[position]
+        systolic, diastolic = int(match.group(1)), int(match.group(2))
+        plausible = 60 <= systolic <= 260 and 30 <= diastolic <= 160 and systolic > diastolic
+        entities.append(
+            {
+                "type": "vital",
+                "name": "Blood Pressure",
+                "value": f"{systolic}/{diastolic}",
+                "unit": "mmHg",
+                "readable": plausible,  # an implausible pair is shown to check, never flagged
+                "text": match.group(0),
+                "position": position,
+                "certainty": MENTIONED,
+                "method": "rules",
+                "confidence": None,
+            }
+        )
+    return entities
+
+
+# --- report date ----------------------------------------------------------------------------------
+
+_MONTHS = {
+    m: i for i, m in enumerate(["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"], 1)
+}
+_DATE = (
+    r"(?P<d1>\d{1,2})[-/ .](?P<mon>[A-Za-z]{3,9})[-/ .,]+(?P<y1>\d{4})"
+    r"|(?P<d2>\d{1,2})[-/.](?P<m2>\d{1,2})[-/.](?P<y2>\d{4})"
+    r"|(?P<y3>\d{4})-(?P<m3>\d{1,2})-(?P<d3>\d{1,2})"
+)
+# Which printed date describes the sample, best first. The upload date is never used for trends.
+_DATE_LABELS = [
+    ("collected", r"collected(?:\s+on)?|collection\s+date|sample\s+(?:collected|date|collection)"),
+    ("visit", r"date\s+of\s+(?:visit|admission|discharge)|visit\s+date|admission\s+date|discharge\s+date"),
+    ("dated", r"date"),
+    ("reported", r"reported(?:\s+on)?|report\s+date"),
+]
+
+
+def _parse_date(match: re.Match) -> date | None:
+    try:
+        if match.group("y1"):
+            month = _MONTHS.get(match.group("mon")[:3].lower())
+            return date(int(match.group("y1")), month, int(match.group("d1"))) if month else None
+        if match.group("y2"):  # day first, as printed in Pakistan
+            return date(int(match.group("y2")), int(match.group("m2")), int(match.group("d2")))
+        return date(int(match.group("y3")), int(match.group("m3")), int(match.group("d3")))
+    except ValueError:
+        return None
+
+
+def _report_date(text: str) -> dict[str, Any] | None:
+    for label, words in _DATE_LABELS:
+        for match in re.finditer(rf"\b(?:{words})\b\s*[:\-]?\s*(?:{_DATE})", text, re.IGNORECASE):
+            parsed = _parse_date(match)
+            if parsed:
+                return {
+                    "type": "report_date",
+                    "name": label,
+                    "value": parsed.isoformat(),
+                    "text": match.group(0),
+                    "position": match.start(),
+                    "certainty": MENTIONED,
+                    "method": "rules",
+                    "confidence": None,
+                }
+    return None
 
 
 # --- BioBERT (secondary) --------------------------------------------------------------------------
@@ -371,6 +464,10 @@ def extract_entities(text: str, biobert_entities: list[dict[str, Any]] | None = 
         *_medications(text, allergy_spans + family),
         *_conditions(text, allergy_spans, family),
         *allergies,
+        *_blood_pressures(text),
     ]
+    printed_date = _report_date(text)
+    if printed_date:
+        entities.append(printed_date)
     entities.sort(key=lambda e: e["position"] if e["position"] is not None else 0)
     return entities + _biobert_suggestions(biobert_entities or [], entities)
