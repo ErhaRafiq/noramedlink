@@ -1,13 +1,8 @@
 import re
 from typing import Any
 
-from services.lab_ranges import (
-    GLUCOSE_ALIASES,
-    check_lab_ranges,
-    creatinine_mg_dl,
-    glucose_mg_dl,
-    read_values,
-)
+from services.icse.entities import extract_entities
+from services.lab_rules import assess, warning_for
 
 STATUS_ORDER = {"SAFE": 0, "CAUTION": 1, "HIGH_RISK": 2}
 
@@ -38,106 +33,6 @@ def _warning(code: str, severity: str, message: str, evidence: str | None = None
     if evidence:
         payload["evidence"] = evidence[:220]
     return payload
-
-
-def _number(value: str) -> float | None:
-    match = re.search(r"[-+]?\d+(?:\.\d+)?", value or "")
-    if not match:
-        return None
-    try:
-        return float(match.group(0))
-    except ValueError:
-        return None
-
-
-def _value_near(text: str, aliases: list[str]) -> tuple[float | None, str | None]:
-    compact = " ".join((text or "").split())
-    for alias in aliases:
-        escaped = re.escape(alias)
-        match = re.search(
-            rf"\b{escaped}\b[^0-9<>+-]{{0,45}}([<>+-]?\s*\d+(?:\.\d+)?)",
-            compact,
-            flags=re.IGNORECASE,
-        )
-        if match:
-            value = _number(match.group(1))
-            if value is not None:
-                start = max(0, match.start() - 45)
-                end = min(len(compact), match.end() + 60)
-                return value, compact[start:end]
-    return None, None
-
-
-def _field_value(fields: dict[str, Any], keys: list[str]) -> tuple[float | None, str | None]:
-    for key in keys:
-        value = fields.get(key)
-        if value is not None:
-            parsed = _number(str(value))
-            if parsed is not None:
-                return parsed, f"{key}: {value}"
-    return None, None
-
-
-# A blood pressure only where the text says so: "BP"/"blood pressure" just before, or
-# "mmHg" just after. Any "a/b" (dates, IDs such as "43102/2609") used to be read as one.
-_BP_WITH_LABEL = re.compile(r"\b(?:bp|b\.p\.?|blood\s*pressure)\b[^0-9\n]{0,15}(\d{2,3})\s*/\s*(\d{2,3})\b", re.I)
-_BP_WITH_UNIT = re.compile(r"\b(\d{2,3})\s*/\s*(\d{2,3})\s*mm\s*hg\b", re.I)
-
-
-def _blood_pressures(field_value: str, text: str) -> list[tuple[int, int, str]]:
-    """Every plausible blood pressure reading (the structured field and each one in the text)."""
-    candidates = []
-    field_match = re.search(r"(\d{2,3})\s*/\s*(\d{2,3})", field_value)
-    if field_match:
-        candidates.append(field_match)
-    candidates += [m for pattern in (_BP_WITH_LABEL, _BP_WITH_UNIT) for m in pattern.finditer(text)]
-    readings: dict[tuple[int, int], tuple[int, int, str]] = {}
-    for match in candidates:
-        systolic, diastolic = int(match.group(1)), int(match.group(2))
-        if 60 <= systolic <= 260 and 30 <= diastolic <= 160 and systolic > diastolic:  # plausible readings only
-            readings.setdefault((systolic, diastolic), (systolic, diastolic, f"{systolic}/{diastolic}"))
-    return list(readings.values())
-
-
-def _converted_field(fields: dict[str, Any], keys: list[str], convert) -> tuple[float | None, str | None]:
-    """A structured field's value, converted using the unit written right after the number."""
-    for key in keys:
-        raw = fields.get(key)
-        if raw is None:
-            continue
-        match = re.match(r"\s*[<>]?\s*(\d+(?:\.\d+)?)\s*([a-zA-Zµμ%/^\d.]{0,14})", str(raw))
-        if match:
-            return round(convert(float(match.group(1)), match.group(2).lower()), 2), f"{key}: {raw}"
-    return None, None
-
-
-def _glucose_readings(fields: dict[str, Any], text: str) -> list[tuple[float, str]]:
-    """All glucose values in the report, in mg/dL: structured fields and every reading in the text."""
-    readings: list[tuple[float, str]] = []
-    field_value, field_evidence = _converted_field(fields, ["glucose", "blood_sugar", "rbs", "fbs"], glucose_mg_dl)
-    if field_value is not None:
-        readings.append((field_value, field_evidence or ""))
-    readings += [(r.value, r.evidence) for r in read_values(text, GLUCOSE_ALIASES, glucose_mg_dl)]
-    seen: set[float] = set()
-    unique = []
-    for value, evidence in readings:  # the structured field usually repeats a text reading
-        if value not in seen:
-            seen.add(value)
-            unique.append((value, evidence))
-    return unique
-
-
-def _lab_values(fields, keys, text, aliases, convert) -> list[tuple[float, str]]:
-    """Every value of a test: the structured field and each reading in the text, without repeats."""
-    readings: list[tuple[float, str]] = []
-    value, evidence = _converted_field(fields, keys, convert)
-    if value is not None:
-        readings.append((value, evidence or ""))
-    readings += [(r.value, r.evidence) for r in read_values(text, aliases, convert)]
-    unique: dict[float, str] = {}
-    for value, evidence in readings:
-        unique.setdefault(value, evidence)
-    return list(unique.items())
 
 
 def _medicine_names(entities: list[dict[str, Any]], text: str) -> list[str]:
@@ -212,90 +107,15 @@ def validate_medical_rules(
             warnings.append(_warning("MEDICINE_COMBINATION_CAUTION", "CAUTION", message, ", ".join(sorted(pair))))
             status = _highest_status(status, "CAUTION")
 
-    # Every glucose reading counts (fasting, random, post-prandial; mmol/L converted to mg/dL), and
-    # the most severe sets the status. Reading only the first let a random sugar of 230 go unchecked
-    # next to a normal fasting value.
-    for glucose, glucose_evidence in _glucose_readings(fields, source_text):
-        if glucose >= 200:
-            severity = "HIGH_RISK" if glucose >= 300 else "CAUTION"
-            warnings.append(
-                _warning(
-                    "HIGH_GLUCOSE",
-                    severity,
-                    f"Glucose {glucose:g} mg/dL appears elevated and should be reviewed by a qualified clinician.",
-                    glucose_evidence,
-                )
-            )
-            status = _highest_status(status, severity)
-
-    hba1c, hba1c_evidence = _field_value(fields, ["hba1c", "hb_a1c"])
-    if hba1c is None:
-        hba1c, hba1c_evidence = _value_near(source_text, ["hba1c", "hb a1c"])
-    if hba1c is not None and hba1c >= 6.5:
-        warnings.append(
-            _warning(
-                "HIGH_HBA1C",
-                "CAUTION",
-                "HbA1c appears elevated and should be interpreted by a qualified clinician.",
-                hba1c_evidence,
-            )
-        )
-        status = _highest_status(status, "CAUTION")
-
-    # Every reading of creatinine, eGFR, hemoglobin and blood pressure is checked, like glucose: a
-    # repeat value (a second page, a second formula) was missed when only the first was read.
-    for systolic, diastolic, bp_evidence in _blood_pressures(
-        str(fields.get("blood_pressure") or ""), " ".join(source_text.split())
-    ):
-        if systolic >= 180 or diastolic >= 120:
-            severity = "HIGH_RISK"
-        elif systolic >= 140 or diastolic >= 90:
-            severity = "CAUTION"
-        else:
-            severity = "SAFE"
-        if severity != "SAFE":
-            warnings.append(
-                _warning(
-                    "HYPERTENSION_INDICATOR",
-                    severity,
-                    "Blood pressure text appears elevated and should be checked against the original report.",
-                    bp_evidence,
-                )
-            )
-            status = _highest_status(status, severity)
-
-    # umol/L values are converted to mg/dL; before, "Creatinine 88 umol/L" (normal) raised an alert.
-    for creatinine, creatinine_evidence in _lab_values(
-        fields, ["creatinine"], source_text, ["creatinine"], creatinine_mg_dl
-    ):
-        if creatinine <= 1.3:
-            continue
-        warnings.append(
-            _warning(
-                "KIDNEY_RISK_CREATININE",
-                "CAUTION",
-                "Creatinine appears elevated and should be reviewed for possible kidney follow-up.",
-                creatinine_evidence,
-            )
-        )
-        status = _highest_status(status, "CAUTION")
-
-    for egfr, egfr_evidence in _lab_values(fields, ["egfr", "e_gfr"], source_text, ["egfr", "e-gfr"], lambda v, _: v):
-        if egfr >= 60:
-            continue
-        warnings.append(
-            _warning(
-                "KIDNEY_RISK_EGFR",
-                "HIGH_RISK" if egfr < 30 else "CAUTION",
-                "eGFR appears reduced and should be reviewed by a qualified clinician.",
-                egfr_evidence,
-            )
-        )
-        status = _highest_status(status, "HIGH_RISK" if egfr < 30 else "CAUTION")
-
-    for lab_warning in check_lab_ranges(source_text):
-        warnings.append(lab_warning)
-        status = _highest_status(status, lab_warning["severity"])
+    # Lab values and blood pressure are read once (icse.entities, the reader the clinical summary
+    # uses too) and judged once (lab_rules), so a value is never flagged in one place and passed in
+    # the other. Every reading counts; a value that cannot be used is "check against the original".
+    for entity in extract_entities(source_text, fields=fields):
+        assessment = assess(entity)
+        warning = warning_for(assessment) if assessment else None
+        if warning:
+            warnings.append(warning)
+            status = _highest_status(status, warning["severity"])
 
     # Numbers OCR was unsure of are never judged as read: the report is at least CAUTION and they are
     # listed to check against the original. (The number in the text is left exactly as OCR read it.)
@@ -351,6 +171,7 @@ def validate_medical_rules(
             "hypertension_indicators",
             "kidney_risk_indicators",
             "lab_reference_ranges",
+            "values_to_check",
             "uncertain_ocr_values",
             "missing_allergy_data",
             "incomplete_ocr_text",

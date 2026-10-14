@@ -70,8 +70,8 @@ def test_blood_pressure(text, severity):
     [
         ("Creatinine [?] mg/dL 0.6 - 1.3", "could not be read"),
         ("Hemoglobin 9.1 %", "unit"),  # not a hemoglobin unit
-        ("Random Blood Sugar 7.2", "no unit"),  # mmol/L without its unit: never read as 7.2 mg/dL
-        ("Creatinine 212", "no unit"),  # umol/L without its unit
+        ("Random Blood Sugar 30", "no unit"),  # 30 mg/dL or 30 mmol/L: cannot tell
+        ("Creatinine 20", "no unit"),  # 20 mg/dL or 20 umol/L: cannot tell
         ("Hemoglobin 95 g/dL", "possible"),  # a misread number
     ],
 )

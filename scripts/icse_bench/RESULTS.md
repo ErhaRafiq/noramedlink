@@ -43,6 +43,7 @@ Batch 1's run had 372 entities and the same 100%.)
 | After two general fixes | 94.7% | 94.7% | 94.7% |
 | After fixes, with BioBERT suggestions | 94.7% | 94.7% | 94.7% |
 | After family history (Batch 2) | 94.7% | 94.7% | 94.7% |
+| After the reader was shared with the report rules | 94.9% | 97.4% | 96.1% |
 
 The two fixes were the allergy phrasing "sensitive to / hypersensitivity to" (with "(rash)" no
 longer read as part of the allergen) and the condition names "Hep B / Hep C". Once these fixes
@@ -54,9 +55,11 @@ Remaining errors, left as known limitations:
   condition. The ground truth predates that type, so the benchmark still counts it as one extra;
   the ground truth was not edited.
 - "Pt denies TB contact" is read as negated tuberculosis.
-- "TC 240" and "TG 310" in the middle of a sentence are missed. Short abbreviations count only at
-  the start of a table row, to avoid false matches, so the error is a miss rather than a wrong
-  value.
+- "TG 310" is now read: since the report rules and the summary share one reader, abbreviations of
+  two letters or more count anywhere in a line (case-sensitively). "TC 240" is still missed ("TC" is
+  not in the knowledge base).
+  (Before that change, short abbreviations counted only at the start of a table row, so both were
+  missed. A single letter such as "K" still counts only there.)
 
 ## 2. Test results from OCR text (`ocr_samples/`, exact ground truth)
 
@@ -107,13 +110,15 @@ by the same author as the extractor (see section 1), so 103/103 is expected, not
 | current | scan_hard | 13 | 0 | 13 | 0 | 0 |
 | rows_v5 | digital | 31 | 31 | 0 | 0 | 0 |
 | rows_v5 | scan | 31 | 31 | 0 | 0 | 0 |
-| rows_v5 | scan_hard | 13 | 12 | 1 | 0 | 2 |
+| rows_v5 | scan_hard | 13 | 13 | 0 | 0 | 1 |
 
-No wrong flag with either engine. With rows_v5 on harsh scans the OCR read the unit "U/L" as "Un"
-(ALT 62) and "U/" (AST 22). An unknown unit is never guessed, so both values are listed as "check
-against the original report", and the ALT flag is missed rather than raised from an untrusted
-value. With the current OCR, scanned tables come out column by column, so no value sits next to
-its test name: nothing is flagged, rightly or wrongly.
+No wrong flag with either engine. With rows_v5 on harsh scans the OCR garbled two units: "62 Un"
+(ALT) and "22 U/" (AST). "Un" is not a unit, so ALT 62 is read as a value with no unit, which is
+accepted only because 62 can only be U/L here; "U/" looks like a unit the rule cannot convert, so
+AST 22 is listed as "check against the original report" and never judged. (Before the rules were
+unified in Batch 3, both were listed to check and the ALT flag was missed: 12/13.) With the
+current OCR, scanned tables come out column by column, so no value sits next to its test name:
+nothing is flagged, rightly or wrongly.
 
 ## Held-out set (pending)
 

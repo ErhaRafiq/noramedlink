@@ -149,7 +149,7 @@ class LabTestInfo:
 
 
 @cache
-def _lab_index() -> tuple[dict[str, LabTestInfo], re.Pattern, re.Pattern]:
+def _lab_index() -> tuple[dict[str, LabTestInfo], re.Pattern, re.Pattern | None, re.Pattern | None]:
     index: dict[str, LabTestInfo] = {}
     row_only: dict[str, LabTestInfo] = {}
     for item in _load("lab_tests.json")["tests"]:
@@ -159,22 +159,30 @@ def _lab_index() -> tuple[dict[str, LabTestInfo], re.Pattern, re.Pattern]:
         for abbreviation in item.get("row_abbreviations", []):
             row_only[abbreviation] = info
     names = _word_pattern(list(index))
-    # A row abbreviation counts only at the start of a line ("K 4.1 mmol/L"), case-sensitively.
-    row_start = re.compile(rf"^\s*(?:{_alternation(list(row_only))})(?![\w-])", re.MULTILINE)
+    # Abbreviations are case-sensitive. Two letters or more ("Hb", "TLC", "FBS") count anywhere; a
+    # single letter ("K 4.1 mmol/L") only at the start of a line, where it cannot be "vitamin K".
+    letters = [a for a in row_only if len(a) == 1]
+    longer = [a for a in row_only if len(a) > 1]
+    anywhere = _word_pattern(longer, ignore_case=False)
+    row_start = re.compile(rf"^\s*(?:{_alternation(letters)})(?![\w-])", re.MULTILINE) if letters else None
     _row_lookup.update(row_only)
-    return index, names, row_start
+    return index, names, anywhere, row_start
 
 
 _row_lookup: dict[str, LabTestInfo] = {}
 
 
 def find_lab_tests(text: str) -> list[Mention]:
-    """Lab test names: full names anywhere, short abbreviations only at the start of a line."""
-    index, names, row_start = _lab_index()
-    found = [Mention(m.start(), m.end(), m.group(0), index[m.group(0).lower()]) for m in names.finditer(text or "")]
-    for match in row_start.finditer(text or ""):
-        abbreviation = match.group(0).strip()
-        start = match.end() - len(abbreviation)
+    """Lab test names: full names and abbreviations anywhere, single letters only at a line start."""
+    index, names, anywhere, row_start = _lab_index()
+    text = text or ""
+    found = [Mention(m.start(), m.end(), m.group(0), index[m.group(0).lower()]) for m in names.finditer(text)]
+    extra = [(m.start(), m.end(), m.group(0)) for m in anywhere.finditer(text)] if anywhere else []
+    if row_start:
+        for match in row_start.finditer(text):
+            abbreviation = match.group(0).strip()
+            extra.append((match.end() - len(abbreviation), match.end(), abbreviation))
+    for start, end, abbreviation in extra:
         if not any(m.start <= start < m.end for m in found):
-            found.append(Mention(start, match.end(), abbreviation, _row_lookup[abbreviation]))
+            found.append(Mention(start, end, abbreviation, _row_lookup[abbreviation]))
     return sorted(found, key=lambda mention: mention.start)

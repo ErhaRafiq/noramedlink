@@ -14,7 +14,7 @@ engine it records:
 - Key values (<base>.values.csv), at three levels:
     text      the test name, number and unit can be read correctly from the OCR text
     extractor the app's structured-field extractor (extract_structured_data) gives that number
-    rules     the safety rules' value reader (lab_ranges.read_value) gives that number
+    rules     the reader the safety rules and the summary share (icse.entities) gives that number
   Each value is "correct", "missing" or "WRONG" (test found, different number). Wrong numbers
   are the dangerous outcome and are counted separately.
 - Seconds per page on this CPU, with model loading done before timing.
@@ -484,20 +484,23 @@ def rules_value(row: dict[str, str], text: str) -> str:
     the readings. A reading that crosses an unreadable "[?]" value models the reader the
     implementation needs: it stops there ("flagged") instead of taking the next number.
     """
-    from services.lab_ranges import LAB_RANGES, read_value, read_values
+    from services.icse.entities import extract_entities
+    from services.knowledge import find_lab_tests
+    from services.lab_rules import RULES
 
-    test = row["test"].lower()
-    lab = next((lab for lab in LAB_RANGES if any(re.search(rf"\b{re.escape(a)}\b", test) for a in lab.aliases)), None)
-    if lab is None:
+    found = find_lab_tests(row["test"])
+    if not found or found[0].info.name not in RULES:
         return "n/a"
-    # No unit conversion: compare the number as printed.
-    readings = read_values(text, lab.aliases) if lab.all_readings else [r for r in [read_value(text, lab.aliases)] if r]
+    # The one reader both the report rules and the summary use (since the rules were unified).
+    # Every reading counts; no unit conversion: compare the number as printed.
+    name = found[0].info.name
+    readings = [e for e in extract_entities(text) if e["type"] == "test_result" and e["name"] == name]
     if not readings:
         return "missing"
     expected = number(row["value"])
-    if any(same(r.value, expected) and UNREADABLE not in r.evidence for r in readings):
+    if any(e["readable"] and same(number(e["value"]), expected) for e in readings):
         return "correct"
-    if any(UNREADABLE in r.evidence for r in readings):
+    if any(not e["readable"] for e in readings):
         return "flagged"
     return "WRONG"
 

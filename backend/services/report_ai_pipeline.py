@@ -357,7 +357,7 @@ async def run_report_ai_pipeline(
     entities, entity_metadata = await extract_medical_entities(source_text, fields)
     # Typed entities for the clinical summary: rules and the knowledge base first, BioBERT only as
     # a low-confidence suggestion. Built from the same identity-free text.
-    clinical_entities = extract_entities(source_text, entities)
+    clinical_entities = extract_entities(source_text, entities, fields)
     validation = validate_medical_rules(source_text, fields, entities, uncertain_values)
     summary_json, summary_source, summary_warning = await _generate_summary_json(
         source_text,

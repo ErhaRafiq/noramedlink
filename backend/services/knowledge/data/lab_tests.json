@@ -1,7 +1,7 @@
 {
   "_meta": {
     "status": "DEMO KNOWLEDGE BASE - not a clinical reference",
-    "notice": "Common laboratory test names and the names labs print for them. Short abbreviations (K, Na, Cl, PLT, ...) are only recognised at the start of a table row, case-sensitively. Reference ranges are NOT here: the deterministic ranges live in services/lab_ranges.py, and each report prints its own.",
+    "notice": "Common laboratory test names and the names labs print for them. Abbreviations (Hb, Na, PLT, ...) are matched case-sensitively; a single letter (K) only at the start of a table row. Reference ranges are NOT here: the deterministic ranges live in services/lab_rules.py, and each report prints its own.",
     "sources": {"LAB-NAMES": "Test names as commonly printed on laboratory reports (CBC, LFT, RFT, lipid profile, glucose, thyroid)."}
   },
   "tests": [
@@ -18,10 +18,11 @@
     {"name": "Monocytes", "aliases": ["monocytes"], "row_abbreviations": [], "panel": "CBC"},
     {"name": "Eosinophils", "aliases": ["eosinophils"], "row_abbreviations": [], "panel": "CBC"},
     {"name": "ESR", "aliases": ["erythrocyte sedimentation rate"], "row_abbreviations": ["ESR"], "panel": "CBC"},
-    {"name": "Fasting Blood Sugar", "aliases": ["fasting blood sugar", "fasting blood glucose", "fasting glucose", "fasting plasma glucose"], "row_abbreviations": ["FBS", "FPG"], "panel": "Glucose"},
-    {"name": "Random Blood Sugar", "aliases": ["random blood sugar", "random blood glucose", "random glucose"], "row_abbreviations": ["RBS"], "panel": "Glucose"},
-    {"name": "Post Prandial Blood Sugar", "aliases": ["post prandial blood sugar", "postprandial blood sugar", "post prandial glucose"], "row_abbreviations": ["PPBS"], "panel": "Glucose"},
-    {"name": "HbA1c", "aliases": ["hba1c", "glycated hemoglobin", "glycosylated hemoglobin"], "row_abbreviations": [], "panel": "Glucose"},
+    {"name": "Fasting Blood Sugar", "aliases": ["fasting blood sugar", "fasting blood glucose", "fasting glucose", "fasting plasma glucose", "fasting sugar"], "row_abbreviations": ["FBS", "FPG"], "panel": "Glucose"},
+    {"name": "Random Blood Sugar", "aliases": ["random blood sugar", "random blood glucose", "random glucose", "random sugar"], "row_abbreviations": ["RBS"], "panel": "Glucose"},
+    {"name": "Post Prandial Blood Sugar", "aliases": ["post prandial blood sugar", "postprandial blood sugar", "post prandial glucose", "postprandial glucose", "post prandial"], "row_abbreviations": ["PPBS"], "panel": "Glucose"},
+    {"name": "Blood Glucose", "aliases": ["blood glucose", "blood sugar", "serum glucose", "plasma glucose", "glucose", "sugar"], "row_abbreviations": [], "panel": "Glucose"},
+    {"name": "HbA1c", "aliases": ["hba1c", "hb a1c", "glycated hemoglobin", "glycosylated hemoglobin"], "row_abbreviations": [], "panel": "Glucose"},
     {"name": "Urea", "aliases": ["urea", "blood urea", "serum urea"], "row_abbreviations": [], "panel": "Kidney"},
     {"name": "Blood Urea Nitrogen", "aliases": ["blood urea nitrogen", "urea nitrogen"], "row_abbreviations": ["BUN"], "panel": "Kidney"},
     {"name": "Creatinine", "aliases": ["creatinine", "serum creatinine"], "row_abbreviations": [], "panel": "Kidney"},
@@ -50,6 +51,7 @@
     {"name": "Vitamin B12", "aliases": ["vitamin b12"], "row_abbreviations": [], "panel": "Other"},
     {"name": "Ferritin", "aliases": ["ferritin", "serum ferritin"], "row_abbreviations": [], "panel": "Other"},
     {"name": "CRP", "aliases": ["c-reactive protein", "c reactive protein"], "row_abbreviations": ["CRP"], "panel": "Other"},
+    {"name": "Oxygen Saturation", "aliases": ["oxygen saturation", "spo2", "sp02"], "row_abbreviations": [], "panel": "Vitals"},
     {"name": "Troponin", "aliases": ["troponin", "troponin i", "troponin t"], "row_abbreviations": [], "panel": "Cardiac"}
   ]
 }

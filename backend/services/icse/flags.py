@@ -22,19 +22,10 @@ from dataclasses import dataclass
 from typing import Any
 
 from services.icse.entities import SUGGESTION
-from services.icse.rules import (
-    BP_BASIS,
-    BP_CAUTION,
-    BP_HIGH_RISK,
-    RULES,
-    SEVERITY_RANK,
-    TestRule,
-    normalise_unit,
-    to_number,
-)
+from services.lab_rules import CHECK_ORIGINAL, RULES, SEVERITY_RANK, Assessment, assess, show
 
-LOW_CONFIDENCE = 0.90
-CHECK_ORIGINAL = "check against the original report"
+# The same reader and the same judgement as the per-report rules (lab_rules.assess): a value is
+# never flagged here and passed on the report, or the other way round.
 
 
 @dataclass
@@ -45,11 +36,21 @@ class Reading:
     printed: str  # value and unit as printed
     value: float | tuple[int, int]  # in the rule's unit (blood pressure: systolic, diastolic)
     unit: str
-    unit_assumed: bool
+    unit_note: str | None  # how a value printed without a unit was read
     entity: dict[str, Any]
+    basis: str
     severity: str | None = None  # None: inside the rule's range
     direction: str | None = None  # "high" or "low"
     limit: str | None = None
+
+    @classmethod
+    def of(cls, report: dict, assessment: Assessment) -> Reading:
+        graded = assessment.grade
+        return cls(
+            report["report_id"], report.get("date"), assessment.name, assessment.printed, assessment.value,
+            assessment.unit, assessment.unit_note, assessment.entity, assessment.basis,
+            graded.severity if graded else None, graded.direction if graded else None, graded.limit if graded else None,
+        )  # fmt: skip
 
     def source(self) -> dict[str, Any]:
         return {
@@ -58,10 +59,11 @@ class Reading:
             "printed": self.printed,
             "value": self.value if isinstance(self.value, tuple) else round(self.value, 3),
             "unit": self.unit,
-            "unit_assumed": self.unit_assumed,
+            "unit_assumed": self.unit_note is not None,
+            "unit_note": self.unit_note,
             "report_flag": self.entity.get("report_flag"),
             "reference_range_printed": self.entity.get("reference_range"),
-            "text": self.entity.get("text"),
+            "text": self.entity.get("evidence") or self.entity.get("text"),
         }
 
 
@@ -69,88 +71,16 @@ def _is_rule_entity(entity: dict[str, Any]) -> bool:
     return entity.get("method") != "biobert" and entity.get("certainty") != SUGGESTION
 
 
-# --- reading values -------------------------------------------------------------------------------
-
-
-def _check(report: dict, entity: dict, reason: str) -> dict[str, Any]:
-    printed = " ".join(str(p) for p in (entity.get("value") or "[?]", entity.get("unit") or "") if p).strip()
+def _check(report: dict, assessment: Assessment) -> dict[str, Any]:
     return {
         "code": "CHECK_ORIGINAL",
         "kind": "check_original",
         "severity": "INFO",
-        "subject": entity["name"],
-        "message": f"{entity['name']}: {CHECK_ORIGINAL} ({reason}). No flag was raised from this value.",
-        "reason": reason,
-        "sources": [{"report_id": report["report_id"], "date": report.get("date"), "printed": printed}],
+        "subject": assessment.name,
+        "message": f"{assessment.name}: {CHECK_ORIGINAL} ({assessment.problem}). No flag was raised from this value.",
+        "reason": assessment.problem,
+        "sources": [{"report_id": report["report_id"], "date": report.get("date"), "printed": assessment.printed}],
     }
-
-
-def _test_reading(report: dict, entity: dict, rule: TestRule) -> Reading | dict:
-    """A converted reading, or a check-original item saying why the value cannot be used."""
-    confidence = entity.get("confidence")
-    if not entity.get("readable", True) or not entity.get("value"):
-        return _check(report, entity, "the value could not be read")
-    if confidence is not None and confidence < LOW_CONFIDENCE:
-        return _check(report, entity, f"the value was read with low confidence ({confidence:.0%})")
-    number = to_number(entity["value"])
-    if number is None:
-        return _check(report, entity, "the value is a bound or not a plain number")
-    unit = normalise_unit(entity.get("unit"))
-    if unit is None:
-        low, high = rule.unitless or (0, -1)
-        if not low <= number <= high:
-            return _check(report, entity, f"no unit is printed and the value does not fit {rule.unit}")
-        value, assumed = number, True
-    elif unit in rule.units:
-        value, assumed = rule.units[unit](number), False
-    else:
-        return _check(report, entity, f"the unit '{entity.get('unit')}' is not one this rule can convert")
-    if not rule.plausible[0] <= value <= rule.plausible[1]:
-        return _check(report, entity, "the value is outside what is possible for this test; possibly a reading error")
-    printed = f"{entity['value']} {entity.get('unit') or ''}".strip()
-    reading = Reading(report["report_id"], report.get("date"), rule.name, printed, value, rule.unit, assumed, entity)
-    _grade(reading, rule)
-    return reading
-
-
-def _grade(reading: Reading, rule: TestRule) -> None:
-    value = reading.value
-    if rule.critical_low is not None and value < rule.critical_low:
-        reading.severity, reading.direction, reading.limit = (
-            "HIGH_RISK",
-            "low",
-            f"under {rule.critical_low:g} {rule.unit}",
-        )
-    elif rule.critical_high is not None and value >= rule.critical_high:
-        reading.severity, reading.direction = "HIGH_RISK", "high"
-        reading.limit = f"{rule.critical_high:g} {rule.unit} or more"
-    elif rule.low is not None and value < rule.low:
-        reading.severity, reading.direction, reading.limit = "CAUTION", "low", f"under {rule.low:g} {rule.unit}"
-    elif rule.high is not None and value > rule.high:
-        reading.severity, reading.direction, reading.limit = "CAUTION", "high", f"over {rule.high:g} {rule.unit}"
-
-
-def _bp_reading(report: dict, entity: dict) -> Reading | dict:
-    if not entity.get("readable", True):
-        return _check(report, entity, "the two numbers are not a possible blood pressure")
-    systolic, diastolic = (int(n) for n in entity["value"].split("/"))
-    reading = Reading(
-        report["report_id"], report.get("date"), "Blood Pressure", f"{entity['value']} mmHg", (systolic, diastolic),
-        "mmHg", False, entity,
-    )  # fmt: skip
-    if systolic >= BP_HIGH_RISK[0] or diastolic >= BP_HIGH_RISK[1]:
-        reading.severity, reading.direction, reading.limit = (
-            "HIGH_RISK",
-            "high",
-            "at a crisis level (systolic 180 or diastolic 120 mmHg, or more)",
-        )
-    elif systolic >= BP_CAUTION[0] or diastolic >= BP_CAUTION[1]:
-        reading.severity, reading.direction, reading.limit = (
-            "CAUTION",
-            "high",
-            "raised (systolic 140 or diastolic 90 mmHg, or more)",
-        )
-    return reading
 
 
 def _collect(reports: list[dict]) -> tuple[dict[str, list[list[Reading]]], list[dict], dict[str, set]]:
@@ -162,19 +92,14 @@ def _collect(reports: list[dict]) -> tuple[dict[str, list[list[Reading]]], list[
     for report in reports:
         per_test: dict[str, list[Reading]] = defaultdict(list)
         for entity in report.get("entities") or []:
-            if not _is_rule_entity(entity):
+            assessment = assess(entity)
+            if assessment is None:
                 continue
-            if entity.get("type") == "test_result" and entity.get("name") in RULES:
-                result = _test_reading(report, entity, RULES[entity["name"]])
-            elif entity.get("type") == "vital" and entity.get("name") == "Blood Pressure":
-                result = _bp_reading(report, entity)
+            mentioned[assessment.name].add(report["report_id"])
+            if assessment.problem:
+                checks.append(_check(report, assessment))
             else:
-                continue
-            mentioned[entity["name"]].add(report["report_id"])
-            if isinstance(result, dict):
-                checks.append(result)
-            else:
-                per_test[entity["name"]].append(result)
+                per_test[assessment.name].append(Reading.of(report, assessment))
         for name, readings in per_test.items():
             by_test[name].append(readings)
     return by_test, checks, mentioned
@@ -185,12 +110,7 @@ def _worst(readings: list[Reading]) -> Reading:
     return max(readings, key=lambda r: SEVERITY_RANK.get(r.severity or "INFO", 0))
 
 
-def _basis(name: str) -> str:
-    return BP_BASIS if name == "Blood Pressure" else RULES[name].basis
-
-
-def _show(value: float | tuple[int, int]) -> str:
-    return f"{value[0]}/{value[1]}" if isinstance(value, tuple) else f"{value:g}"
+_show = show
 
 
 # --- the flags ------------------------------------------------------------------------------------
@@ -213,7 +133,7 @@ def _result_flag(name: str, readings: list[Reading]) -> dict | None:
         "subject": name,
         "message": f"{name} {_show(worst.value)} {worst.unit} is {worst.limit}{others}. For physician review.",
         "reason": f"most severe reading in the most recent report with this test: {worst.printed} ({worst.limit})",
-        "rule": _basis(name),
+        "rule": worst.basis,
         "sources": [r.source() for r in abnormal],
     }
 
@@ -251,7 +171,7 @@ def _persistent_flag(name: str, test_readings: list[list[Reading]]) -> dict | No
         "subject": name,
         "message": f"{name} has been {direction} on {len(run)} dated reports in a row ({shown}). For physician review.",
         "reason": f"the latest {len(run)} dated readings are all {direction} (outside the rule's range)",
-        "rule": _basis(name),
+        "rule": run[-1].basis,
         "sources": [r.source() for r in run],
     }
 

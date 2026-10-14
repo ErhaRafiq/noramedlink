@@ -17,8 +17,9 @@ from datetime import date
 from typing import Any
 
 from services import knowledge
+from services.lab_rules import looks_like_unit, plausible_blood_pressure
 
-ENTITIES_VERSION = 3  # bump when extraction changes, so stored entities can be rebuilt
+ENTITIES_VERSION = 4  # bump when extraction changes, so stored entities can be rebuilt
 MENTIONED = "mentioned in report"
 SUGGESTION = "model suggestion"
 
@@ -265,6 +266,80 @@ UNREADABLE = "[?]"
 _OTHER_TEST = re.compile(
     r"\b(?:clearance|ratio|electrophoresis|index|excretion|variant|fraction|HbA2?|HbF|HbS)\b", re.IGNORECASE
 )
+_PRINTED_RANGE_FIRST = re.compile(r"\s*\([^)\n]*\d[^)\n]*\)")
+_TIME_UNIT = re.compile(r"^(?:hrs?|hours?|h|mins?|minutes?)$", re.IGNORECASE)
+_URINE_BEFORE = re.compile(r"\burine\b[^\n\d]{0,12}$", re.IGNORECASE)
+
+
+# --- values from structured fields (OCR.space's parser) ----------------------------------------------
+
+_FIELD_TESTS = {
+    "glucose": "Blood Glucose",
+    "blood_sugar": "Blood Glucose",
+    "rbs": "Random Blood Sugar",
+    "fbs": "Fasting Blood Sugar",
+    "creatinine": "Creatinine",
+    "hba1c": "HbA1c",
+    "hb_a1c": "HbA1c",
+    "egfr": "eGFR",
+    "e_gfr": "eGFR",
+}
+_FIELD_VALUE = re.compile(r"\s*([<>]?\s*\d+(?:,\d+)*(?:\.\d+)?)\s*([^\s,;]*)")
+
+
+def _field_entities(fields: dict[str, Any], found: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Readings from structured fields, unless the same value was already read from the text."""
+    seen = {(e["name"], e.get("value")) for e in found}
+    entities = []
+    for key, raw in (fields or {}).items():
+        key = str(key).lower()
+        match = _FIELD_VALUE.match(str(raw)) if raw is not None else None
+        if not match:
+            continue
+        if key == "blood_pressure":
+            pair = re.match(r"\s*(\d{2,3})\s*/\s*(\d{2,3})", str(raw))
+            if pair and ("Blood Pressure", f"{pair.group(1)}/{pair.group(2)}") not in seen:
+                systolic, diastolic = int(pair.group(1)), int(pair.group(2))
+                entities.append(
+                    {
+                        "type": "vital",
+                        "name": "Blood Pressure",
+                        "value": f"{systolic}/{diastolic}",
+                        "unit": "mmHg",
+                        "readable": plausible_blood_pressure(systolic, diastolic),
+                        "text": f"{key}: {raw}",
+                        "evidence": f"{key}: {raw}",
+                        "position": None,
+                        "certainty": MENTIONED,
+                        "method": "structured field",
+                        "confidence": None,
+                    }
+                )
+            continue
+        name = _FIELD_TESTS.get(key)
+        printed = match.group(1).replace(" ", "")
+        if not name or (name, printed) in seen:
+            continue
+        unit = match.group(2) if looks_like_unit(match.group(2)) else None
+        entities.append(
+            {
+                "type": "test_result",
+                "name": name,
+                "panel": None,
+                "value": printed,
+                "unit": unit,
+                "reference_range": None,
+                "report_flag": None,
+                "readable": True,
+                "text": f"{key}: {raw}",
+                "evidence": f"{key}: {raw}"[:160],
+                "position": None,
+                "certainty": MENTIONED,
+                "method": "structured field",
+                "confidence": None,
+            }
+        )
+    return entities
 
 
 def _test_results(text: str) -> list[dict[str, Any]]:
@@ -275,17 +350,25 @@ def _test_results(text: str) -> list[dict[str, Any]]:
         mentions = knowledge.find_lab_tests(clean)
         for index, mention in enumerate(mentions):
             end = mentions[index + 1].start if index + 1 < len(mentions) else len(clean)
+            if _URINE_BEFORE.search(clean[: mention.start]):
+                continue  # "urine sugar": not a blood test
             segment = clean[mention.end : end]
-            value = _VALUE.search(segment)
-            if UNREADABLE in segment[: value.start() if value else len(segment)]:
-                entities.append(_result(mention, offset, value=None, readable=False))
+            skip = _PRINTED_RANGE_FIRST.match(segment)  # "Hemoglobin (13.0-17.0) 10.1 g/dL"
+            start = skip.end() if skip else 0
+            value = _VALUE.search(segment, start)
+            if UNREADABLE in segment[start : value.start() if value else len(segment)]:
+                entities.append(_result(mention, offset, clean, value=None, readable=False))
                 continue
-            if not value or len(segment[: value.start()].strip(" :-=")) > 25:
+            if not value or len(segment[start : value.start()].strip(" :-=")) > 25:
                 continue  # no number close after the name: a heading or a sentence, not a result
-            if _OTHER_TEST.search(segment[: value.start()]):
+            if _OTHER_TEST.search(segment[start : value.start()]):
                 continue  # "Creatinine Clearance 95", "Hb electrophoresis: HbA 97 %": a different test
             rest = segment[value.end() :]
             unit = _UNIT.match(rest)
+            if unit and _TIME_UNIT.match(unit.group(1)):
+                continue  # "Blood sugar 2 hours after meal": 2 is a time, not a reading
+            if unit and not looks_like_unit(unit.group(1)):
+                unit = None  # "Hb 10.2 today": a word, not a unit
             after_unit = rest[unit.end() :] if unit else rest
             reference = _RANGE.search(after_unit)
             flag = _FLAG.search(after_unit[reference.end() :] if reference else after_unit)
@@ -294,8 +377,9 @@ def _test_results(text: str) -> list[dict[str, Any]]:
                 _result(
                     mention,
                     offset,
+                    clean,
                     value=printed,
-                    unit=unit.group(1) if unit else None,
+                    unit=unit.group(1).rstrip(".") if unit else None,
                     reference=" ".join(reference.group(0).split()) if reference else None,
                     flag={"HIGH": "H", "LOW": "L"}.get(flag.group(1).upper(), flag.group(1).upper()) if flag else None,
                 )
@@ -304,7 +388,7 @@ def _test_results(text: str) -> list[dict[str, Any]]:
     return entities
 
 
-def _result(mention, offset, value, unit=None, reference=None, flag=None, readable=True) -> dict[str, Any]:
+def _result(mention, offset, line, value, unit=None, reference=None, flag=None, readable=True) -> dict[str, Any]:
     return {
         "type": "test_result",
         "name": mention.info.name,
@@ -315,6 +399,7 @@ def _result(mention, offset, value, unit=None, reference=None, flag=None, readab
         "report_flag": flag,  # what the report itself marks; the app's rules decide their own flags
         "readable": readable,
         "text": mention.text,
+        "evidence": " ".join(line.split())[:160],
         "position": offset + mention.start,
         "certainty": MENTIONED,
         "method": "rules",
@@ -341,7 +426,7 @@ def _blood_pressures(text: str) -> list[dict[str, Any]]:
     for position in sorted(found):
         match = found[position]
         systolic, diastolic = int(match.group(1)), int(match.group(2))
-        plausible = 60 <= systolic <= 260 and 30 <= diastolic <= 160 and systolic > diastolic
+        plausible = plausible_blood_pressure(systolic, diastolic)
         entities.append(
             {
                 "type": "vital",
@@ -451,8 +536,12 @@ def _entity(kind: str, name: str, match: re.Match, **extra) -> dict[str, Any]:
     }
 
 
-def extract_entities(text: str, biobert_entities: list[dict[str, Any]] | None = None) -> list[dict[str, Any]]:
-    """All typed entities in one report's text (identifiers already removed), in text order."""
+def extract_entities(
+    text: str, biobert_entities: list[dict[str, Any]] | None = None, fields: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
+    """All typed entities in one report's text (identifiers already removed), in text order, then
+    values from structured fields that the text did not already give. The per-report rules and the
+    clinical summary both read values through this function only."""
     text = text or ""
     family = _family_spans(text)
     allergies, allergy_spans = _allergies(text)
@@ -470,4 +559,5 @@ def extract_entities(text: str, biobert_entities: list[dict[str, Any]] | None = 
     if printed_date:
         entities.append(printed_date)
     entities.sort(key=lambda e: e["position"] if e["position"] is not None else 0)
+    entities += _field_entities(fields or {}, entities)
     return entities + _biobert_suggestions(biobert_entities or [], entities)

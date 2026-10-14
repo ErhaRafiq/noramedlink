@@ -39,3 +39,22 @@ score, and numbers scored under 0.90 (reference ranges excluded) are listed as "
 original report". On the 16 scanned samples that is 2 of 445 number cells: "3.7" (correct, but
 unsure) and a stray "8". The threshold will be revisited with the phone photos. "current" is kept
 as the baseline (RapidOCR 1.4 with PP-OCRv3, run from the bench venv).
+
+## Update (clinical-summary): the "rules" reader changed
+
+The safety rules and the clinical summary now share one value reader (`services/icse/entities.py`)
+and one set of thresholds (`services/lab_rules.py`); `services/lab_ranges.py` is gone. The "Rules
+wrong" column above was measured with the old reader. Re-scored on the same saved OCR text
+(`--reuse`):
+
+| Engine | Kind | Rules correct | Rules wrong |
+|---|---|---|---|
+| current | digital | 70/70 | 0 |
+| current | scan | 0/70 | 0 |
+| current | scan_hard | 0/29 | 0 |
+| rows_v5 | digital | 70/70 | 0 |
+| rows_v5 | scan | 70/70 | 0 |
+| rows_v5 | scan_hard | 29/29 | 0 |
+
+The shared reader reads a value only on the same line as its test name, so the current engine's
+column-by-column scans give no value at all (missing, never wrong).
