@@ -288,6 +288,8 @@ class PatientReportOut(BaseModel):
     patient_summary: str | None = None
     # Who wrote patient_summary: "gemini", "openai", "groq" or "rule_based" (absent on older reports).
     patient_summary_source: str | None = None
+    # Conditions the report mentions, with everyday names (mentioned in the report, not a diagnosis).
+    conditions_mentioned: list[dict[str, Any]] = []
 
 
 class DepartmentTileOut(BaseModel):

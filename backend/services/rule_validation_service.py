@@ -3,6 +3,7 @@ from typing import Any
 
 from services.icse.entities import extract_entities
 from services.lab_rules import assess, warning_for
+from services.plain_language import patient_message
 
 STATUS_ORDER = {"SAFE": 0, "CAUTION": 1, "HIGH_RISK": 2}
 
@@ -158,6 +159,10 @@ def validate_medical_rules(
                 "No duplicate medicine, common interaction, high glucose, hypertension, or kidney rule alert was detected.",
             )
         )
+
+    # Every alert also in everyday words for the patient; the clinical message stays for doctors.
+    for warning in warnings:
+        warning["patient_message"] = patient_message(warning)
 
     confidence = 0.86
     if word_count < 20:

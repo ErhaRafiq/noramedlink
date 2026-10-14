@@ -17,6 +17,7 @@ from services.ocr_space_service import (
     department_slug,
     normalize_department_name,
 )
+from services.plain_language import patient_message, plain_name, rewrite_sections
 from services.privacy import patient_identity_patterns, redact_identifiers
 from services.report_ai_pipeline import run_report_ai_pipeline
 
@@ -114,6 +115,29 @@ def _text_was_read(report: PatientReport) -> bool:
     return report.ocr_status != "FAILED" or bool((report.extracted_text or "").strip())
 
 
+def _with_patient_message(warning: dict[str, Any]) -> dict[str, Any]:
+    """A rule alert with its everyday wording (alerts saved before it existed get it here)."""
+    return warning if warning.get("patient_message") else {**warning, "patient_message": patient_message(warning)}
+
+
+def conditions_mentioned(entities: Any) -> list[dict[str, Any]]:
+    """Conditions the report mentions (not negated, not family history, not a model guess), with
+    their everyday names, for the patient's report page. Mentioned, never diagnosed."""
+    found: dict[str, dict[str, Any]] = {}
+    for entity in entities if isinstance(entities, list) else []:
+        if (
+            isinstance(entity, dict)
+            and entity.get("type") == "condition"
+            and entity.get("negated") is False
+            and entity.get("method") != "biobert"
+        ):
+            found.setdefault(
+                entity["name"],
+                {"name": entity["name"], "plain": plain_name(entity["name"]), "chronic": bool(entity.get("chronic"))},
+            )
+    return list(found.values())
+
+
 def report_to_out(report: PatientReport) -> PatientReportOut:
     department_name = report.department.name if report.department else "General"
     structured_payload = dict_field(report.structured_data_json)
@@ -143,7 +167,9 @@ def report_to_out(report: PatientReport) -> PatientReportOut:
         structured_data_json=structured_payload,
         summary=report.summary if _text_was_read(report) else None,
         extracted_entities=[item for item in list_field(report.extracted_entities) if isinstance(item, dict)],
-        rule_warnings=[item for item in list_field(report.rule_warnings) if isinstance(item, dict)],
+        rule_warnings=[
+            _with_patient_message(item) for item in list_field(report.rule_warnings) if isinstance(item, dict)
+        ],
         validation_status=(report.validation_status or "NOT_VALIDATED") if _text_was_read(report) else "NOT_VALIDATED",
         validation_results=dict_field(report.validation_results),
         clinical_summary_json=dict_field(report.clinical_summary_json),
@@ -159,7 +185,12 @@ def report_to_out(report: PatientReport) -> PatientReportOut:
         detected_keywords=[str(keyword) for keyword in detected_keywords],
         structured_sections=structured_sections,
         ai_summary=report.summary if _text_was_read(report) else None,
-        patient_summary=structured_payload.get("patient_summary"),
+        # Rewritten when read, so summaries saved before the everyday-words change get it too (the
+        # rewrite changes nothing on a summary that already has it).
+        patient_summary=rewrite_sections(structured_payload["patient_summary"])
+        if structured_payload.get("patient_summary")
+        else None,
+        conditions_mentioned=conditions_mentioned(structured_payload.get("clinical_entities")),
         patient_summary_source=structured_payload.get("patient_summary_source"),
     )
 

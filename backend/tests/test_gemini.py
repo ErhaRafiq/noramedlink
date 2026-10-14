@@ -170,4 +170,6 @@ async def test_a_grounded_patient_summary_is_kept_with_its_source(monkeypatch):
         "Hemoglobin 9.5 g/dL", "Lab", {}, {"status": "CAUTION", "warnings": []}
     )
     assert source == "gemini" and warning is None
-    assert summary.startswith("Your hemoglobin is 9.5 g/dL.") and "consult your doctor" in summary.lower()
+    # The AI kept a medical word as it was; it gets its everyday wording, with the word in brackets.
+    assert summary.startswith("Your oxygen-carrying blood protein (hemoglobin) is 9.5 g/dL.")
+    assert "consult your doctor" in summary.lower()

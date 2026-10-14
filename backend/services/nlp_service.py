@@ -2,6 +2,7 @@ from services.ai_guard import numbers_not_in_source
 from services.ocr_service import detect_report_type
 from services.ocr_space_service import detect_keywords
 from services.openai_service import fallback_notice, generate_openai_text
+from services.plain_language import rewrite_sections
 from services.privacy import redact_identifiers
 
 DISCLAIMER = "This is not a medical diagnosis. Please consult a doctor."
@@ -63,7 +64,7 @@ async def summarize_with_optional_llm(
         summary = result.text.strip()
         if numbers_not_in_source(summary, text):
             # A number that is not in the report must never reach the reader (AGENTS.md 6).
-            fallback = build_rule_based_summary(text, category)
+            fallback = rewrite_sections(build_rule_based_summary(text, category))
             return (
                 fallback,
                 "rule_based",
@@ -71,9 +72,9 @@ async def summarize_with_optional_llm(
             )
         if DISCLAIMER.lower() not in summary.lower():
             summary = f"{summary}\n\n{DISCLAIMER}"
-        return summary, result.provider or "openai", None
+        return rewrite_sections(summary), result.provider or "openai", None
 
-    fallback = build_rule_based_summary(text, category)
+    fallback = rewrite_sections(build_rule_based_summary(text, category))
     notice = fallback_notice(result.error)
     if notice:
         fallback = f"{fallback}\n\n{notice}"

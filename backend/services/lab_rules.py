@@ -354,6 +354,7 @@ def warning_for(assessment: Assessment) -> dict[str, str] | None:
         return {
             "code": "VALUE_NEEDS_CHECK",
             "severity": "CAUTION",
+            "test": assessment.name,
             "message": f"{assessment.name} {assessment.printed} could not be checked ({assessment.problem}); "
             f"{CHECK_ORIGINAL}. For physician review.",
             "evidence": evidence,
@@ -364,6 +365,10 @@ def warning_for(assessment: Assessment) -> dict[str, str] | None:
     return {
         "code": assessment.code,
         "severity": assessment.grade.severity,
+        # For the patient's wording (plain_language.patient_message): the test, as read, and which side.
+        "test": assessment.name,
+        "value_text": assessment.printed,
+        "direction": assessment.grade.direction,
         "message": f"{assessment.name} {show(assessment.value)} {assessment.unit}{note} is {assessment.grade.limit}. "
         f"Rule: {assessment.basis}. Ranges differ between labs; for physician review.",
         "evidence": evidence,

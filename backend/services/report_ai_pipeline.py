@@ -6,6 +6,8 @@ from services.ai_guard import numbers_not_in_source
 from services.biobert_service import extract_medical_entities
 from services.icse.entities import ENTITIES_VERSION, extract_entities
 from services.openai_service import fallback_notice, generate_openai_json, generate_openai_text
+from services.patient_summary import build_patient_summary
+from services.plain_language import glossary, rewrite_sections
 from services.privacy import IDENTITY_FIELDS, redact_identifiers
 from services.report_breakdown import measured_values, report_conclusion
 from services.rule_validation_service import validate_medical_rules
@@ -217,62 +219,31 @@ async def _self_check_summary(
     }
 
 
-def _build_patient_summary_fallback(
-    clinical_json: dict[str, Any],
-    department: str,
-    validation: dict[str, Any],
-) -> str:
-    """Build a patient-friendly summary from the clinical JSON when OpenAI is unavailable."""
-    parts = []
-
-    overview = clinical_json.get("patient_overview", "")
-    if overview:
-        parts.append(overview)
-
-    conclusion = clinical_json.get("report_conclusion")
-    if conclusion:
-        parts.append(f"What the report concludes, in the reporting doctor's words: {conclusion}")
-
-    findings = clinical_json.get("key_findings", [])
-    # Skipped when they are the conclusion's sentences, already quoted above.
-    if not conclusion and findings and findings != ["No structured clinical fields were confidently extracted."]:
-        parts.append("Key findings from your report: " + ", ".join(findings[:5]) + ".")
-
-    diseases = clinical_json.get("detected_diseases", [])
-    if diseases and diseases != ["No disease entity was confidently detected."]:
-        parts.append("Possible conditions mentioned: " + ", ".join(diseases[:4]) + ".")
-
-    medicines = clinical_json.get("medicines", [])
-    if medicines and medicines != ["No medicine entity was confidently detected."]:
-        parts.append("Medicines found in the report: " + ", ".join(medicines[:5]) + ".")
-
-    alerts = clinical_json.get("risks_alerts", [])
-    if alerts and alerts != ["No rule-based alert detected."]:
-        parts.append("Alerts: " + " ".join(alerts[:3]))
-
-    status = validation.get("status", "SAFE")
-    if status == "HIGH_RISK":
-        parts.append("This report contains values that need urgent doctor attention.")
-    elif status == "CAUTION":
-        parts.append("Some values in this report may need a doctor's review.")
-
-    parts.append("Please consult your doctor for proper diagnosis and treatment.")
-
-    return " ".join(parts)
-
-
 async def _generate_patient_summary(
     text: str,
     department: str,
     clinical_json: dict[str, Any],
     validation: dict[str, Any],
+    entities: list[dict[str, Any]] | None = None,
 ) -> tuple[str, str | None, str]:
-    """A plain-language summary for a patient with no medical training.
+    """A summary in everyday words for a patient with no medical training.
 
-    Returns the summary, a warning when the AI one could not be used, and its source
-    ("gemini", "openai", "groq" or "rule_based").
+    The AI writes it when a key is set; otherwise (or when the AI's summary is rejected) it is built
+    by fixed rules (services/patient_summary.py). Either way every medical word then gets its
+    everyday wording, with the term in brackets once (services/plain_language.py). Returns the
+    summary, a warning when the AI one could not be used, and its source ("gemini", "openai",
+    "groq" or "rule_based").
     """
-    alerts = [w["message"] for w in validation.get("warnings", []) if w.get("severity") in {"CAUTION", "HIGH_RISK"}]
+    entities = extract_entities(text) if entities is None else entities
+
+    def rule_based() -> str:
+        return build_patient_summary(text, entities, validation, department, clinical_json.get("report_conclusion"))
+
+    alerts = [
+        w.get("patient_message") or w["message"]
+        for w in validation.get("warnings", [])
+        if w.get("severity") in {"CAUTION", "HIGH_RISK"}
+    ]
     result = await generate_openai_text(
         instructions=PATIENT_SUMMARY_INSTRUCTIONS, prompt=_patient_summary_prompt(text, department, alerts)
     )
@@ -283,18 +254,17 @@ async def _generate_patient_summary(
         if invented:
             # A number that is not in the report must never reach the patient (AGENTS.md 6).
             logger.warning("AI patient summary rejected: %d number(s) not found in the report text.", len(invented))
-            fallback = _build_patient_summary_fallback(clinical_json, department, validation)
             return (
-                fallback,
+                rule_based(),
                 "The AI summary used numbers that are not in the report, so it was not shown.",
                 "rule_based",
             )
         if "consult your doctor" not in summary.lower() and "consult a doctor" not in summary.lower():
             summary += "\n\nPlease consult your doctor for proper diagnosis and treatment."
-        return summary, None, result.provider or "openai"
+        # Any medical word the AI left as it was gets its everyday wording here.
+        return rewrite_sections(summary), None, result.provider or "openai"
 
-    fallback = _build_patient_summary_fallback(clinical_json, department, validation)
-    return fallback, result.error, "rule_based"
+    return rule_based(), result.error, "rule_based"
 
 
 PATIENT_SUMMARY_INSTRUCTIONS = (
@@ -328,9 +298,13 @@ PATIENT_SUMMARY_INSTRUCTIONS = (
 
 def _patient_summary_prompt(text: str, department: str, alerts: list[str]) -> str:
     alert_lines = "\n".join(f"- {alert}" for alert in alerts) or "- none"
+    words = glossary(text, limit=20)
+    word_lines = "\n".join(f'- {w["term"]}: say "{w["plain"]}" ({w["explain"]})' for w in words) or "- none"
     return (
         f"Department: {department}\n"
         f"Alerts from the app's safety rules (explain these; do not add others):\n{alert_lines}\n\n"
+        "Everyday words to use for the medical words in this report (write the everyday words, and put "
+        f"the medical word in brackets the first time):\n{word_lines}\n\n"
         f"Report text (as read from the file; it may contain reading mistakes):\n{_compact_text(text, 6000)}"
     )
 
@@ -376,6 +350,7 @@ async def run_report_ai_pipeline(
         department_name,
         summary_json,
         validation,
+        clinical_entities,
     )
 
     return {
