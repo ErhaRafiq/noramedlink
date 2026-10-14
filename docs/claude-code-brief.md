@@ -27,7 +27,7 @@ The project is roughly 30% implemented. Your job is to take it further in **phas
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, Tailwind |
 | Backend | **FastAPI** in `backend/` using **SQLAlchemy**: the only backend. Next.js keeps a same-origin proxy (`app/api/backend/[...path]`), thin auth proxies (`app/api/auth/login`, `signup`) and `app/api/drug-check` (OpenFDA, not used by any page yet) |
-| Database | PostgreSQL. Schema = SQLAlchemy models + **Alembic** migrations (`backend/migrations/`, head `0008`), applied by `alembic upgrade head` at startup. Migrations are additive. **No Prisma** (removed in Phase 1) |
+| Database | PostgreSQL. Schema = SQLAlchemy models + **Alembic** migrations (`backend/migrations/`, head `0009`: `clinical_summaries`), applied by `alembic upgrade head` at startup. Migrations are additive. **No Prisma** (removed in Phase 1) |
 | OCR | Local OCR in FastAPI by default: PDF text layers, then RapidOCR 3 with PP-OCRv5 (ONNX, CPU, models cached in `backend/models/`) for scans and photos, rebuilt into table rows; numbers scored under 0.90 are listed to check against the original. OCR.space only when `OCR_SPACE_API_KEY` is set. No Tesseract anywhere |
 | AI | Gemini, OpenAI and Groq via env keys (Gemini first), rule-based fallback when no key, BioBERT NER (`d4data/biomedical-ner-all`). Identifiers removed before prompts leave the server; AI summaries with numbers not in the report are rejected |
 | Auth | JWT (HS256) issued by FastAPI, stored in `localStorage` on the client; FastAPI role dependencies (`require_patient`, `require_doctor`, admin) on every protected endpoint |

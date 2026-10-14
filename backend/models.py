@@ -580,6 +580,30 @@ class DoctorSummary(Base):
     patient: Mapped[User] = relationship(back_populates="doctor_summaries")
 
 
+class ClinicalSummary(Base):
+    """One version of a patient's clinical summary for doctors (ICSE). Each regeneration adds a row;
+    earlier versions are kept. Derived data only: built from reports, vitals and medicines."""
+
+    __tablename__ = "clinical_summaries"
+    __table_args__ = (
+        Index("clinical_summaries_patient_id_generated_at_idx", "patient_id", "generated_at"),
+        UniqueConstraint("patient_id", "version", name="clinical_summaries_patient_id_version_key"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    # The doctor whose request built this version; kept if that account is later removed.
+    generated_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    trigger: Mapped[str] = mapped_column(String(300), nullable=False)
+    input_fingerprint: Mapped[str] = mapped_column(String(64), nullable=False)
+    content_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
+    summary_text: Mapped[str] = mapped_column(Text, nullable=False)
+    source: Mapped[str] = mapped_column(String(40), default="rule_based", nullable=False)
+    is_current: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+
+
 class PatientDashboardAccess(Base):
     __tablename__ = "patient_dashboard_access"
     # Same name as the retired Prisma schema's @@unique([doctorId, patientId]), so existing databases match.
