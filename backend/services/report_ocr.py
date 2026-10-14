@@ -26,13 +26,17 @@ async def extract_report_text(path: str, file_name: str = "", fallback_departmen
         raise OcrError("Uploaded report file was not found on the server.", 404)
     try:
         async with _local_slot:
-            text, confidence = await asyncio.to_thread(local_ocr.read_text, file_path)
+            read = await asyncio.to_thread(local_ocr.read_text, file_path)
     except local_ocr.LocalOcrError as exc:
         raise OcrError(str(exc), 503) from exc
-    if not text.strip():
+    if not read.text.strip():
         raise OcrError("No readable text was found in this file. You can type the text on the report page.", 422)
 
-    result = build_ocr_result(text, file_name, fallback_department)
-    result["structured_data_json"]["source"] = "local_ocr"
-    result["confidence"] = confidence
+    result = build_ocr_result(read.text, file_name, fallback_department)
+    structured = result["structured_data_json"]
+    structured["source"] = "local_ocr"
+    # Each OCR'd row with its cells' scores (digital PDF pages have none: their text is exact). The
+    # text is never changed; the report analysis lists the numbers OCR was unsure of for checking.
+    structured["ocr_rows"] = read.rows
+    result["confidence"] = read.confidence
     return result

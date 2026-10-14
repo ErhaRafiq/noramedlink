@@ -20,8 +20,8 @@ engine it records:
 - Seconds per page on this CPU, with model loading done before timing.
 
 Writes ocr_samples/_results/<engine>/<sample>.txt (the OCR text), results.csv and summary.md.
-The "current" engine is the app's own pipeline (backend/services/local_ocr.py), so the baseline
-measures exactly what an upload goes through.
+The "app" engine is the app's own pipeline (backend/services/local_ocr.py), so it measures exactly
+what an upload goes through. "current" is the app before ocr-quality, kept as the baseline.
 """
 
 from __future__ import annotations
@@ -67,10 +67,90 @@ class Engine:
         raise NotImplementedError
 
 
+# The app before ocr-quality, kept as the baseline: RapidOCR 1.4 (rapidocr-onnxruntime) with the
+# PP-OCRv3 English recogniser, boxes joined one per line. The bench venv still has that package.
+LEGACY_MODEL = ROOT / "backend" / "models" / "en_PP-OCRv3_rec_infer.onnx"
+UNEXPECTED_CHARS = re.compile(r"[^\x20-\x7E\n°±µ×μ–—‘’“”]")
+MIN_LINE_SCORE = 0.5
+_legacy = None
+
+
+def legacy_engine():
+    global _legacy
+    if _legacy is None:
+        from rapidocr_onnxruntime import RapidOCR
+
+        _legacy = RapidOCR(rec_model_path=str(LEGACY_MODEL), intra_op_num_threads=-1)
+    return _legacy
+
+
+def read_pages(path: Path, ocr) -> tuple[str, float | None]:
+    """Text layer first, as the app does; `ocr(image)` gives (lines, scores) for scanned pages."""
+    from services import local_ocr
+
+    pages, scores = [], []
+    if path.suffix.lower() == ".pdf":
+        import pypdfium2 as pdfium
+
+        pdf = pdfium.PdfDocument(str(path))
+        try:
+            for index in range(min(len(pdf), local_ocr.MAX_PAGES)):
+                page = pdf[index]
+                layer = page.get_textpage().get_text_bounded().strip()
+                if len(re.sub(r"\s", "", layer)) >= local_ocr.MIN_TEXT_LAYER_CHARS:
+                    pages.append(layer)
+                    continue
+                lines, page_scores = ocr(page.render(scale=local_ocr.RENDER_SCALE).to_pil())
+                pages.append("\n".join(lines))
+                scores += page_scores
+        finally:
+            pdf.close()
+    else:
+        from PIL import Image
+
+        with Image.open(path) as image:
+            lines, scores = ocr(image)
+            pages.append("\n".join(lines))
+    return "\n\n".join(p for p in pages if p.strip()), (mean(scores) if scores else None)
+
+
 class CurrentPipeline(Engine):
-    """The app as it is: PDF text layer first, else RapidOCR (services/local_ocr.py)."""
+    """The app before ocr-quality (the baseline): PDF text layer first, else PP-OCRv3 lines."""
 
     name = "current"
+
+    def available(self) -> tuple[bool, str]:
+        try:
+            import rapidocr_onnxruntime  # noqa: F401
+        except ImportError:
+            return False, "pip install rapidocr-onnxruntime==1.4.4 in the bench venv"
+        return (True, "") if LEGACY_MODEL.exists() else (False, f"{LEGACY_MODEL.name} not in backend/models")
+
+    def warm_up(self) -> None:
+        legacy_engine()
+
+    def recognise(self, image) -> list:
+        """(points, text, score) for each text box."""
+        result, _ = legacy_engine()(image.convert("RGB"), use_cls=False)
+        return result or []
+
+    def read(self, path: Path) -> tuple[str, float | None]:
+        def ocr(image):
+            lines, scores = [], []
+            for _box, text, score in self.recognise(image):
+                cleaned = " ".join(UNEXPECTED_CHARS.sub("", text).split())
+                if cleaned and float(score) >= MIN_LINE_SCORE:
+                    lines.append(cleaned)
+                    scores.append(float(score))
+            return lines, scores
+
+        return read_pages(path, ocr)
+
+
+class AppPipeline(Engine):
+    """The app now (backend/services/local_ocr.py): text layer first, else PP-OCRv5 with rows."""
+
+    name = "app"
 
     def warm_up(self) -> None:
         from services import local_ocr
@@ -80,59 +160,28 @@ class CurrentPipeline(Engine):
     def read(self, path: Path) -> tuple[str, float | None]:
         from services import local_ocr
 
-        return local_ocr.read_text(path)
+        read = local_ocr.read_text(path)
+        return read.text, read.confidence
 
 
 class RowsPipeline(CurrentPipeline):
-    """The current pipeline, but OCR boxes are put back into table rows (layout.py)."""
+    """The baseline engine, but OCR boxes are put back into table rows (layout.py)."""
 
     name = "rows"
     flag_below: float | None = None  # replace numbers in boxes scoring below this with "[?]"
 
-    def recognise(self, image) -> list:
-        """(points, text, score) for each text box."""
-        from services import local_ocr
-
-        result, _ = local_ocr._engine()(image.convert("RGB"), use_cls=False)
-        return result or []
-
     def read(self, path: Path) -> tuple[str, float | None]:
         import layout
-
-        from services import local_ocr
 
         def ocr(image) -> tuple[list[str], list[float]]:
             kept = []
             for points, text, score in self.recognise(image):
-                cleaned = " ".join(local_ocr._UNEXPECTED_CHARS.sub("", text).split())
-                if cleaned and float(score) >= local_ocr.MIN_LINE_SCORE:
+                cleaned = " ".join(UNEXPECTED_CHARS.sub("", text).split())
+                if cleaned and float(score) >= MIN_LINE_SCORE:
                     kept.append((points, cleaned, score))
             return layout.rebuild(kept, self.flag_below)
 
-        pages, scores = [], []
-        if path.suffix.lower() == ".pdf":
-            import pypdfium2 as pdfium
-
-            pdf = pdfium.PdfDocument(str(path))
-            try:
-                for index in range(min(len(pdf), local_ocr.MAX_PAGES)):
-                    page = pdf[index]
-                    layer = page.get_textpage().get_text_bounded().strip()
-                    if len(re.sub(r"\s", "", layer)) >= local_ocr.MIN_TEXT_LAYER_CHARS:
-                        pages.append(layer)
-                        continue
-                    lines, page_scores = ocr(page.render(scale=local_ocr.RENDER_SCALE).to_pil())
-                    pages.append("\n".join(lines))
-                    scores += page_scores
-            finally:
-                pdf.close()
-        else:
-            from PIL import Image
-
-            with Image.open(path) as image:
-                lines, scores = ocr(image)
-                pages.append("\n".join(lines))
-        return "\n\n".join(p for p in pages if p.strip()), (mean(scores) if scores else None)
+        return read_pages(path, ocr)
 
 
 class RowsV5(RowsPipeline):
@@ -273,6 +322,7 @@ class RowsFlagged(RowsPipeline):
 
 ENGINES: dict[str, type[Engine]] = {
     "current": CurrentPipeline,
+    "app": AppPipeline,
     "rows": RowsPipeline,
     "rows_v5": RowsV5,
     "rows_doctr": RowsDoctr,
