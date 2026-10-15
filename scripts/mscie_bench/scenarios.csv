@@ -1,0 +1,41 @@
+id,current,conditions,allergies,egfr,potassium,proposed,dose,frequency,expected_kinds,expected_worst
+S01,warfarin,,,,,ibuprofen,400 mg,TDS,interaction,major
+S02,glyceryl trinitrate,,,,,sildenafil,50 mg,OD,interaction,contraindicated
+S03,warfarin,,,,,metronidazole,400 mg,TDS,interaction,major
+S04,warfarin,,,,,ciprofloxacin,500 mg,BD,interaction,moderate
+S05,clopidogrel,,,,,omeprazole,20 mg,OD,interaction,moderate
+S06,clopidogrel,,,,,pantoprazole,40 mg,OD,,
+S07,lisinopril,,,,,spironolactone,25 mg,OD,interaction,major
+S08,lisinopril,,,,,losartan,50 mg,OD,interaction,major
+S09,insulin,,,,,glimepiride,2 mg,OD,interaction,moderate
+S10,levothyroxine,,,,,calcium carbonate,500 mg,OD,interaction,moderate
+S11,domperidone,,,,,azithromycin,500 mg,OD,interaction,major
+S12,atorvastatin,,,,,rosuvastatin,10 mg,OD,duplicate,moderate
+S13,ibuprofen,,,,,diclofenac,50 mg,BD,duplicate,major
+S14,metformin,,,,,metformin,500 mg,BD,duplicate,moderate
+S15,,,penicillin,,,amoxicillin,500 mg,TDS,allergy,contraindicated
+S16,,,penicillin,,,cefixime,400 mg,OD,allergy,moderate
+S17,,,penicillin,,,azithromycin,500 mg,OD,,
+S18,,,NSAID,,,aspirin,75 mg,OD,allergy,contraindicated
+S19,,,sulfonamide,,,furosemide,40 mg,OD,allergy,minor
+S20,,,,25,,metformin,500 mg,BD,contraindication,contraindicated
+S21,,,,40,,metformin,500 mg,BD,contraindication,moderate
+S22,,,,75,,metformin,500 mg,BD,,
+S23,,chronic kidney disease,,,,ibuprofen,400 mg,TDS,contraindication,major
+S24,,chronic kidney disease,,,,aspirin,75 mg,OD,,
+S25,,heart failure,,,,ibuprofen,400 mg,TDS,contraindication,major
+S26,,asthma,,,,bisoprolol,5 mg,OD,contraindication,moderate
+S27,,,,,5.7,spironolactone,25 mg,OD,contraindication,contraindicated
+S28,,,,,4.2,spironolactone,25 mg,OD,,
+S29,,,,,5.8,lisinopril,10 mg,OD,contraindication,major
+S30,,epilepsy,,,,tramadol,50 mg,BD,contraindication,major
+S31,,gout,,,,hydrochlorothiazide,25 mg,OD,contraindication,moderate
+S32,,,,,,paracetamol,1 g,QID,,
+S33,,,,,,paracetamol,1 g,every 4 hours,dose,major
+S34,,,,,,paracetamol,1500 mg,OD,dose,major
+S35,,,,,,metformin,1000 mg,TDS,dose,major
+S36,,,,,,amlodipine,5 mg,OD,,
+S37,,,,,,cetirizine,10 mg,OD,,
+S38,,,,,,levetiracetam,500 mg,BD,,
+S39,,diabetes mellitus,,,,prednisolone,10 mg,OD,contraindication,moderate
+S40,,,,25,,sitagliptin,100 mg,OD,contraindication,moderate
