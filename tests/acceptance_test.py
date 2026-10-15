@@ -678,6 +678,33 @@ def run_tests() -> None:
               response.status_code == 201 and uploaded.get("ocr_status") == "COMPLETED", f"got {response.status_code}")
         check("file stored under A's upload folder, not as base64",
               str(uploaded.get("file_url", "")).startswith(f"uploads/{patient_a}/"), f"got {uploaded.get('file_url')}")
+        import docx as word
+
+        document = word.Document()
+        document.add_paragraph("Hemoglobin 10.2 g/dL")
+        table = document.add_table(rows=1, cols=3)
+        for cell_, value in zip(table.rows[0].cells, ("Glucose", "250", "mg/dL"), strict=True):
+            cell_.text = value
+        word_file = io.BytesIO()
+        document.save(word_file)
+        response = client.post(
+            "/api/backend/patient/reports/upload",
+            headers={"Authorization": f"Bearer {tok_a}"},
+            data={"title": "Phase0 Word report"},
+            files={"file": ("phase0.docx", word_file.getvalue(),
+                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        )
+        word_report = response.json() if response.status_code == 201 else {}
+        check("A uploads a Word report (read on the server, no browser text) -> 201 with its text and table",
+              response.status_code == 201 and "Glucose 250 mg/dL" in (word_report.get("extracted_text") or ""),
+              f"got {response.status_code} {str(word_report.get('extracted_text'))[:80]!r}")
+        response = client.post(
+            "/api/backend/patient/reports/upload",
+            headers={"Authorization": f"Bearer {tok_a}"},
+            data={"title": "Phase0 legacy Word"},
+            files={"file": ("old.doc", b"x", "application/msword")},
+        )
+        check("a legacy .doc file is refused -> 400", response.status_code == 400, f"got {response.status_code}")
         listed = call("GET", "/api/backend/patient/reports", tok_a).json()["items"]
         check("upload appears in A's report list", uploaded.get("id") in [r["id"] for r in listed])
         response = call("DELETE", f"/api/backend/patient/reports/{uploaded.get('id')}", tok_b)

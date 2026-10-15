@@ -64,7 +64,7 @@ export function UploadCard({ upload, onAllUploaded }: { upload: UploadQueue; onA
           </div>
           <div>
             <p className="text-sm font-semibold text-slate-700">Drag &amp; drop files here</p>
-            <p className="text-[11px] text-slate-400 mt-0.5">PDF, JPG, PNG, WEBP — multiple files supported; large photos are shrunk</p>
+            <p className="text-[11px] text-slate-400 mt-0.5">PDF, Word (.docx), JPG, PNG, WEBP, TIFF — multiple files supported; large photos are shrunk</p>
           </div>
           <span className="px-4 py-2 rounded-xl bg-white border border-blue-200 text-sm font-semibold text-blue-600 hover:bg-blue-50 transition shadow-sm">
             Choose Files

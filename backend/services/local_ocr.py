@@ -138,19 +138,79 @@ def _mean_score(rows: list[dict]) -> float | None:
 
 
 def read_text(path: Path) -> OcrText:
-    """The file's text, its mean OCR confidence and the OCR'd rows."""
+    """The file's text, its mean OCR confidence and the OCR'd rows.
+
+    PDF: each page's own text layer when it has one, OCR for scanned pages. Word (.docx): its text and
+    tables exactly, plus OCR of any pictures (a scan pasted into Word). Images and TIFF (every page):
+    OCR, after turning a phone photo upright from its EXIF orientation."""
     try:
-        if path.suffix.lower() == ".pdf":
+        suffix = path.suffix.lower()
+        if suffix == ".pdf":
             return _read_pdf(path)
+        if suffix == ".docx":
+            return _read_docx(path)
         from PIL import Image
 
         with Image.open(path) as image:
-            rows = _ocr_image(image, 1)
+            rows = _ocr_frames(image)
     except LocalOcrError:
         raise
     except Exception as exc:  # unreadable or corrupt file
         raise LocalOcrError("The file could not be opened for reading.") from exc
     return OcrText("\n".join(row["text"] for row in rows), _mean_score(rows), rows)
+
+
+def _upright(image):
+    from PIL import ImageOps
+
+    return ImageOps.exif_transpose(image)  # phone photos carry their rotation in EXIF
+
+
+def _ocr_frames(image, first_page: int = 1) -> list[dict]:
+    """OCR rows of every frame (a TIFF can hold many pages), up to MAX_PAGES."""
+    from PIL import ImageSequence
+
+    rows: list[dict] = []
+    for index, frame in enumerate(ImageSequence.Iterator(image)):
+        if index >= MAX_PAGES:
+            break
+        rows.extend(_ocr_image(_upright(frame), first_page + index))
+    return rows
+
+
+def _read_docx(path: Path) -> OcrText:
+    import io
+
+    import docx
+    from docx.table import Table
+    from docx.text.paragraph import Paragraph
+    from PIL import Image
+
+    document = docx.Document(str(path))
+    lines: list[str] = []
+    for element in document.element.body.iterchildren():
+        if element.tag.endswith("}p"):
+            text = Paragraph(element, document).text.strip()
+            if text:
+                lines.append(text)
+        elif element.tag.endswith("}tbl"):
+            for row in Table(element, document).rows:
+                cells = [" ".join(cell.text.split()) for cell in row.cells]
+                # merged cells repeat; keep each distinct neighbour once
+                kept = [cell for i, cell in enumerate(cells) if cell and (i == 0 or cell != cells[i - 1])]
+                if kept:
+                    lines.append(" ".join(kept))
+    rows: list[dict] = []
+    pictures = [part for part in document.part.related_parts.values() if part.content_type.startswith("image/")]
+    for number, part in enumerate(pictures[:MAX_PAGES], start=1):
+        try:
+            with Image.open(io.BytesIO(part.blob)) as picture:
+                found = _ocr_frames(picture, number)
+        except Exception:  # a picture Pillow cannot read (a vector logo, say) is skipped, not fatal
+            continue
+        rows.extend(found)
+        lines.extend(row["text"] for row in found)
+    return OcrText("\n".join(lines), _mean_score(rows), rows)
 
 
 def _read_pdf(path: Path) -> OcrText:

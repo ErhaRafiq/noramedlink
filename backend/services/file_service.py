@@ -1,3 +1,4 @@
+import zipfile
 from pathlib import Path
 from uuid import uuid4
 
@@ -7,8 +8,11 @@ from PIL import Image, UnidentifiedImageError
 from config import settings
 from database import get_upload_root_path
 
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".pdf"}
-ALLOWED_CONTENT_TYPES = {"image/jpeg", "image/jpg", "image/png", "image/webp", "application/pdf"}
+DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".pdf", ".docx"}
+ALLOWED_CONTENT_TYPES = {
+    "image/jpeg", "image/jpg", "image/png", "image/webp", "image/tiff", "application/pdf", DOCX_TYPE,
+}  # fmt: skip
 
 
 def get_upload_root() -> Path:
@@ -27,7 +31,7 @@ def validate_upload(file: UploadFile) -> str:
     if suffix not in ALLOWED_EXTENSIONS or file.content_type not in ALLOWED_CONTENT_TYPES:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only JPG, JPEG, PNG, and PDF medical reports are supported.",
+            detail="Only PDF, Word (.docx), JPG, PNG, WebP and TIFF reports are supported.",
         )
     return suffix
 
@@ -39,10 +43,15 @@ def validate_stored_file(path: Path, suffix: str) -> None:
                 if input_file.read(5) != b"%PDF-":
                     raise ValueError("Invalid PDF signature.")
             return
+        if suffix == ".docx":
+            with zipfile.ZipFile(path) as archive:
+                if "word/document.xml" not in archive.namelist():
+                    raise ValueError("Not a Word document.")
+            return
 
         with Image.open(path) as image:
             image.verify()
-    except (OSError, UnidentifiedImageError, ValueError):
+    except (OSError, UnidentifiedImageError, ValueError, zipfile.BadZipFile):
         path.unlink(missing_ok=True)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

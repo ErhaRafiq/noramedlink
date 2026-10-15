@@ -168,3 +168,89 @@ async def test_no_text_found_is_an_error_not_an_empty_report(tmp_path, fake_engi
     with pytest.raises(OcrError) as caught:
         await report_ocr.extract_report_text(str(png(tmp_path)), "scan.png", None)
     assert caught.value.status_code == 422
+
+
+# --- Word and TIFF ------------------------------------------------------------------------------
+
+
+def make_docx(tmp_path: Path, picture: bool = False) -> Path:
+    import docx
+
+    document = docx.Document()
+    document.add_paragraph("Lab report")
+    table = document.add_table(rows=2, cols=3)
+    for row, values in enumerate([("Hemoglobin", "10.8", "g/dL"), ("Creatinine", "1.1", "mg/dL")]):
+        for column, value in enumerate(values):
+            table.cell(row, column).text = value
+    document.add_paragraph("Allergies: none known")
+    if picture:
+        image_path = tmp_path / "pasted.png"
+        Image.new("RGB", (60, 60), "white").save(image_path)
+        document.add_picture(str(image_path))
+    path = tmp_path / "report.docx"
+    document.save(path)
+    return path
+
+
+def test_word_text_and_tables_are_read_exactly_in_order(tmp_path):
+    read = local_ocr.read_text(make_docx(tmp_path))
+    assert read.text.splitlines() == [
+        "Lab report",
+        "Hemoglobin 10.8 g/dL",
+        "Creatinine 1.1 mg/dL",
+        "Allergies: none known",
+    ]
+    assert read.confidence is None and read.rows == []  # nothing was OCR'd: the text is exact
+
+
+def test_a_picture_pasted_into_word_is_read_with_ocr(tmp_path, fake_engine):
+    fake_engine([cell("Glucose", 0.95, 20, 100), cell("186", 0.95, 300, 100)])
+    read = local_ocr.read_text(make_docx(tmp_path, picture=True))
+    assert "Glucose 186" in read.text and read.text.startswith("Lab report")
+    assert read.confidence == pytest.approx(0.95)
+
+
+def test_every_page_of_a_tiff_is_read(tmp_path, fake_engine):
+    engine = fake_engine([cell("Hemoglobin", 0.9, 20, 100), cell("10.8", 0.9, 300, 100)])
+    path = tmp_path / "scan.tiff"
+    first = Image.new("RGB", (40, 40), "white")
+    first.save(path, save_all=True, append_images=[Image.new("RGB", (40, 40), "white")])
+    read = local_ocr.read_text(path)
+    assert engine.calls == 2 and read.text.count("Hemoglobin 10.8") == 2
+
+
+def test_a_sideways_phone_photo_is_turned_upright_before_reading(tmp_path, monkeypatch):
+    seen = []
+    monkeypatch.setattr(local_ocr, "_ocr_image", lambda image, page: seen.append(image.size) or [])
+    path = tmp_path / "photo.jpg"
+    image = Image.new("RGB", (80, 40), "white")
+    exif = image.getexif()
+    exif[0x0112] = 6  # rotated 90 degrees: the camera stored it sideways
+    image.save(path, exif=exif)
+    local_ocr.read_text(path)
+    assert seen == [(40, 80)]
+
+
+def test_uploads_accept_word_and_tiff_but_not_other_types(tmp_path):
+    from fastapi import HTTPException, UploadFile
+
+    from services.file_service import DOCX_TYPE, validate_stored_file, validate_upload
+
+    def upload(name, content_type):
+        return UploadFile(file=None, filename=name, headers={"content-type": content_type})
+
+    assert validate_upload(upload("r.docx", DOCX_TYPE)) == ".docx"
+    assert validate_upload(upload("scan.tif", "image/tiff")) == ".tif"
+    for name, content_type in [
+        ("r.doc", "application/msword"),
+        ("r.exe", "application/octet-stream"),
+        ("r.docx", "text/plain"),
+    ]:
+        with pytest.raises(HTTPException):
+            validate_upload(upload(name, content_type))
+    fake = tmp_path / "fake.docx"
+    fake.write_bytes(b"not a zip file")
+    with pytest.raises(HTTPException):
+        validate_stored_file(fake, ".docx")
+    assert not fake.exists()  # a rejected file is deleted
+    validate_stored_file(make_docx(tmp_path), ".docx")

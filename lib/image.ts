@@ -1,5 +1,5 @@
 // The server accepts these types up to 10 MB (backend/services/file_service.py).
-export const UPLOAD_ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp";
+export const UPLOAD_ACCEPT = ".pdf,.docx,.jpg,.jpeg,.png,.webp,.tif,.tiff";
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 // Large photos are shrunk before upload; smaller ones go as they are, to keep OCR detail.
