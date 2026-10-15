@@ -12,13 +12,12 @@ os.environ.setdefault("HF_HUB_OFFLINE", "1")
 import pytest
 
 from config import settings
-from services import openai_service, payments
+from services import ai_client, payments
 from services.mscie import openfda
 
 NO_EXTERNAL_KEYS = replace(
     settings,
-    openai_api_key="",
-    gemini_api_key="",
+    ai_api_key="",
     stripe_secret_key="",
     stripe_webhook_secret="",
     paid_services_disabled=True,
@@ -33,6 +32,6 @@ def anyio_backend() -> str:
 
 @pytest.fixture(autouse=True)
 def no_external_services(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(openai_service, "settings", NO_EXTERNAL_KEYS)
+    monkeypatch.setattr(ai_client, "settings", NO_EXTERNAL_KEYS)
     monkeypatch.setattr(openfda, "settings", NO_EXTERNAL_KEYS)  # no openFDA lookups
     monkeypatch.setattr(payments, "settings", NO_EXTERNAL_KEYS)  # no Stripe calls

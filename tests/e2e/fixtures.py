@@ -146,7 +146,7 @@ def setup(out_file: Path) -> None:
                 "reportId": report_id,
                 "attentionReportId": attention_report_id,
                 "stripeKeySet": bool(settings.stripe_secret_key),
-                "aiKeySet": bool(settings.gemini_api_key or settings.openai_api_key),
+                "aiKeySet": bool(settings.ai_api_key),
             },
             indent=2,
         ),

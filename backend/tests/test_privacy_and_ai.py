@@ -6,12 +6,12 @@ from dataclasses import replace
 import httpx
 import pytest
 
-from services import openai_service, report_ai_pipeline
+from services import ai_client, report_ai_pipeline
+from services.ai_client import AiResult, generate_text
 from services.ai_guard import numbers_not_in_source
-from services.openai_service import OpenAIResult, generate_openai_text
 from services.privacy import REMOVED, redact_identifiers
 
-KEY = "test-gemini-key"
+KEY = "AIza-test-gemini-key"
 
 
 # --- identifiers --------------------------------------------------------------------------------
@@ -70,14 +70,9 @@ def test_a_number_not_in_the_report_is_caught(summary, invented):
 @pytest.fixture
 def gemini(monkeypatch):
     """Gemini configured, every HTTP call answered by `handler` (set by the test)."""
-    monkeypatch.setattr(
-        openai_service,
-        "settings",
-        replace(
-            openai_service.settings, gemini_api_key=KEY, gemini_model="gemini-old-flash", gemini_fallback_models=[]
-        ),
-    )
-    openai_service._gemini_model_override.clear()
+    monkeypatch.setattr(ai_client, "settings", replace(ai_client.settings, ai_api_key=KEY))
+    monkeypatch.setattr(ai_client, "MODELS", {**ai_client.MODELS, "gemini": "gemini-old-flash"})
+    ai_client._gemini_model_override.clear()
     calls: list[httpx.Request] = []
     state = {"handler": None}
 
@@ -87,7 +82,7 @@ def gemini(monkeypatch):
 
     real_client = httpx.AsyncClient
     monkeypatch.setattr(
-        openai_service.httpx, "AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(transport), **kw)
+        ai_client.httpx, "AsyncClient", lambda **kw: real_client(transport=httpx.MockTransport(transport), **kw)
     )
     return state, calls
 
@@ -100,7 +95,7 @@ def answer(text: str) -> httpx.Response:
 async def test_gemini_writes_the_text_and_never_sees_the_patient_name(gemini):
     state, calls = gemini
     state["handler"] = lambda request: answer("What this report is\nA blood test.")
-    result = await generate_openai_text("Explain simply.", "Patient Name: Ayesha Testani\nHemoglobin 9.5 g/dL")
+    result = await generate_text("Explain simply.", "Patient Name: Ayesha Testani\nHemoglobin 9.5 g/dL")
     assert result.ok and result.provider == "gemini" and result.text.startswith("What this report is")
     sent = json.loads(calls[0].content)
     assert calls[0].headers["x-goog-api-key"] == KEY and KEY not in str(calls[0].url)  # key in a header, not the URL
@@ -130,7 +125,7 @@ async def test_a_retired_model_is_replaced_by_the_newest_flash(gemini):
         return answer("ok")
 
     state["handler"] = handler
-    result = await generate_openai_text("i", "p")
+    result = await generate_text("i", "p")
     assert result.text == "ok"
     assert "models/gemini-2.5-flash:generateContent" in str(calls[-1].url)
 
@@ -141,7 +136,7 @@ async def test_a_bad_key_is_an_error_that_does_not_repeat_the_key(gemini):
     state["handler"] = lambda request: httpx.Response(
         400, json={"error": {"status": "INVALID_ARGUMENT", "message": "API_KEY_INVALID"}}
     )
-    result = await generate_openai_text("i", "p")
+    result = await generate_text("i", "p")
     assert not result.ok and "authentication failed" in result.error and KEY not in result.error
 
 
@@ -151,9 +146,9 @@ async def test_a_bad_key_is_an_error_that_does_not_repeat_the_key(gemini):
 @pytest.mark.anyio
 async def test_a_patient_summary_with_an_invented_number_is_not_shown(monkeypatch):
     async def fake_ai(**_):
-        return OpenAIResult(text="Your hemoglobin is 9.8 g/dL.", provider="gemini")
+        return AiResult(text="Your hemoglobin is 9.8 g/dL.", provider="gemini")
 
-    monkeypatch.setattr(report_ai_pipeline, "generate_openai_text", fake_ai)
+    monkeypatch.setattr(report_ai_pipeline, "generate_text", fake_ai)
     summary, warning, source = await report_ai_pipeline._generate_patient_summary(
         "Hemoglobin 9.5 g/dL", "Lab", {}, {"status": "CAUTION", "warnings": []}
     )
@@ -163,9 +158,9 @@ async def test_a_patient_summary_with_an_invented_number_is_not_shown(monkeypatc
 @pytest.mark.anyio
 async def test_a_grounded_patient_summary_is_kept_with_its_source(monkeypatch):
     async def fake_ai(**_):
-        return OpenAIResult(text="Your hemoglobin is 9.5 g/dL.", provider="gemini")
+        return AiResult(text="Your hemoglobin is 9.5 g/dL.", provider="gemini")
 
-    monkeypatch.setattr(report_ai_pipeline, "generate_openai_text", fake_ai)
+    monkeypatch.setattr(report_ai_pipeline, "generate_text", fake_ai)
     summary, warning, source = await report_ai_pipeline._generate_patient_summary(
         "Hemoglobin 9.5 g/dL", "Lab", {}, {"status": "CAUTION", "warnings": []}
     )

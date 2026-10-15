@@ -11,8 +11,8 @@ from __future__ import annotations
 import logging
 from typing import Any
 
+from services.ai_client import generate_text
 from services.ai_guard import numbers_not_in_source
-from services.openai_service import generate_openai_text
 from services.privacy import redact_identifiers
 
 logger = logging.getLogger("nora.icse")
@@ -56,7 +56,7 @@ async def reword_key_findings(content: dict[str, Any], identity: list) -> tuple[
     if not source_facts.strip():
         return None, None, "no findings to word"
     try:
-        result = await generate_openai_text(instructions=INSTRUCTIONS, prompt=f"Facts:\n{source_facts}")
+        result = await generate_text(instructions=INSTRUCTIONS, prompt=f"Facts:\n{source_facts}")
     except Exception as exc:  # an AI failure must never break the rule-built summary
         return None, None, f"AI unavailable ({type(exc).__name__})"
     if not result.text:

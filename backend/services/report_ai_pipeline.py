@@ -2,10 +2,10 @@ import logging
 import re
 from typing import Any
 
+from services.ai_client import fallback_notice, generate_json, generate_text
 from services.ai_guard import numbers_not_in_source
 from services.biobert_service import extract_medical_entities
 from services.icse.entities import ENTITIES_VERSION, extract_entities
-from services.openai_service import fallback_notice, generate_openai_json, generate_openai_text
 from services.patient_summary import build_patient_summary
 from services.plain_language import glossary, rewrite_sections
 from services.privacy import IDENTITY_FIELDS, redact_identifiers
@@ -166,7 +166,7 @@ async def _generate_summary_json(
     structured_fields: dict[str, Any],
 ) -> tuple[dict[str, Any], str, str | None]:
     fallback = _fallback_summary_json(text, department, entities, validation, structured_fields)
-    result = await generate_openai_json(
+    result = await generate_json(
         instructions=(
             "You are a cautious healthcare AI summarizer for Nora MedLink. "
             "You only summarize provided patient report text and validation output. "
@@ -187,7 +187,7 @@ async def _self_check_summary(
     text: str,
     validation: dict[str, Any],
 ) -> dict[str, Any]:
-    result = await generate_openai_json(
+    result = await generate_json(
         instructions=(
             "You verify clinical-support summaries. Return JSON only. "
             "Check for unsupported diagnoses, prescribing advice, missing-data disclosure, and consistency with rule validation."
@@ -244,7 +244,7 @@ async def _generate_patient_summary(
         for w in validation.get("warnings", [])
         if w.get("severity") in {"CAUTION", "HIGH_RISK"}
     ]
-    result = await generate_openai_text(
+    result = await generate_text(
         instructions=PATIENT_SUMMARY_INSTRUCTIONS, prompt=_patient_summary_prompt(text, department, alerts)
     )
 

@@ -5,9 +5,9 @@ import re
 import pytest
 
 from services import knowledge, report_ai_pipeline
+from services.ai_client import AiResult
 from services.icse.entities import extract_entities
 from services.knowledge.tables import records
-from services.openai_service import OpenAIResult
 from services.patient_summary import build_patient_summary
 from services.plain_language import (
     find_terms,
@@ -204,9 +204,9 @@ async def test_the_ai_gets_the_everyday_words_and_any_jargon_it_leaves_is_rewrit
 
     async def fake_ai(instructions, prompt):
         prompts.append(prompt)
-        return OpenAIResult(text="Your results explained\n- Your eGFR is 28 and creatinine is 2.4.", provider="gemini")
+        return AiResult(text="Your results explained\n- Your eGFR is 28 and creatinine is 2.4.", provider="gemini")
 
-    monkeypatch.setattr(report_ai_pipeline, "generate_openai_text", fake_ai)
+    monkeypatch.setattr(report_ai_pipeline, "generate_text", fake_ai)
     text = "Creatinine 2.4 mg/dL\neGFR 28 mL/min"
     summary, warning, source = await report_ai_pipeline._generate_patient_summary(
         text, "Lab", {}, validate_medical_rules(f"{BASE}\n{text}")
@@ -220,8 +220,8 @@ async def test_the_ai_gets_the_everyday_words_and_any_jargon_it_leaves_is_rewrit
 @pytest.mark.anyio
 async def test_without_a_key_the_plain_rule_based_summary_is_used(monkeypatch):
     async def no_ai(instructions, prompt):
-        return OpenAIResult(error="no key")
+        return AiResult(error="no key")
 
-    monkeypatch.setattr(report_ai_pipeline, "generate_openai_text", no_ai)
+    monkeypatch.setattr(report_ai_pipeline, "generate_text", no_ai)
     summary, _, source = await report_ai_pipeline._generate_patient_summary(REPORT, "Lab", {}, {"warnings": []})
     assert source == "rule_based" and "Your results explained" in summary and unexplained_terms(summary) == []

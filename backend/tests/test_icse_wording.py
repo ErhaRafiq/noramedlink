@@ -4,11 +4,11 @@ from datetime import date
 
 import pytest
 
+from services.ai_client import AiResult
 from services.icse import wording
 from services.icse.entities import extract_entities
 from services.icse.flags import printed_date
 from services.icse.summary import build_content
-from services.openai_service import OpenAIResult
 from services.privacy import identity_patterns
 
 IDENTITY = identity_patterns("Ayesha Exampli", "0300-1234567", "12345-1234567-1")
@@ -27,9 +27,9 @@ def stub(monkeypatch, text=None, error=None, provider="gemini"):
 
     async def fake(instructions, prompt):
         prompts.append(prompt)
-        return OpenAIResult(text=text, error=error, provider=provider if text else None)
+        return AiResult(text=text, error=error, provider=provider if text else None)
 
-    monkeypatch.setattr(wording, "generate_openai_text", fake)
+    monkeypatch.setattr(wording, "generate_text", fake)
     return prompts
 
 

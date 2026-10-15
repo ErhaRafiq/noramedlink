@@ -76,17 +76,17 @@ def test_defaults():
 def test_disable_paid_services_ignores_every_ai_and_stripe_key(monkeypatch, switch):
     from config import _without_paid_services
 
-    for name in ("OPENAI_API_KEY", "GEMINI_API_KEY", "STRIPE_SECRET_KEY"):
+    for name in ("AI_API_KEY", "STRIPE_SECRET_KEY"):
         monkeypatch.setenv(name, "test-placeholder-key")
     monkeypatch.setenv("DISABLE_PAID_SERVICES", switch)
     loaded = _without_paid_services(load_settings())
     assert loaded.paid_services_disabled
-    assert not (loaded.openai_api_key or loaded.gemini_api_key or loaded.stripe_secret_key)
+    assert not (loaded.ai_api_key or loaded.stripe_secret_key)
 
 
 def test_keys_are_kept_without_the_switch(monkeypatch):
     from config import _without_paid_services
 
-    monkeypatch.setenv("GEMINI_API_KEY", "test-placeholder-key")
+    monkeypatch.setenv("AI_API_KEY", "test-placeholder-key")
     monkeypatch.delenv("DISABLE_PAID_SERVICES", raising=False)
-    assert _without_paid_services(load_settings()).gemini_api_key == "test-placeholder-key"
+    assert _without_paid_services(load_settings()).ai_api_key == "test-placeholder-key"

@@ -1,5 +1,5 @@
+from services.ai_client import fallback_notice, generate_text
 from services.ai_guard import numbers_not_in_source
-from services.openai_service import fallback_notice, generate_openai_text
 from services.plain_language import rewrite_sections
 from services.privacy import redact_identifiers
 from services.report_text import detect_department, detect_keywords
@@ -45,7 +45,7 @@ async def summarize_with_optional_llm(
 
     The rules' alerts are shown next to it on the page, so the AI only explains the report.
     """
-    result = await generate_openai_text(
+    result = await generate_text(
         instructions=(
             "You explain medical report text to a person with no medical or technical background, in plain, "
             "warm, everyday English (aim for a 12-year-old's reading level).\n\n"

@@ -7,7 +7,7 @@ import pytest
 
 from database import engine
 from services import biobert_service, nlp_service, report_ai_pipeline
-from services.openai_service import OpenAIResult
+from services.ai_client import AiResult
 from services.privacy import REMOVED, identity_patterns, redact_identifiers
 
 NAME, PHONE, CNIC = "Irha Rafiq", "0300-1234567", "12345-1234567-1"
@@ -78,16 +78,16 @@ def leaky_world(monkeypatch):
 
     async def echo_text(instructions, prompt):
         prompts.append(prompt)
-        return OpenAIResult(text=prompt, provider="gemini")
+        return AiResult(text=prompt, provider="gemini")
 
     async def echo_json(instructions, prompt):
         prompts.append(prompt)
-        return OpenAIResult(text=prompt, data={"summary": prompt, "key_findings": [prompt]}, provider="gemini")
+        return AiResult(text=prompt, data={"summary": prompt, "key_findings": [prompt]}, provider="gemini")
 
     monkeypatch.setattr(biobert_service, "_load_pipeline", lambda: LeakyNer())
-    monkeypatch.setattr(report_ai_pipeline, "generate_openai_text", echo_text)
-    monkeypatch.setattr(report_ai_pipeline, "generate_openai_json", echo_json)
-    monkeypatch.setattr(nlp_service, "generate_openai_text", echo_text)
+    monkeypatch.setattr(report_ai_pipeline, "generate_text", echo_text)
+    monkeypatch.setattr(report_ai_pipeline, "generate_json", echo_json)
+    monkeypatch.setattr(nlp_service, "generate_text", echo_text)
     return prompts
 
 
@@ -118,11 +118,11 @@ async def test_report_pipeline_keeps_identity_out_of_entities_summaries_and_prom
 @pytest.mark.anyio
 async def test_report_pipeline_without_ai_keeps_identity_out_of_rule_based_summaries(monkeypatch):
     async def no_ai(instructions, prompt):
-        return OpenAIResult(error="No LLM provider configured.")
+        return AiResult(error="No LLM provider configured.")
 
     monkeypatch.setattr(biobert_service, "_load_pipeline", lambda: LeakyNer())
-    monkeypatch.setattr(report_ai_pipeline, "generate_openai_text", no_ai)
-    monkeypatch.setattr(report_ai_pipeline, "generate_openai_json", no_ai)
+    monkeypatch.setattr(report_ai_pipeline, "generate_text", no_ai)
+    monkeypatch.setattr(report_ai_pipeline, "generate_json", no_ai)
     result = await report_ai_pipeline.run_report_ai_pipeline(
         cleaned_text=REPORT, formatted_text=REPORT, structured_payload={}, department_name="Lab", identity=IDENTITY
     )

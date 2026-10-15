@@ -45,7 +45,7 @@ It is **not** a certified medical device. Every medical feature is advisory only
 | Config | **One `.env` in the repo root** for Next.js and FastAPI (template: root `.env.example`); real environment variables win (Render) |
 | Hosting | Render monorepo, `render.yaml`: nora-web (Next.js), nora-api (FastAPI, `backend/`), nora-db (PostgreSQL), free plan |
 | OCR | **Local OCR** by default (`services/local_ocr.py`): PDF text layers are read directly; scans and photos go through RapidOCR 3 (ONNX, CPU) with the PP-OCRv5 detector and English recogniser, downloaded once to `backend/models/` (checksum-verified); boxes are rebuilt into table rows (`services/ocr_layout.py`), and numbers read with a score under 0.90 are listed as "check against the original report", never changed. No key, nothing leaves the server. There is no Tesseract |
-| AI | Gemini or OpenAI when a key is set (Gemini first), rule-based fallback otherwise; BioBERT NER. Patient identifiers are removed before any prompt leaves the server (`services/privacy.py`), and an AI summary with a number that is not in the report is rejected (`services/ai_guard.py`). Every patient-facing summary and alert is in everyday words: medical terms get everyday wording with the term once in brackets (`services/plain_language.py`, dictionary `services/knowledge/data/plain_terms.csv`, a demo knowledge base); without an AI key the summary is built by fixed rules (`services/patient_summary.py`) |
+| AI | One `AI_API_KEY` (Gemini, OpenAI or Claude, picked from the key prefix by `services/ai_client.py`), rule-based fallback otherwise; BioBERT NER. Patient identifiers are removed before any prompt leaves the server (`services/privacy.py`), and an AI summary with a number that is not in the report is rejected (`services/ai_guard.py`). Every patient-facing summary and alert is in everyday words: medical terms get everyday wording with the term once in brackets (`services/plain_language.py`, dictionary `services/knowledge/data/plain_terms.csv`, a demo knowledge base); without an AI key the summary is built by fixed rules (`services/patient_summary.py`) |
 
 There is **no** Flutter app, **no** Node gateway and **no** Prisma. Do not create them.
 The SRS/SDS documents describe some of these; the code is the source of truth.
@@ -207,7 +207,7 @@ Test data belongs in tests, never in UI fallbacks.
   - refuse to run unless every database URL points to localhost (check the hostname only);
   - create users only with the `phase0-test-` email prefix;
   - delete only those users and their rows (and upload folders) in a `finally` block.
-- **Never call paid or external services in tests** (Gemini, OpenAI, openFDA, Stripe). Tests that would
+- **Never call paid or external services in tests** (Gemini, OpenAI, Claude, openFDA, Stripe). Tests that would
   must skip when a key is configured. `DISABLE_PAID_SERVICES=1` (backend and test process) makes the
   backend ignore every AI and Stripe key, so the whole suite runs with no paid or external call.
 - Safety logic (red-flag rules, interaction rules, state transitions) needs unit tests with

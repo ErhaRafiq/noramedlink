@@ -18,7 +18,6 @@ httpx==0.28.1
 stripe==16.0.0
 python-dotenv==1.0.1
 slowapi==0.1.9
-openai>=1.59.0,<3
 # Local OCR (services/local_ocr.py): RapidOCR 3 with the PP-OCRv5 models (downloaded once, checksum
 # verified). It installs opencv-python-headless (no GUI parts); onnxruntime is its engine.
 rapidocr==3.10.0

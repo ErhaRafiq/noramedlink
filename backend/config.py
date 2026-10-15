@@ -60,16 +60,10 @@ class Settings:
     admin_invite_code: str = ""
     frontend_origin: str = "http://localhost:3000"
 
-    # AI providers: Gemini first, then OpenAI. DISABLE_PAID_SERVICES=1 (test runs) ignores every AI
+    # AI: one key. DISABLE_PAID_SERVICES=1 (test runs) ignores every AI
     # and Stripe key, so tests never call an outside service even when .env has keys.
     paid_services_disabled: bool = False
-    openai_api_key: str = ""
-    openai_scan_model: str = "gpt-4.1-mini"
-    openai_fallback_models: list[str] = field(default_factory=list)
-    gemini_api_key: str = ""
-    gemini_model: str = "gemini-2.5-flash"
-    gemini_fallback_models: list[str] = field(default_factory=list)
-    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
+    ai_api_key: str = ""  # one key: Gemini, OpenAI or Claude (services/ai_client.py picks by prefix)
     biobert_enabled: bool = True  # off on small hosts: BioBERT needs about 1 GB of memory
     biobert_model: str = "d4data/biomedical-ner-all"
 
@@ -110,8 +104,7 @@ def load_settings() -> Settings:
         admin_invite_code=env_str("ADMIN_INVITE_CODE"),
         frontend_origin=env_str("FRONTEND_ORIGIN", Settings.frontend_origin),
         paid_services_disabled=env_bool("DISABLE_PAID_SERVICES", False),
-        openai_api_key=env_str("OPENAI_API_KEY"),
-        gemini_api_key=env_str("GEMINI_API_KEY"),
+        ai_api_key=env_str("AI_API_KEY"),
         biobert_enabled=env_bool("BIOBERT_ENABLED", True),
         stripe_secret_key=env_str("STRIPE_SECRET_KEY", strip_quotes=True),
         stripe_webhook_secret=env_str("STRIPE_WEBHOOK_SECRET", strip_quotes=True),
@@ -121,7 +114,7 @@ def load_settings() -> Settings:
 def _without_paid_services(loaded: Settings) -> Settings:
     if not loaded.paid_services_disabled:
         return loaded
-    return replace(loaded, openai_api_key="", gemini_api_key="", stripe_secret_key="")
+    return replace(loaded, ai_api_key="", stripe_secret_key="")
 
 
 settings = _without_paid_services(load_settings())

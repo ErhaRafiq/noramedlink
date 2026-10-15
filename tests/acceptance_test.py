@@ -285,7 +285,7 @@ def configured_paid_keys() -> list[str]:
     """Names of the AI/OCR keys that are set. Tests never call a paid service: they skip instead."""
     if (os.environ.get("DISABLE_PAID_SERVICES") or "").strip().lower() in {"1", "true", "yes"}:
         return []  # the backend ignores every key in this run (config.py), so nothing paid is called
-    names = ("OPENAI_API_KEY", "GEMINI_API_KEY")
+    names = ("AI_API_KEY",)
     return [k for k in names if (os.environ.get(k) or "").strip().strip('"').strip("'")]
 
 
