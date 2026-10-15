@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 
 from sqlalchemy import (
     JSON,
@@ -11,9 +11,11 @@ from sqlalchemy import (
     Integer,
     String,
     Text,
+    Time,
     UniqueConstraint,
     event,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -153,12 +155,58 @@ class Appointment(Base):
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     specialty: Mapped[str | None] = mapped_column(Text, nullable=True)
     reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # The length of the booked slot and how the consultation happens (services/scheduling.py).
+    duration_minutes: Mapped[int] = mapped_column(Integer, default=30, server_default="30", nullable=False)
+    mode: Mapped[str] = mapped_column(String(20), default="in_clinic", server_default="in_clinic", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
     )
+    # One live appointment per doctor and start time: the database refuses a double booking even if two
+    # requests race (the cancelled ones do not count).
+    __table_args__ = (
+        Index(
+            "appointments_doctor_slot_uq",
+            "doctor_id",
+            "date",
+            unique=True,
+            postgresql_where=text("status <> 'CANCELLED'"),
+            sqlite_where=text("status <> 'CANCELLED'"),
+        ),
+    )
+
+
+class DoctorAvailability(Base):
+    """One weekly window a doctor sees patients, cut into slots of `slot_minutes` (clinic time, UTC+5)."""
+
+    __tablename__ = "doctor_availability"
+    __table_args__ = (Index("doctor_availability_doctor_id_idx", "doctor_id", "weekday"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    doctor_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    weekday: Mapped[int] = mapped_column(Integer, nullable=False)  # 0 = Monday ... 6 = Sunday
+    start_time: Mapped[time] = mapped_column(Time, nullable=False)
+    end_time: Mapped[time] = mapped_column(Time, nullable=False)
+    slot_minutes: Mapped[int] = mapped_column(Integer, default=30, server_default="30", nullable=False)
+
+
+class AppointmentReview(Base):
+    """A patient's rating of a completed appointment (one per appointment)."""
+
+    __tablename__ = "appointment_reviews"
+    __table_args__ = (Index("appointment_reviews_doctor_id_idx", "doctor_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    appointment_id: Mapped[int] = mapped_column(
+        ForeignKey("appointments.id", ondelete="CASCADE"), unique=True, nullable=False
+    )
+    doctor_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    rating: Mapped[int] = mapped_column(Integer, nullable=False)  # 1 to 5
+    comment: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class EmergencyBooking(Base):
@@ -809,6 +857,10 @@ class Notification(Base):
     title: Mapped[str] = mapped_column(String(180), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[str] = mapped_column(String(40), default="UNREAD", nullable=False)
+    # Appointment messages (services/notifications.py): the appointment they are about, and what kind. A
+    # message with a scheduled_for in the future (a reminder) is not shown until that time.
+    appointment_id: Mapped[int | None] = mapped_column(ForeignKey("appointments.id", ondelete="CASCADE"), nullable=True)
+    kind: Mapped[str] = mapped_column(String(40), default="general", server_default="general", nullable=False)
     scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

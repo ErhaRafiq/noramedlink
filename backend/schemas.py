@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 from typing import Any, Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
@@ -229,15 +229,13 @@ class SummaryResponse(BaseModel):
 
 
 class AppointmentCreate(BaseModel):
-    # doctor_id must name a verified, active doctor; the stored name and specialty
-    # come from that doctor's record. doctor_name / specialty are accepted for
-    # compatibility but not trusted.
-    doctor_id: int | None = None
-    doctor_name: str | None = Field(default=None, max_length=180)
-    specialty: str | None = Field(default=None, max_length=120)
-    date: datetime | None = None
-    reason: str | None = None
-    notes: str | None = None
+    # doctor_id must name a verified, active doctor, and `date` the start of one of that doctor's open
+    # slots (GET /appointments/doctors/{id}/slots). The stored name and specialty come from the doctor's record.
+    doctor_id: int
+    date: datetime
+    mode: Literal["in_clinic", "online", "home"] = "in_clinic"
+    reason: str | None = Field(default=None, max_length=1000)
+    notes: str | None = Field(default=None, max_length=2000)
     patient_access_otp: str | None = Field(default=None, max_length=12)
 
 
@@ -255,6 +253,8 @@ class AppointmentOut(BaseModel):
     doctor_id: int | None
     doctor_name: str
     date: datetime
+    duration_minutes: int = 30
+    mode: str = "in_clinic"
     status: str
     payment_status: str
     notes: str | None
@@ -262,6 +262,8 @@ class AppointmentOut(BaseModel):
     reason: str | None = None
     # The doctor's current fee (whole PKR), what the patient pays online; None: not set.
     consultation_fee: int | None = None
+    # Completed visits can be rated once; this says whether that has happened.
+    reviewed: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -278,10 +280,12 @@ class AppointmentDoctorOut(BaseModel):
     name: str
     specialty: str
     location: str
-    # No ratings or availability are stored yet (Phase 2c); null means "not available",
-    # never an estimate.
+    # Real values only: null / 0 / false mean "none yet", never an estimate.
     rating: float | None = None
-    available_today: bool | None = None
+    rating_count: int = 0
+    available_today: bool = False
+    next_available: datetime | None = None  # the first open slot in the next two weeks
+    has_schedule: bool = False  # the doctor has published weekly availability
     consultation_fee: int | None = None  # whole PKR, set by the doctor; None: not set
     qualifications: str | None = None
     experience_years: int | None = None
@@ -615,3 +619,73 @@ class DoctorProfileUpdate(BaseModel):
         if unknown:
             raise ValueError("Consultation modes are online, in_clinic and home.")
         return [m for m in CONSULTATION_MODES if m in values]
+
+
+# --- availability, slots, reviews, notifications (Module 5) ------------------------------------
+
+
+class SlotOut(BaseModel):
+    start: datetime
+    end: datetime
+    available: bool
+
+
+class DaySlotsOut(BaseModel):
+    day: date  # a clinic-time calendar day
+    slots: list[SlotOut]
+
+
+class SlotsOut(BaseModel):
+    timezone: str  # clinic time zone the days and windows are in
+    days: list[DaySlotsOut]
+
+
+class AvailabilityWindow(BaseModel):
+    weekday: int = Field(ge=0, le=6)  # 0 = Monday
+    start_time: time
+    end_time: time
+    slot_minutes: int = 30
+
+
+class AvailabilityIn(BaseModel):
+    windows: list[AvailabilityWindow] = Field(max_length=28)
+
+
+class AvailabilityOut(BaseModel):
+    timezone: str
+    slot_choices: list[int]
+    windows: list[AvailabilityWindow]
+
+
+class ReviewIn(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    comment: str | None = Field(default=None, max_length=500)
+
+    @field_validator("comment")
+    @classmethod
+    def tidy_comment(cls, value: str | None) -> str | None:
+        return _clean(value)
+
+
+class ReviewOut(BaseModel):
+    rating: int
+    comment: str | None
+    created_at: datetime
+
+
+class NotificationOut(BaseModel):
+    id: int
+    kind: str
+    title: str
+    body: str
+    appointment_id: int | None
+    read: bool
+    at: datetime  # when it became visible: the reminder time, or when it was created
+
+
+class NotificationPage(BaseModel):
+    items: list[NotificationOut]
+    total: int
+    limit: int
+    offset: int
+    unread: int

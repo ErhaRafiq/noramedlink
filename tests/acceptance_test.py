@@ -59,6 +59,9 @@ LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 # Next.js admin routes were all removed in Phase 1; admin endpoints are in FASTAPI_ADMIN_ROUTES.
 ADMIN_ROUTES: list[tuple[str, str]] = []
 DOCTOR_ROUTES = [
+    ("GET", "/api/backend/doctor/availability"),
+    ("PUT", "/api/backend/doctor/availability"),
+    ("PUT", "/api/backend/doctor/profile"),
     ("GET", "/api/backend/doctor/dashboard"),
     ("GET", "/api/backend/doctor/overview"),
     ("POST", "/api/backend/doctor/access/unlock"),
@@ -96,6 +99,7 @@ FASTAPI_PATIENT_ROUTES = [
     ("GET", "/api/backend/patient/reports"),
     ("GET", "/api/backend/patient/health-flags"),
     ("GET", "/api/backend/patient/prescriptions"),
+    ("POST", "/api/backend/appointments/1/review"),
     ("POST", "/api/backend/patient/reports/upload"),
     ("DELETE", "/api/backend/patient/reports/1"),
     ("POST", "/api/backend/nlp/summarize/saved-reports"),
@@ -125,9 +129,12 @@ USER_OWNED_ROWS = [
     ("medical_ai_analyses", "user_id"),
     ("notifications", "user_id"),
     ("notification_tokens", "user_id"),
+    ("appointment_reviews", "patient_id"),
+    ("appointment_reviews", "doctor_id"),
     ("payments", "user_id"),
     ("appointments", "user_id"),
     ("appointments", "doctor_id"),
+    ("doctor_availability", "doctor_id"),
     ("emergency_bookings", "user_id"),
     ("emergency_bookings", "doctor_id"),
     ("patient_dashboard_access", "patient_id"),
@@ -225,12 +232,21 @@ def create_user(label: str, role: str, *, active: bool = True, doctor_status: st
             conn.execute(
                 text(
                     """
-                    insert into doctor_profiles (user_id, pmdc_number, specialization, hospital_name, verification_status)
-                    values (:uid, :pmdc, 'General Physician', 'phase0-test hospital', :status)
+                    insert into doctor_profiles (user_id, pmdc_number, specialization, hospital_name, verification_status,
+                                                 consultation_modes)
+                    values (:uid, :pmdc, 'General Physician', 'phase0-test hospital', :status, 'in_clinic,online,home')
                     """
                 ),
                 {"uid": user_id, "pmdc": f"{TEST_PREFIX}{label}-{run_id}", "status": doctor_status},
             )
+            for weekday in range(7):  # open every day 09:00-17:00 in 30-minute slots, so any test can book
+                conn.execute(
+                    text(
+                        "insert into doctor_availability (doctor_id, weekday, start_time, end_time, slot_minutes) "
+                        "values (:uid, :d, '09:00', '17:00', 30)"
+                    ),
+                    {"uid": user_id, "d": weekday},
+                )
         return user_id
 
 
@@ -348,6 +364,21 @@ def call(method: str, path: str, token: str | None = None, body: dict | None = N
     if method == "GET":
         return client.get(path, headers=headers)
     return client.request(method, path, headers=headers, json=body if body is not None else {})
+
+
+_used_slots: set[str] = set()
+
+
+def next_slot(doctor_id: int) -> str:
+    """The next open slot (UTC, ISO) of a doctor that no earlier check has used, from the public slots endpoint.
+    A slot is never handed out twice, so one patient is never booked in two places at once."""
+    days = client.get(f"/api/backend/appointments/doctors/{doctor_id}/slots?days=14").json()["days"]
+    for day in days:
+        for slot in day["slots"]:
+            if slot["available"] and slot["start"] not in _used_slots:
+                _used_slots.add(slot["start"])
+                return slot["start"]
+    raise AssertionError(f"doctor {doctor_id} has no open slot left in 14 days")
 
 
 def overview_patient_ids(doctor_token: str) -> list[int]:
@@ -510,10 +541,9 @@ def run_tests() -> None:
     check("pending (unverified) doctor is not listed", doctor_pending not in listed_ids)
     check("inactive doctor is not listed", doctor_inactive not in listed_ids)
     check("no demo doctors (every entry is a registered doctor)", all(d["source"] == "registered" and d["doctor_id"] for d in listed))
-    check("no invented ratings or availability", all(d["rating"] is None and d["available_today"] is None for d in listed))
+    check("no invented ratings (nobody has been reviewed yet)", all(d["rating"] is None and d["rating_count"] == 0 for d in listed))
 
-    future = (datetime.now(timezone.utc) + timedelta(days=2)).replace(microsecond=0).isoformat()
-    booking = {"doctor_id": doctor, "doctor_name": "Someone Else", "specialty": "Cardiology", "date": future,
+    booking = {"doctor_id": doctor, "doctor_name": "Someone Else", "specialty": "Cardiology", "date": next_slot(doctor),
                "reason": "Follow-up", "user_id": patient_b}
     response = call("POST", "/api/backend/appointments", tok_a, booking)
     booked = (response.json() or {}).get("appointment", {}) if response.status_code == 201 else {}
@@ -523,8 +553,8 @@ def run_tests() -> None:
           and booked.get("specialty") == "General Physician" and booked.get("reason") == "Follow-up", f"got {booked}")
     response = call("POST", "/api/backend/appointments", tok_a, {**booking, "doctor_id": doctor_pending})
     check("booking an unverified doctor -> 404", response.status_code == 404, f"got {response.status_code}")
-    response = call("POST", "/api/backend/appointments", tok_a, {"doctor_name": f"{TEST_PREFIX}doctor", "date": future})
-    check("booking by name only (no doctor_id) -> 400", response.status_code == 400, f"got {response.status_code}")
+    response = call("POST", "/api/backend/appointments", tok_a, {"doctor_name": f"{TEST_PREFIX}doctor", "date": next_slot(doctor)})
+    check("booking by name only (no doctor_id) -> 422", response.status_code == 422, f"got {response.status_code}")
 
     check("A sees the appointment", [a["id"] for a in call("GET", "/api/backend/appointments", tok_a).json()["items"]] == [booked.get("id")])
     check("B sees no appointments", call("GET", "/api/backend/appointments", tok_b).json()["items"] == [])
@@ -538,12 +568,13 @@ def run_tests() -> None:
     check("patient setting status COMPLETED -> 403", response.status_code == 403, f"got {response.status_code}")
     response = call("PUT", appt, tok_b, {"status": "CANCELLED"})
     check("B changing A's appointment -> 403", response.status_code == 403, f"got {response.status_code}")
-    later = (datetime.now(timezone.utc) + timedelta(days=3)).replace(microsecond=0)
+    later = datetime.fromisoformat(next_slot(doctor).replace("Z", "+00:00"))
     response = call("PUT", appt, tok_a, {"date": later.isoformat()})
     check("patient reschedules own appointment (date only) -> 200",
           response.status_code == 200 and response.json().get("status") == "BOOKED", f"got {response.status_code}")
-    response = call("PUT", appt, tok_a, {"date": later.replace(tzinfo=None).isoformat()})
-    check("a date without a time zone is accepted (was a 500)", response.status_code == 200, f"got {response.status_code}")
+    clinic_local = later.astimezone(timezone(timedelta(hours=5))).replace(tzinfo=None)  # clinic time, no zone
+    response = call("PUT", appt, tok_a, {"date": clinic_local.isoformat()})
+    check("a date without a time zone is read as clinic time (was a 500)", response.status_code == 200, f"got {response.status_code}")
     response = call("PUT", appt, tok_a, {"date": later.isoformat(), "status": "BOOKED"})
     check("patient setting status BOOKED is still refused -> 403", response.status_code == 403, f"got {response.status_code}")
     response = call("PUT", appt, tok_a, {"status": "CANCELLED"})
@@ -564,7 +595,7 @@ def run_tests() -> None:
     listed = {d["doctor_id"]: d for d in call("GET", "/api/backend/appointments/doctors").json()}
     check("the directory shows the doctor's fee", (listed.get(doctor) or {}).get("consultation_fee") == 1500)
 
-    response = call("POST", "/api/backend/appointments", tok_a, {"doctor_id": doctor, "date": future, "reason": "Payment test"})
+    response = call("POST", "/api/backend/appointments", tok_a, {"doctor_id": doctor, "date": next_slot(doctor), "reason": "Payment test"})
     to_pay = (response.json() or {}).get("appointment", {}) if response.status_code == 201 else {}
     check("a new appointment carries the fee and is unpaid",
           to_pay.get("consultation_fee") == 1500 and to_pay.get("payment_status") == "PENDING", f"got {to_pay}")
@@ -779,7 +810,7 @@ def run_tests() -> None:
 
     otp = call("POST", "/api/backend/patient/dashboard-otp", tok_a).json()["otp"]["code"]
     response = call("POST", "/api/backend/appointments", tok_a,
-                    {"doctor_id": doctor_2, "date": future, "reason": "Second opinion", "patient_access_otp": otp})
+                    {"doctor_id": doctor_2, "date": next_slot(doctor_2), "reason": "Second opinion", "patient_access_otp": otp})
     check("booking with an OTP -> access granted", response.status_code == 201 and response.json().get("dashboard_access_granted") is True,
           f"got {response.status_code}")
     check("booked doctor (2) now sees A", patient_a in overview_patient_ids(tok_doctor_2))
@@ -811,15 +842,15 @@ def run_tests() -> None:
     appointments_before = scalar("select count(*) from appointments where user_id = :id", id=patient_b)
     for attempt in range(1, 6):
         response = call("POST", "/api/backend/appointments", tok_b,
-                        {"doctor_id": doctor, "date": future, "patient_access_otp": f"wrong-{attempt}"})
+                        {"doctor_id": doctor, "date": next_slot(doctor), "patient_access_otp": f"wrong-{attempt}"})
         check(f"booking with wrong OTP {attempt} -> 201, no access shared",
               response.status_code == 201 and response.json().get("dashboard_access_granted") is False,
               f"got {response.status_code}")
-    response = call("POST", "/api/backend/appointments", tok_b, {"doctor_id": doctor, "date": future, "patient_access_otp": "wrong-6"})
+    response = call("POST", "/api/backend/appointments", tok_b, {"doctor_id": doctor, "date": next_slot(doctor), "patient_access_otp": "wrong-6"})
     check("6th booking with an OTP -> 429", response.status_code == 429, f"got {response.status_code}")
     check("the blocked booking created no appointment",
           scalar("select count(*) from appointments where user_id = :id", id=patient_b) == appointments_before + 5)
-    response = call("POST", "/api/backend/appointments", tok_b, {"doctor_id": doctor, "date": future})
+    response = call("POST", "/api/backend/appointments", tok_b, {"doctor_id": doctor, "date": next_slot(doctor)})
     check("booking without an OTP still works while blocked -> 201", response.status_code == 201, f"got {response.status_code}")
 
     print("\n[9] Uploaded files: auth and ownership or an active grant")
@@ -1251,6 +1282,112 @@ def run_tests() -> None:
     theirs = call("GET", "/api/backend/profile", tok_doctor).json()["activity"]
     check("a doctor's profile counts appointments booked with them",
           theirs["appointments"] == scalar("select count(*) from appointments where doctor_id = :id", id=doctor), f"got {theirs}")
+
+    client.cookies.clear()
+    print("\n[20] Scheduling (Module 5): availability, slots, no double booking, reviews, notifications")
+    sched_doctor = create_user("sched-doctor", "DOCTOR")
+    tok_sched = token_for(sched_doctor)
+    patient_s1 = create_user("sched-patient-1", "PATIENT")
+    patient_s2 = create_user("sched-patient-2", "PATIENT")
+    tok_s1, tok_s2 = token_for(patient_s1), token_for(patient_s2)
+
+    response = call("GET", "/api/backend/doctor/availability", tok_sched)
+    check("a doctor reads their weekly schedule (the test doctor has 7 windows, clinic time)",
+          response.status_code == 200 and len(response.json()["windows"]) == 7 and response.json()["timezone"] == "Asia/Karachi",
+          f"got {response.status_code}")
+    check("a patient cannot read or set a doctor's availability",
+          call("GET", "/api/backend/doctor/availability", tok_s1).status_code == 403
+          and call("PUT", "/api/backend/doctor/availability", tok_s1, {"windows": []}).status_code == 403)
+    window = {"weekday": 0, "start_time": "09:00:00", "end_time": "11:00:00", "slot_minutes": 30}
+    bad = {"windows": [window, {**window, "start_time": "10:00:00", "end_time": "12:00:00"}]}
+    check("overlapping windows -> 422 and the old schedule stays",
+          call("PUT", "/api/backend/doctor/availability", tok_sched, bad).status_code == 422
+          and len(call("GET", "/api/backend/doctor/availability", tok_sched).json()["windows"]) == 7)
+    check("a 25-minute appointment length is refused -> 422",
+          call("PUT", "/api/backend/doctor/availability", tok_sched, {"windows": [{**window, "slot_minutes": 25}]}).status_code == 422)
+    all_week = {"windows": [{"weekday": d, "start_time": "09:00:00", "end_time": "11:00:00", "slot_minutes": 30} for d in range(7)]}
+    response = call("PUT", "/api/backend/doctor/availability", tok_sched, all_week)
+    check("the doctor publishes 09:00-11:00 every day in 30-minute slots", response.status_code == 200 and len(response.json()["windows"]) == 7)
+
+    slots_url = f"/api/backend/appointments/doctors/{sched_doctor}/slots?days=3"
+    open_slots = [s_ for d in call("GET", slots_url).json()["days"] for s_ in d["slots"] if s_["available"]]
+    check("slots are public, 4 a day, and none is in the past or too soon",
+          len(open_slots) >= 4 and all(datetime.fromisoformat(s_["start"].replace("Z", "+00:00")) > datetime.now(timezone.utc)
+                                       for s_ in open_slots), f"got {len(open_slots)}")
+    check("slots of an unverified doctor are not exposed -> 404",
+          call("GET", f"/api/backend/appointments/doctors/{doctor_pending}/slots").status_code == 404)
+    first, second, third = open_slots[0]["start"], open_slots[1]["start"], open_slots[2]["start"]
+
+    response = call("POST", "/api/backend/appointments", tok_s1, {"doctor_id": sched_doctor, "date": first, "mode": "online"})
+    mine = (response.json() or {}).get("appointment", {}) if response.status_code == 201 else {}
+    check("a patient books an open slot -> 201 with its length and type",
+          response.status_code == 201 and mine.get("duration_minutes") == 30 and mine.get("mode") == "online", f"got {response.status_code}")
+    response = call("POST", "/api/backend/appointments", tok_s2, {"doctor_id": sched_doctor, "date": first})
+    check("a second patient booking the same slot -> 409", response.status_code == 409, f"got {response.status_code} {response.text[:100]}")
+    after = [s_ for d in call("GET", slots_url).json()["days"] for s_ in d["slots"] if s_["start"] == first]
+    check("the taken slot is shown as not available", after and after[0]["available"] is False)
+    odd = (datetime.fromisoformat(second.replace("Z", "+00:00")) + timedelta(minutes=7)).isoformat()
+    check("a time that is not a slot -> 409", call("POST", "/api/backend/appointments", tok_s2,
+                                                   {"doctor_id": sched_doctor, "date": odd}).status_code == 409)
+    check("the doctor's only offered types are respected: an unlisted type -> 422",
+          call("POST", "/api/backend/appointments", tok_s2, {"doctor_id": sched_doctor, "date": second, "mode": "teleport"}).status_code == 422)
+
+    appt_url = f"/api/backend/appointments/{mine.get('id')}"
+    response = call("PUT", appt_url, tok_s1, {"date": third})
+    check("the patient moves their booking to another open slot",
+          response.status_code == 200 and datetime.fromisoformat(response.json()["date"]) == datetime.fromisoformat(third.replace("Z", "+00:00")),
+          f"got {response.status_code}")
+    check("the old slot is open again", [s_["available"] for d in call("GET", slots_url).json()["days"]
+                                         for s_ in d["slots"] if s_["start"] == first] == [True])
+    check("another patient cannot move it -> 403", call("PUT", appt_url, tok_s2, {"date": second}).status_code == 403)
+    check("the doctor cannot move a patient's booking -> 403", call("PUT", appt_url, tok_sched, {"date": second}).status_code == 403)
+    check("an administrator does not change appointments -> 403", call("PUT", appt_url, tok_admin, {"status": "CANCELLED"}).status_code == 403)
+    check("a visit that has not started cannot be completed -> 409", call("PUT", appt_url, tok_sched, {"status": "COMPLETED"}).status_code == 409)
+    check("a patient cannot rate before it is completed -> 409",
+          call("POST", appt_url + "/review", tok_s1, {"rating": 5}).status_code == 409)
+
+    # The visit "happens": move it into the past directly in the database (we cannot wait for real time).
+    with engine.begin() as conn:
+        conn.execute(text("update appointments set date = now() - interval '2 hours' where id = :id"), {"id": mine.get("id")})
+    response = call("PUT", appt_url, tok_sched, {"status": "COMPLETED"})
+    check("the treating doctor completes it once it has started", response.status_code == 200 and response.json()["status"] == "COMPLETED",
+          f"got {response.status_code}")
+    check("a completed visit cannot be cancelled -> 409", call("PUT", appt_url, tok_s1, {"status": "CANCELLED"}).status_code == 409)
+    check("another patient cannot rate it -> 403", call("POST", appt_url + "/review", tok_s2, {"rating": 1}).status_code == 403)
+    check("a doctor cannot rate their own visit -> 403", call("POST", appt_url + "/review", tok_sched, {"rating": 5}).status_code == 403)
+    check("a rating outside 1 to 5 -> 422", call("POST", appt_url + "/review", tok_s1, {"rating": 9}).status_code == 422)
+    response = call("POST", appt_url + "/review", tok_s1, {"rating": 4, "comment": "  Clear and kind  "})
+    check("the patient rates the completed visit once", response.status_code == 201 and response.json()["comment"] == "Clear and kind")
+    check("rating twice -> 409", call("POST", appt_url + "/review", tok_s1, {"rating": 5}).status_code == 409)
+    card = next((d for d in call("GET", "/api/backend/appointments/doctors").json() if d["doctor_id"] == sched_doctor), {})
+    check("the directory now shows the real average and count", card.get("rating") == 4.0 and card.get("rating_count") == 1, f"got {card.get('rating')}")
+    reviews = call("GET", f"/api/backend/appointments/doctors/{sched_doctor}/reviews").json()
+    check("reviews are public but carry no patient name", len(reviews) == 1 and set(reviews[0]) == {"rating", "comment", "created_at"})
+    check("the patient's list says this visit was rated",
+          next(a for a in call("GET", "/api/backend/appointments", tok_s1).json()["items"] if a["id"] == mine.get("id"))["reviewed"] is True)
+
+    cancel_slot = open_slots[3]["start"]
+    cancelled = call("POST", "/api/backend/appointments", tok_s2, {"doctor_id": sched_doctor, "date": cancel_slot}).json()["appointment"]
+    check("the doctor can cancel a patient's booking", call("PUT", f"/api/backend/appointments/{cancelled['id']}", tok_sched, {"status": "CANCELLED"}).json()["status"] == "CANCELLED")
+    check("a cancelled slot can be booked again",
+          call("POST", "/api/backend/appointments", tok_s1, {"doctor_id": sched_doctor, "date": cancel_slot}).status_code == 201)
+
+    response = call("GET", "/api/backend/notifications", tok_s1)
+    page = response.json() if response.status_code == 200 else {}
+    kinds = {n["kind"] for n in page.get("items", [])}
+    check("the patient has a confirmation and a moved-appointment notice",
+          {"appointment_confirmed", "appointment_rescheduled"} <= kinds and page.get("unread", 0) >= 2, f"got {kinds}")
+    check("the doctor was told too", {"appointment_confirmed", "appointment_rescheduled"} <= {n["kind"] for n in call("GET", "/api/backend/notifications", tok_sched).json()["items"]})
+    check("reminders for later are not shown yet",
+          scalar("select count(*) from notifications where user_id = :id and kind = 'appointment_reminder' and scheduled_for > now()", id=patient_s1) > 0
+          and "appointment_reminder" not in kinds)
+    note = page["items"][0]
+    check("another user cannot mark my notification read (looks like 404)",
+          call("POST", f"/api/backend/notifications/{note['id']}/read", tok_s2).status_code == 404)
+    check("I can mark one read", call("POST", f"/api/backend/notifications/{note['id']}/read", tok_s1).status_code == 200)
+    call("POST", "/api/backend/notifications/read-all", tok_s1)
+    check("read-all clears the unread count", call("GET", "/api/backend/notifications", tok_s1).json()["unread"] == 0)
+    check("notifications need a token", call("GET", "/api/backend/notifications").status_code == 401)
 
 
 def main() -> int:
