@@ -16,12 +16,12 @@ const EMPTY: Result = { key: "", items: [], total: 0, error: null };
  * debounced `search` so typing does not send a request per keystroke.
  */
 export function useReportList({
-  token,
+  signedIn,
   search,
   department,
   pageSize = 10,
 }: {
-  token: string | null;
+  signedIn: boolean;
   search: string;
   department: string | null;
   pageSize?: number;
@@ -33,23 +33,23 @@ export function useReportList({
   const key = `${search.trim()}|${department ?? ""}|${version}`;
 
   useEffect(() => {
-    if (!token) return;
+    if (!signedIn) return;
     const controller = new AbortController();
     api
-      .reports(token, { limit: pageSize, offset: 0, q: search, department: department ?? undefined }, { signal: controller.signal })
+      .reports({ limit: pageSize, offset: 0, q: search, department: department ?? undefined }, { signal: controller.signal })
       .then((page) => setResult({ key, items: page.items, total: page.total, error: null }))
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
         setResult({ key, items: [], total: 0, error: error instanceof Error ? error.message : "Unable to load reports." });
       });
     return () => controller.abort();
-  }, [department, key, pageSize, search, token]);
+  }, [department, key, pageSize, search, signedIn]);
 
   const loadMore = useCallback(async () => {
-    if (!token || isLoadingMore || result.key !== key || result.items.length >= result.total) return;
+    if (!signedIn || isLoadingMore || result.key !== key || result.items.length >= result.total) return;
     setIsLoadingMore(true);
     try {
-      const page = await api.reports(token, {
+      const page = await api.reports({
         limit: pageSize,
         offset: result.items.length,
         q: search,
@@ -65,7 +65,7 @@ export function useReportList({
     } finally {
       setIsLoadingMore(false);
     }
-  }, [department, isLoadingMore, key, pageSize, result, search, token]);
+  }, [department, isLoadingMore, key, pageSize, result, search, signedIn]);
 
   /** Reloads page one, e.g. after an upload. */
   const refresh = useCallback(() => setVersion((v) => v + 1), []);

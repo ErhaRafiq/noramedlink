@@ -11,7 +11,7 @@ const RECENT_USERS = 6;
 export type DoctorDecision = "approve" | "reject";
 
 /** Admin overview data plus approving or rejecting doctors in the review queue. */
-export function useAdminDashboard(token: string | null) {
+export function useAdminDashboard(signedIn: boolean) {
   const [stats, setStats] = useState<AdminDashboardStats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [pendingDoctors, setPendingDoctors] = useState<AdminDoctor[]>([]);
@@ -29,13 +29,13 @@ export function useAdminDashboard(token: string | null) {
   }, []);
 
   const load = useCallback(async () => {
-    if (!token) return;
+    if (!signedIn) return;
     try {
       const [statsData, userPage, doctors, activityData] = await Promise.all([
-        api.adminDashboardStats(token),
-        api.adminUsers(token, { limit: RECENT_USERS }),
-        api.adminPendingDoctors(token),
-        api.adminRecentActivity(token),
+        api.adminDashboardStats(),
+        api.adminUsers({ limit: RECENT_USERS }),
+        api.adminPendingDoctors(),
+        api.adminRecentActivity(),
       ]);
       if (!mountedRef.current) return;
       setStats(statsData);
@@ -48,22 +48,22 @@ export function useAdminDashboard(token: string | null) {
       setError(err instanceof Error ? err.message : "The admin dashboard could not be loaded.");
       setStatus("error");
     }
-  }, [token]);
+  }, [signedIn]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!signedIn) return;
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
-  }, [load, token]);
+  }, [load, signedIn]);
 
   /** Approves or rejects a pending doctor. Returns a message for the page to show. */
   const decide = useCallback(
     async (doctor: AdminDoctor, decision: DoctorDecision) => {
-      if (!token || deciding) return null;
+      if (!signedIn || deciding) return null;
       setDeciding({ doctorId: doctor.id, decision });
       try {
-        if (decision === "approve") await api.approveAdminDoctor(token, doctor.id);
-        else await api.rejectAdminDoctor(token, doctor.id);
+        if (decision === "approve") await api.approveAdminDoctor(doctor.id);
+        else await api.rejectAdminDoctor(doctor.id);
         await load();
         return {
           ok: true,
@@ -75,7 +75,7 @@ export function useAdminDashboard(token: string | null) {
         if (mountedRef.current) setDeciding(null);
       }
     },
-    [deciding, load, token],
+    [deciding, load, signedIn],
   );
 
   return { stats, users, pendingDoctors, activity, status, error, deciding, decide, retry: load };

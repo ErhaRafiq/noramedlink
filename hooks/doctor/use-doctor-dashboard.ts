@@ -13,7 +13,7 @@ export type DoctorNotice = { tone: "error" | "success"; text: string } | null;
  * (appointments, patients with access, emergency visits), the selected patient, and
  * unlocking or ending access with a one-time code.
  */
-export function useDoctorDashboard(token: string | null) {
+export function useDoctorDashboard(signedIn: boolean) {
   const [profile, setProfile] = useState<DoctorProfile | null>(null);
   const [overview, setOverview] = useState<DoctorOverview | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -40,8 +40,8 @@ export function useDoctorDashboard(token: string | null) {
   }, []);
 
   useEffect(() => {
-    if (!token) return;
-    Promise.all([api.doctorDashboard(token), api.doctorOverview(token)])
+    if (!signedIn) return;
+    Promise.all([api.doctorDashboard(), api.doctorOverview()])
       .then(([doctor, data]) => {
         if (!mountedRef.current) return;
         setProfile(doctor.doctor);
@@ -54,21 +54,21 @@ export function useDoctorDashboard(token: string | null) {
       .finally(() => {
         if (mountedRef.current) setIsLoading(false);
       });
-  }, [applyOverview, token]);
+  }, [applyOverview, signedIn]);
 
   const reload = useCallback(
     async (preferPatientId?: number | null) => {
-      if (!token) return;
-      const data = await api.doctorOverview(token);
+      if (!signedIn) return;
+      const data = await api.doctorOverview();
       if (mountedRef.current) applyOverview(data, preferPatientId);
     },
-    [applyOverview, token],
+    [applyOverview, signedIn],
   );
 
   /** Unlocks a patient's file with the code they shared. Returns true on success. */
   const unlock = useCallback(
     async (code: string) => {
-      if (!token || isUnlocking) return false;
+      if (!signedIn || isUnlocking) return false;
       const trimmed = code.trim();
       if (!trimmed) {
         setNotice({ tone: "error", text: "Enter the one-time code the patient shared with you." });
@@ -77,7 +77,7 @@ export function useDoctorDashboard(token: string | null) {
       setIsUnlocking(true);
       setNotice(null);
       try {
-        const data = await api.unlockPatientDashboard(token, trimmed);
+        const data = await api.unlockPatientDashboard(trimmed);
         setNotice({ tone: "success", text: data.message });
         await reload(data.patient.id);
         return true;
@@ -88,16 +88,16 @@ export function useDoctorDashboard(token: string | null) {
         if (mountedRef.current) setIsUnlocking(false);
       }
     },
-    [isUnlocking, reload, token],
+    [isUnlocking, reload, signedIn],
   );
 
   const endAccess = useCallback(
     async (patientId: number) => {
-      if (!token || endingPatientId !== null) return;
+      if (!signedIn || endingPatientId !== null) return;
       setEndingPatientId(patientId);
       setNotice(null);
       try {
-        const data = await api.endPatientDashboardAccess(token, patientId);
+        const data = await api.endPatientDashboardAccess(patientId);
         setNotice({ tone: "success", text: data.message });
         setSelectedPatientId(null);
         await reload(null);
@@ -107,7 +107,7 @@ export function useDoctorDashboard(token: string | null) {
         if (mountedRef.current) setEndingPatientId(null);
       }
     },
-    [endingPatientId, reload, token],
+    [endingPatientId, reload, signedIn],
   );
 
   return {

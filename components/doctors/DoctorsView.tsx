@@ -24,7 +24,7 @@ export function DoctorsView() {
   const { session } = useStoredSession();
   const isPatient = session?.user.role === "patient";
   const directory = useDoctorDirectory();
-  const appointments = useMyAppointments(isPatient ? session.token : null);
+  const appointments = useMyAppointments(isPatient);
 
   const [details, setDetails] = useState<BookingDetailsValue>(() => ({ date: tomorrowAtTen(), notes: "", accessCode: "" }));
   const [bookingId, setBookingId] = useState<number | null>(null);
@@ -49,7 +49,7 @@ export function DoctorsView() {
 
     setBookingId(doctor.id);
     try {
-      const result = await api.bookAppointment(session.token, {
+      const result = await api.bookAppointment({
         doctorId: doctor.id,
         date: date.toISOString(),
         notes: details.notes.trim(),

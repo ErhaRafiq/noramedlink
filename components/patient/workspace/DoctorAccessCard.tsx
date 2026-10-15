@@ -11,19 +11,19 @@ import { formatDateTime } from "./helpers";
 import { DashCard } from "./ui";
 
 /** One-time code the patient gives a doctor to open their dashboard for one consultation. */
-export function DoctorAccessCard({ token, notify }: { token: string; notify: Notify }) {
+export function DoctorAccessCard({ notify }: { notify: Notify }) {
   const [otp, setOtp] = useState<{ code: string; expiresAt: string } | null>(null);
 
   const generate = useAsyncAction(
     useCallback(async () => {
       try {
-        const data = await api.issueDashboardOtp(token);
+        const data = await api.issueDashboardOtp();
         setOtp(data.otp);
         notify("success", "One-time code generated. Share it only with your doctor.");
       } catch (err) {
         notify("error", err instanceof Error ? err.message : "Unable to generate a code.");
       }
-    }, [notify, token]),
+    }, [notify]),
   );
 
   async function copyCode() {

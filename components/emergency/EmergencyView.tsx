@@ -68,7 +68,7 @@ export function EmergencyView() {
     }
     setSubmitting(true);
     try {
-      const data = await api.createEmergencyRequest(session.token, {
+      const data = await api.createEmergencyRequest({
         patientName: patientName.trim(),
         phone: phone.trim(),
         address: address.trim(),

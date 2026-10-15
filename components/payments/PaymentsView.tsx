@@ -34,7 +34,7 @@ export function PaymentsView() {
   const highlighted = Number(searchParams.get("appointmentId")) || null;
   const cancelled = searchParams.get("cancelled") === "1";
   const { ready, session } = useStoredSession();
-  const data = usePayments(session?.user.role === "patient" ? session.token : null);
+  const data = usePayments(session?.user.role === "patient");
 
   return (
     <PageContainer narrow>

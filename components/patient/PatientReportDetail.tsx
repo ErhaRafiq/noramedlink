@@ -33,7 +33,7 @@ function BackLink() {
 export function PatientReportDetail({ reportId }: { reportId: number }) {
   const router = useRouter();
   const auth = useAuthGuard("patient");
-  const detail = useReportDetail(auth.status === "ready" ? auth.token : null, reportId);
+  const detail = useReportDetail(auth.status === "ready", reportId);
   const [notice, setNotice] = useState<ActionResult | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
 

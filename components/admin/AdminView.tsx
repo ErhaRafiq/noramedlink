@@ -11,7 +11,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { ErrorState, PageLoader } from "@/components/ui/spinner";
 import { StatCard, StatCardSkeleton } from "@/components/ui/stat-card";
-import { clearSession } from "@/lib/auth";
+import { signOut as endSession } from "@/lib/auth";
 import type { AdminDoctor } from "@/lib/types";
 import { useAdminDashboard } from "@/hooks/admin/use-admin-dashboard";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
@@ -30,7 +30,7 @@ type Notice = { ok: boolean; message: string } | null;
 export function AdminView() {
   const router = useRouter();
   const auth = useAuthGuard("admin");
-  const dashboard = useAdminDashboard(auth.status === "ready" ? auth.token : null);
+  const dashboard = useAdminDashboard(auth.status === "ready");
   const [notice, setNotice] = useState<Notice>(null);
   const [rejecting, setRejecting] = useState<AdminDoctor | null>(null);
 
@@ -42,7 +42,7 @@ export function AdminView() {
   }
 
   function signOut() {
-    clearSession();
+    void endSession();
     router.replace("/login");
   }
 

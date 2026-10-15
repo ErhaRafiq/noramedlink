@@ -1,7 +1,7 @@
-import { proxyAuthPost } from "@/lib/backend-auth-proxy";
+import { startSession } from "@/lib/auth-routes";
 
 export const runtime = "nodejs";
 
 export function POST(request: Request) {
-  return proxyAuthPost(request, "signup");
+  return startSession(request, "signup");
 }

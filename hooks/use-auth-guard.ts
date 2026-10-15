@@ -11,13 +11,13 @@ type Role = AuthUser["role"];
 
 export type AuthGuardState =
   | { status: "checking" }
-  | { status: "ready"; token: string; user: AuthUser }
+  | { status: "ready"; user: AuthUser }
   | { status: "error"; message: string };
 
 /**
- * Protects a page for one role. Reads the stored session after mount (so server and
- * client renders match), confirms it with /auth/me, and:
- * - no session, or the server rejects the token (401/403): clears it and goes to /login;
+ * Protects a page for one role. Reads the stored profile after mount (so server and
+ * client renders match), confirms the cookie session with /auth/me, and:
+ * - no profile, or the server rejects the session (401/403): clears it and goes to /login;
  * - signed in with another role: goes to that role's dashboard;
  * - backend unreachable: reports an error but keeps the session, so a retry can work.
  */
@@ -34,14 +34,14 @@ export function useAuthGuard(role: Role): AuthGuardState {
 
     const controller = new AbortController();
     api
-      .me(session.token, { signal: controller.signal })
+      .me({ signal: controller.signal })
       .then((user) => {
         if (user.role !== role) {
           router.replace(dashboardPathForRole(user.role));
           return;
         }
         updateStoredUser(user);
-        setState({ status: "ready", token: session.token, user });
+        setState({ status: "ready", user });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;

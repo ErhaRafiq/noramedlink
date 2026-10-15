@@ -20,7 +20,7 @@ function message(error: unknown) {
  * fails, the previous one stays, labelled with its date, never silently. Switching patients drops
  * answers that arrive late.
  */
-export function useClinicalSummary(token: string | null, patientId: number | null) {
+export function useClinicalSummary(patientId: number | null) {
   const [phase, setPhase] = useState<SummaryPhase>("loading");
   const [status, setStatus] = useState<ClinicalSummaryStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,11 +31,11 @@ export function useClinicalSummary(token: string | null, patientId: number | nul
 
   const regenerate = useCallback(
     async (signal?: AbortSignal) => {
-      if (!token || patientId === null) return;
+      if (patientId === null) return;
       setPhase("updating");
       setError(null);
       try {
-        const result = await api.regenerateClinicalSummary(token, patientId, { signal });
+        const result = await api.regenerateClinicalSummary(patientId, { signal });
         if (signal?.aborted) return;
         setStatus({ patient_id: patientId, summary: result.summary, out_of_date: false, pending_change: null });
         setPhase("current");
@@ -46,18 +46,18 @@ export function useClinicalSummary(token: string | null, patientId: number | nul
         setPhase("update-failed");
       }
     },
-    [token, patientId],
+    [patientId],
   );
 
   // The card is keyed by patient, so this hook starts fresh ("loading") for each patient; state is
   // only set from the answers, which are dropped once the patient changes or the card closes.
   const [loadCount, setLoadCount] = useState(0);
   useEffect(() => {
-    if (!token || patientId === null) return;
+    if (patientId === null) return;
     const current = new AbortController();
     controller.current = current;
     api
-      .clinicalSummary(token, patientId, { signal: current.signal })
+      .clinicalSummary(patientId, { signal: current.signal })
       .then(async (loaded) => {
         if (current.signal.aborted) return;
         setStatus(loaded);
@@ -70,7 +70,7 @@ export function useClinicalSummary(token: string | null, patientId: number | nul
         setPhase("error");
       });
     return () => current.abort();
-  }, [token, patientId, loadCount, regenerate]);
+  }, [patientId, loadCount, regenerate]);
 
   const load = useCallback(() => {
     setPhase("loading");
@@ -79,29 +79,29 @@ export function useClinicalSummary(token: string | null, patientId: number | nul
   }, []);
 
   const loadVersions = useCallback(async () => {
-    if (!token || patientId === null) return;
+    if (patientId === null) return;
     try {
-      const page = await api.clinicalSummaryVersions(token, patientId, { limit: 50 });
+      const page = await api.clinicalSummaryVersions(patientId, { limit: 50 });
       setVersions(page.items);
     } catch (caught) {
       setViewError(message(caught));
     }
-  }, [token, patientId]);
+  }, [patientId]);
 
   const viewVersion = useCallback(
     async (version: number | null) => {
       setViewError(null);
-      if (!token || patientId === null || version === null || version === status?.summary?.version) {
+      if (patientId === null || version === null || version === status?.summary?.version) {
         setViewing(null);
         return;
       }
       try {
-        setViewing(await api.clinicalSummaryVersion(token, patientId, version));
+        setViewing(await api.clinicalSummaryVersion(patientId, version));
       } catch (caught) {
         setViewError(message(caught));
       }
     },
-    [token, patientId, status],
+    [patientId, status],
   );
 
   return {

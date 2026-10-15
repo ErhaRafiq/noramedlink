@@ -57,7 +57,7 @@ const EMPTY: PatientWorkspaceData = {
  * load shows its empty state instead of breaking the page. `refresh()` reloads it all;
  * results that arrive after the page is gone are dropped.
  */
-export function usePatientWorkspaceData(token: string | null) {
+export function usePatientWorkspaceData(signedIn: boolean) {
   const [data, setData] = useState<PatientWorkspaceData>(EMPTY);
   const [isLoading, setIsLoading] = useState(true);
   const mountedRef = useRef(true);
@@ -70,19 +70,19 @@ export function usePatientWorkspaceData(token: string | null) {
   }, []);
 
   const refresh = useCallback(async () => {
-    if (!token) return;
+    if (!signedIn) return;
     const [vitalsToday, departmentTiles, highRisk, doctors, appointments, medications, reminders, healthFlags, basicVitals, prescriptions] =
       await Promise.all([
-        api.patientVitalsToday(token).catch(() => null),
-        api.patientDepartmentTiles(token).catch(() => []),
-        api.reports(token, { limit: HIGH_RISK_SHOWN, validationStatus: "HIGH_RISK" }).catch(() => ({ items: [], total: 0 })),
-        api.doctors(token).catch(() => []),
-        api.appointments(token, { limit: APPOINTMENTS_LOADED }).then((page) => page.items).catch(() => []),
-        api.medicines(token).catch(() => []),
-        api.remindersToday(token).catch(() => []),
-        api.healthFlags(token).catch(() => null),
-        api.basicVitalsHistory(token).catch(() => []),
-        api.myPrescriptions(token).then((page) => page.items).catch(() => null),
+        api.patientVitalsToday().catch(() => null),
+        api.patientDepartmentTiles().catch(() => []),
+        api.reports({ limit: HIGH_RISK_SHOWN, validationStatus: "HIGH_RISK" }).catch(() => ({ items: [], total: 0 })),
+        api.doctors().catch(() => []),
+        api.appointments({ limit: APPOINTMENTS_LOADED }).then((page) => page.items).catch(() => []),
+        api.medicines().catch(() => []),
+        api.remindersToday().catch(() => []),
+        api.healthFlags().catch(() => null),
+        api.basicVitalsHistory().catch(() => []),
+        api.myPrescriptions().then((page) => page.items).catch(() => null),
       ]);
     if (!mountedRef.current) return;
     setData({
@@ -98,14 +98,14 @@ export function usePatientWorkspaceData(token: string | null) {
       prescriptions,
       basicVitals,
     });
-  }, [token]);
+  }, [signedIn]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!signedIn) return;
     void refresh().finally(() => {
       if (mountedRef.current) setIsLoading(false);
     });
-  }, [token, refresh]);
+  }, [signedIn, refresh]);
 
   return { data, isLoading, refresh };
 }

@@ -9,7 +9,7 @@ import type { MedicineOption } from "@/lib/types";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 
 /** Type a generic or brand name (misspellings are matched approximately), then pick one. */
-export function MedicineSearch({ token, onPick }: { token: string; onPick: (option: MedicineOption) => void }) {
+export function MedicineSearch({ onPick }: { onPick: (option: MedicineOption) => void }) {
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<{ query: string; options: MedicineOption[]; error: string | null }>({
     query: "",
@@ -25,13 +25,13 @@ export function MedicineSearch({ token, onPick }: { token: string; onPick: (opti
     if (debounced.length < 2) return;
     const controller = new AbortController();
     api
-      .searchMedicines(token, debounced, { signal: controller.signal })
+      .searchMedicines(debounced, { signal: controller.signal })
       .then((options) => setResult({ query: debounced, options, error: null }))
       .catch((error: unknown) => {
         if (!controller.signal.aborted) setResult({ query: debounced, options: [], error: error instanceof Error ? error.message : "Search failed." });
       });
     return () => controller.abort();
-  }, [token, debounced]);
+  }, [debounced]);
 
   const showing = query.trim().length >= 2 && result.query === debounced;
   const options = showing ? result.options : [];

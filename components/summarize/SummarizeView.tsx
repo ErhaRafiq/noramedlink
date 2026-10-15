@@ -37,7 +37,7 @@ export function SummarizeView() {
     setPending("text");
     setResult(null);
     try {
-      setResult(await api.summarizeText(session.token, input));
+      setResult(await api.summarizeText(input));
     } catch (err) {
       setError(err instanceof Error ? err.message : "The summary could not be generated.");
     } finally {
@@ -52,7 +52,7 @@ export function SummarizeView() {
     setResult(null);
     try {
       setText("");
-      setResult(await api.summarizeSavedReports(session.token));
+      setResult(await api.summarizeSavedReports());
     } catch (err) {
       setError(err instanceof Error ? err.message : "Your saved reports could not be summarized.");
     } finally {

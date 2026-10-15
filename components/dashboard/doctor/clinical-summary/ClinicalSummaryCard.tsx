@@ -19,8 +19,8 @@ function versionLine(summary: ClinicalSummaryVersion) {
 /** The clinical summary of the selected patient (active access grant only). Built by fixed rules;
  * AI may only word the key findings. Out of date: the previous version stays, labelled, while a new
  * one is built. */
-export function ClinicalSummaryCard({ token, patientId, patientName }: { token: string; patientId: number; patientName: string }) {
-  const summary = useClinicalSummary(token, patientId);
+export function ClinicalSummaryCard({ patientId, patientName }: { patientId: number; patientName: string }) {
+  const summary = useClinicalSummary(patientId);
   const current = summary.status?.summary ?? null;
   const shown = summary.viewing ?? current;
   const busy = summary.phase === "loading" || summary.phase === "updating";

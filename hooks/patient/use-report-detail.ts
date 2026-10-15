@@ -15,7 +15,7 @@ function editableTextOf(report: MedicalDocument) {
 }
 
 /** One report for the signed-in patient: load, edit text and department, re-run OCR, delete. */
-export function useReportDetail(token: string | null, reportId: number) {
+export function useReportDetail(signedIn: boolean, reportId: number) {
   const [report, setReport] = useState<MedicalDocument | null>(null);
   const [status, setStatus] = useState<Status>("loading");
   const [error, setError] = useState("");
@@ -30,10 +30,10 @@ export function useReportDetail(token: string | null, reportId: number) {
   }, []);
 
   useEffect(() => {
-    if (!token) return;
+    if (!signedIn) return;
     const controller = new AbortController();
     api
-      .patientDocument(token, reportId)
+      .patientDocument(reportId)
       .then((data) => {
         if (controller.signal.aborted) return;
         apply(data);
@@ -49,29 +49,29 @@ export function useReportDetail(token: string | null, reportId: number) {
         setStatus("error");
       });
     return () => controller.abort();
-  }, [apply, reportId, token]);
+  }, [apply, reportId, signedIn]);
 
   const isDirty = report !== null && (text !== editableTextOf(report) || department !== toDepartmentSlug(report.department_slug ?? report.category));
 
   const save = useCallback(async (): Promise<ActionResult> => {
-    if (!token || !report || pending) return { ok: false, message: "Please wait for the current action to finish." };
+    if (!signedIn || !report || pending) return { ok: false, message: "Please wait for the current action to finish." };
     if (!text.trim()) return { ok: false, message: "The report text cannot be empty." };
     setPending("save");
     try {
-      apply(await api.updateDocument(token, report.id, { department, extracted_text: text }));
+      apply(await api.updateDocument(report.id, { department, extracted_text: text }));
       return { ok: true, message: "Your edits were saved and the summary was updated." };
     } catch (err) {
       return { ok: false, message: err instanceof Error ? err.message : "Unable to save your edits." };
     } finally {
       setPending(null);
     }
-  }, [apply, department, pending, report, text, token]);
+  }, [apply, department, pending, report, text, signedIn]);
 
   const regenerate = useCallback(async (): Promise<ActionResult> => {
-    if (!token || !report || pending) return { ok: false, message: "Please wait for the current action to finish." };
+    if (!signedIn || !report || pending) return { ok: false, message: "Please wait for the current action to finish." };
     setPending("regenerate");
     try {
-      const updated = await api.regenerateDocumentOcr(token, report.id);
+      const updated = await api.regenerateDocumentOcr(report.id);
       apply(updated);
       return updated.ocr_status === "FAILED"
         ? { ok: false, message: "Reading the file again failed. Your report was kept as it was." }
@@ -81,20 +81,20 @@ export function useReportDetail(token: string | null, reportId: number) {
     } finally {
       setPending(null);
     }
-  }, [apply, pending, report, token]);
+  }, [apply, pending, report, signedIn]);
 
   /** Deletes the report. Resolves true on success (the caller then navigates away). */
   const remove = useCallback(async (): Promise<ActionResult> => {
-    if (!token || !report || pending) return { ok: false, message: "Please wait for the current action to finish." };
+    if (!signedIn || !report || pending) return { ok: false, message: "Please wait for the current action to finish." };
     setPending("delete");
     try {
-      await api.deleteDocument(token, report.id);
+      await api.deleteDocument(report.id);
       return { ok: true, message: "Report deleted." };
     } catch (err) {
       setPending(null);
       return { ok: false, message: err instanceof Error ? err.message : "Unable to delete the report." };
     }
-  }, [pending, report, token]);
+  }, [pending, report, signedIn]);
 
   return { report, status, error, text, setText, department, setDepartment, isDirty, pending, save, regenerate, remove };
 }

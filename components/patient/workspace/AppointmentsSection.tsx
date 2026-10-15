@@ -14,13 +14,11 @@ const EMPTY_FORM = { doctorId: "", specialty: "", date: "", time: "", reason: ""
 const APPOINTMENTS_PREVIEW = 4;
 
 export function AppointmentsSection({
-  token,
   doctors,
   appointments,
   notify,
   onSaved,
 }: {
-  token: string;
   doctors: DoctorOption[];
   appointments: Appointment[];
   notify: Notify;
@@ -38,7 +36,7 @@ export function AppointmentsSection({
             notify("error", "Choose a valid date and time.");
             return;
           }
-          await api.bookAppointment(token, { doctorId: doctor.id, date: when.toISOString(), reason: values.reason });
+          await api.bookAppointment({ doctorId: doctor.id, date: when.toISOString(), reason: values.reason });
           notify("success", "Appointment booked successfully.");
           setForm(EMPTY_FORM);
           await onSaved();
@@ -46,7 +44,7 @@ export function AppointmentsSection({
           notify("error", err instanceof Error ? err.message : "Appointment booking failed.");
         }
       },
-      [notify, onSaved, token],
+      [notify, onSaved],
     ),
   );
 

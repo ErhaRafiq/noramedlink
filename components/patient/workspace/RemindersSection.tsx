@@ -14,13 +14,11 @@ const EMPTY_MEDICATION = { medicineName: "", dosage: "", instructions: "", start
 
 /** Create a reminder for one of the patient's medications, and add medications. */
 export function RemindersSection({
-  token,
   medications,
   notify,
   onSaved,
   beforeCreateReminder,
 }: {
-  token: string;
   medications: MedicationSchedule[];
   notify: Notify;
   onSaved: () => Promise<void>;
@@ -35,7 +33,7 @@ export function RemindersSection({
       async (medicationId: number, values: typeof EMPTY_REMINDER) => {
         try {
           await beforeCreateReminder();
-          await api.createReminder(token, { medicationId, reminderTime: values.reminderTime, frequency: values.frequency });
+          await api.createReminder({ medicationId, reminderTime: values.reminderTime, frequency: values.frequency });
           notify("success", "Reminder created.");
           setReminderForm(EMPTY_REMINDER);
           await onSaved();
@@ -43,7 +41,7 @@ export function RemindersSection({
           notify("error", err instanceof Error ? err.message : "Unable to create reminder.");
         }
       },
-      [beforeCreateReminder, notify, onSaved, token],
+      [beforeCreateReminder, notify, onSaved],
     ),
   );
 
@@ -51,7 +49,7 @@ export function RemindersSection({
     useCallback(
       async (values: typeof EMPTY_MEDICATION) => {
         try {
-          await api.createMedicineSchedule(token, {
+          await api.createMedicineSchedule({
             medicineName: values.medicineName,
             dosage: values.dosage,
             instructions: values.instructions || null,
@@ -65,7 +63,7 @@ export function RemindersSection({
           notify("error", err instanceof Error ? err.message : "Unable to save medication.");
         }
       },
-      [notify, onSaved, token],
+      [notify, onSaved],
     ),
   );
 

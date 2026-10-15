@@ -9,7 +9,7 @@ import { ButtonLink } from "@/components/ui/button";
 import { SkeletonCard } from "@/components/ui/skeleton";
 import { ErrorState, PageLoader } from "@/components/ui/spinner";
 import { StatCard, StatCardSkeleton } from "@/components/ui/stat-card";
-import { clearSession } from "@/lib/auth";
+import { signOut as endSession } from "@/lib/auth";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useDoctorDashboard } from "@/hooks/doctor/use-doctor-dashboard";
 import { ClinicalSummaryCard } from "./doctor/clinical-summary/ClinicalSummaryCard";
@@ -33,11 +33,11 @@ const VERIFIED_STATUSES = ["approved", "verified"];
 export function DoctorDashboard() {
   const router = useRouter();
   const auth = useAuthGuard("doctor");
-  const dashboard = useDoctorDashboard(auth.status === "ready" ? auth.token : null);
+  const dashboard = useDoctorDashboard(auth.status === "ready");
   const { profile, overview, notice, selectedPatientId } = dashboard;
 
   function signOut() {
-    clearSession();
+    void endSession();
     router.replace("/login");
   }
 
@@ -120,10 +120,9 @@ export function DoctorDashboard() {
 
           {activePatient && auth.status === "ready" ? (
             <>
-              <ClinicalSummaryCard key={activePatient.id} token={auth.token} patientId={activePatient.id} patientName={activePatient.name} />
+              <ClinicalSummaryCard key={activePatient.id} patientId={activePatient.id} patientName={activePatient.name} />
               <PrescribeCard
                 key={`rx-${activePatient.id}`}
-                token={auth.token}
                 patientId={activePatient.id}
                 patientName={activePatient.name}
                 doctorId={auth.user.id}
@@ -134,7 +133,7 @@ export function DoctorDashboard() {
 
           <EmergencyCard bookings={overview.emergencyBookings} />
 
-          {profile ? <ConsultationFeeCard key={profile.id} token={auth.token} initialFee={profile.consultation_fee} /> : null}
+          {profile ? <ConsultationFeeCard key={profile.id} initialFee={profile.consultation_fee} /> : null}
         </>
       ) : null}
     </DashboardShell>

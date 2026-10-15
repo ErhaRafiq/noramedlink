@@ -19,7 +19,7 @@ function message(error: unknown, fallback: string) {
  * items change, older answers dropped), confirming with justifications, and the history.
  * The card is keyed by patient, so this starts fresh for each one.
  */
-export function usePrescribing(token: string, patientId: number) {
+export function usePrescribing(patientId: number) {
   const [items, setItems] = useState<DraftItem[]>([]);
   const [checked, setChecked] = useState<{ key: string; result: MedicationCheck | null; error: string | null }>({
     key: "",
@@ -57,25 +57,25 @@ export function usePrescribing(token: string, patientId: number) {
     if (debouncedKey === "[]") return;
     const controller = new AbortController();
     api
-      .medicationCheck(token, patientId, JSON.parse(debouncedKey) as PrescriptionItemInput[], { signal: controller.signal })
+      .medicationCheck(patientId, JSON.parse(debouncedKey) as PrescriptionItemInput[], { signal: controller.signal })
       .then((result) => setChecked({ key: debouncedKey, result, error: null }))
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
         setChecked({ key: debouncedKey, result: null, error: message(error, "The safety check could not run.") });
       });
     return () => controller.abort();
-  }, [token, patientId, debouncedKey]);
+  }, [patientId, debouncedKey]);
 
   useEffect(() => {
     let active = true;
     api
-      .prescriptions(token, patientId)
+      .prescriptions(patientId)
       .then((page) => active && setHistory({ items: page.items, error: null, loaded: true }))
       .catch((error: unknown) => active && setHistory({ items: [], error: message(error, "Earlier prescriptions could not be loaded."), loaded: true }));
     return () => {
       active = false;
     };
-  }, [token, patientId, historyVersion]);
+  }, [patientId, historyVersion]);
 
   const add = useCallback((option: MedicineOption) => {
     setItems((current) => [...current, { key: `${Date.now()}-${option.name}`, medicine: option.brand ?? option.generic, frequency: "OD" }]);
@@ -96,7 +96,7 @@ export function usePrescribing(token: string, patientId: number) {
       setConfirming(true);
       setConfirmError(null);
       try {
-        await api.createPrescription(token, patientId, {
+        await api.createPrescription(patientId, {
           items: payload,
           overrides: Object.entries(justifications).map(([alert_id, justification]) => ({ alert_id, justification })),
           notes: notes.trim() || undefined,
@@ -111,14 +111,14 @@ export function usePrescribing(token: string, patientId: number) {
         setConfirming(false);
       }
     },
-    [token, patientId, payload],
+    [patientId, payload],
   );
 
   const cancel = useCallback(
     async (prescriptionId: number) => {
       setCancellingId(prescriptionId);
       try {
-        await api.cancelPrescription(token, patientId, prescriptionId);
+        await api.cancelPrescription(patientId, prescriptionId);
         setHistoryVersion((v) => v + 1);
       } catch (error) {
         setHistory((current) => ({ ...current, error: message(error, "The prescription could not be cancelled.") }));
@@ -126,7 +126,7 @@ export function usePrescribing(token: string, patientId: number) {
         setCancellingId(null);
       }
     },
-    [token, patientId],
+    [patientId],
   );
 
   const current = payload.length > 0 && checked.key === key;

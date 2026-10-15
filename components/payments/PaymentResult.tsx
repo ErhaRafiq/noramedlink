@@ -20,18 +20,18 @@ const MAX_POLLS = 8; // Stripe's webhook usually arrives within a few seconds
 export function PaymentResult() {
   const sessionId = useSearchParams().get("session_id") ?? "";
   const { ready, session } = useStoredSession();
-  const token = session?.token ?? null;
+  const signedIn = session !== null;
   const [payment, setPayment] = useState<Payment | null>(null);
   const [error, setError] = useState("");
   const [gaveUp, setGaveUp] = useState(false);
 
   useEffect(() => {
-    if (!token || !sessionId) return;
+    if (!signedIn || !sessionId) return;
     let cancelled = false;
     let timer = 0;
     const poll = (attempt: number) => {
       api
-        .paymentForSession(token, sessionId)
+        .paymentForSession(sessionId)
         .then((found) => {
           if (cancelled) return;
           setPayment(found);
@@ -49,7 +49,7 @@ export function PaymentResult() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [sessionId, token]);
+  }, [sessionId, signedIn]);
 
   const status = payment?.status ?? "PENDING";
   return (
@@ -58,7 +58,7 @@ export function PaymentResult() {
       <section className="rounded-card border border-line bg-white p-6 text-center shadow-card">
         {!sessionId ? (
           <Alert tone="error">This link has no payment session.</Alert>
-        ) : ready && !token ? (
+        ) : ready && !signedIn ? (
           <Alert tone="info">Sign in to see this payment.</Alert>
         ) : error ? (
           <Alert tone="error">{error}</Alert>

@@ -7,7 +7,7 @@ import { LayoutDashboard, LogOut } from "lucide-react";
 
 import { Button, ButtonLink } from "@/components/ui/button";
 import { NoraLogo } from "@/components/ui/NoraLogo";
-import { clearSession, dashboardPathForRole } from "@/lib/auth";
+import { dashboardPathForRole, signOut as endSession } from "@/lib/auth";
 import { cn } from "@/lib/cn";
 import { useStoredSession } from "@/hooks/use-stored-session";
 import { useThrottledCallback } from "@/hooks/use-throttled-callback";
@@ -38,7 +38,7 @@ export function SiteHeader({ links = DEFAULT_LINKS }: { links?: SiteLink[] }) {
   }, [onScroll]);
 
   function signOut() {
-    clearSession();
+    void endSession();
     router.push("/");
   }
 

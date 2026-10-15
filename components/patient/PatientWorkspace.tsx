@@ -5,7 +5,7 @@ import { useCallback, useMemo, useState } from "react";
 
 import { ErrorState, PageLoader } from "@/components/ui/spinner";
 import { api } from "@/lib/api";
-import { clearSession } from "@/lib/auth";
+import { signOut as endSession } from "@/lib/auth";
 import { isDepartmentSlug, type DepartmentSlug } from "@/lib/departments";
 import type { MedicalDocument } from "@/lib/types";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
@@ -46,11 +46,11 @@ export function PatientWorkspace({
 }) {
   const router = useRouter();
   const auth = useAuthGuard("patient");
-  const token = auth.status === "ready" ? auth.token : null;
+  const signedIn = auth.status === "ready";
   const user = auth.status === "ready" ? auth.user : null;
 
   const { toast, notify } = useToast();
-  const { data, isLoading, refresh } = usePatientWorkspaceData(token);
+  const { data, isLoading, refresh } = usePatientWorkspaceData(signedIn);
   const notifications = useNotificationPermission();
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -58,8 +58,8 @@ export function PatientWorkspace({
   const [department, setDepartment] = useState<DepartmentSlug | null>(
     isDepartmentSlug(initialDepartment) ? (initialDepartment.toLowerCase() as DepartmentSlug) : null,
   );
-  const reportList = useReportList({ token, search: debouncedSearch, department });
-  const upload = useUploadQueue({ token, notify, onUploaded: reportList.refresh });
+  const reportList = useReportList({ signedIn, search: debouncedSearch, department });
+  const upload = useUploadQueue({ signedIn, notify, onUploaded: reportList.refresh });
   const [activeNav, setActiveNav] = useScrollSpy(SPY_SECTIONS, { fallback: "dashboard" });
 
   const { reminders, appointments, basicVitals, vitalsToday } = data;
@@ -105,13 +105,13 @@ export function PatientWorkspace({
 
   const markReminder = useCallback(
     async (reminderId: number, action: "taken" | "skip") => {
-      if (!token) return;
+      if (!signedIn) return;
       try {
         if (action === "taken") {
-          await api.markReminderTaken(token, reminderId);
+          await api.markReminderTaken(reminderId);
           notify("success", "Marked as taken.");
         } else {
-          await api.skipReminder(token, reminderId);
+          await api.skipReminder(reminderId);
           notify("info", "Reminder skipped.");
         }
         await refresh();
@@ -119,7 +119,7 @@ export function PatientWorkspace({
         notify("error", err instanceof Error ? err.message : "Unable to update reminder.");
       }
     },
-    [notify, refresh, token],
+    [notify, refresh, signedIn],
   );
 
   function selectDepartment(slug: DepartmentSlug) {
@@ -136,12 +136,12 @@ export function PatientWorkspace({
   }
 
   function signOut() {
-    clearSession();
+    void endSession();
     router.push("/login");
   }
 
   if (auth.status === "error") return <ErrorState message={auth.message} onRetry={() => window.location.reload()} />;
-  if (!token) return <PageLoader message="Checking your session..." />;
+  if (!signedIn) return <PageLoader message="Checking your session..." />;
   if (isLoading) return <WorkspaceSkeleton />;
 
   return (
@@ -173,9 +173,9 @@ export function PatientWorkspace({
             onNavigate={navigate}
           />
 
-          <DoctorAccessCard token={token} notify={notify} />
+          <DoctorAccessCard notify={notify} />
 
-          <VitalsSection token={token} history={basicVitals} notify={notify} onSaved={refresh} />
+          <VitalsSection history={basicVitals} notify={notify} onSaved={refresh} />
 
           <section className="grid gap-5 xl:grid-cols-2">
             <UploadCard upload={upload} onAllUploaded={() => void refreshAll()} />
@@ -208,10 +208,9 @@ export function PatientWorkspace({
             />
           </section>
 
-          <AppointmentsSection token={token} doctors={data.doctors} appointments={appointments} notify={notify} onSaved={refresh} />
+          <AppointmentsSection doctors={data.doctors} appointments={appointments} notify={notify} onSaved={refresh} />
 
           <RemindersSection
-            token={token}
             medications={data.medications}
             notify={notify}
             onSaved={refresh}

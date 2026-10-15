@@ -95,7 +95,7 @@ function AlternativeItem({ alternative, onUse }: { alternative: RankedAlternativ
   );
 }
 
-function LabelText({ token, generic }: { token: string; generic: string }) {
+function LabelText({ generic }: { generic: string }) {
   const [label, setLabel] = useState<LabelEvidence | null>(null);
   const [loading, setLoading] = useState(false);
   return (
@@ -105,7 +105,7 @@ function LabelText({ token, generic }: { token: string; generic: string }) {
         if ((event.target as HTMLDetailsElement).open && !label && !loading) {
           setLoading(true);
           api
-            .medicineLabel(token, generic)
+            .medicineLabel(generic)
             .then(setLabel)
             .catch((error: unknown) => setLabel({ generic, available: false, reason: error instanceof Error ? error.message : "Unavailable." }))
             .finally(() => setLoading(false));
@@ -154,7 +154,7 @@ export function ContextSummary({ context }: { context: MedicationCheck["context"
 }
 
 /** Alerts and ranked alternatives for each medicine in the prescription. */
-export function CheckPanel({ token, check, onUseAlternative }: { token: string; check: MedicationCheck; onUseAlternative: (index: number, medicine: string) => void }) {
+export function CheckPanel({ check, onUseAlternative }: { check: MedicationCheck; onUseAlternative: (index: number, medicine: string) => void }) {
   return (
     <div className="space-y-4">
       {check.items.map((item, index) => (
@@ -175,7 +175,7 @@ export function CheckPanel({ token, check, onUseAlternative }: { token: string; 
           ) : (
             <p className="text-xs text-ink-muted">No allergy, interaction, duplicate, contraindication or dose rule matched. No rule alert does not mean safe.</p>
           )}
-          {item.resolved.known ? <LabelText token={token} generic={item.resolved.generics[0]} /> : null}
+          {item.resolved.known ? <LabelText generic={item.resolved.generics[0]} /> : null}
           {item.alternatives.length ? (
             <div className="rounded-control border border-teal-100 bg-teal-50/60 p-3">
               <p className="mb-2 text-sm font-semibold text-teal-900">Safer alternatives for this patient, ranked</p>

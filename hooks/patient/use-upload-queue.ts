@@ -24,11 +24,11 @@ function newId() {
 
 /** Queue of report files to upload one after another, with per-file progress and errors. */
 export function useUploadQueue({
-  token,
+  signedIn,
   notify,
   onUploaded,
 }: {
-  token: string | null;
+  signedIn: boolean;
   notify: Notify;
   onUploaded: (report: MedicalDocument) => void;
 }) {
@@ -56,7 +56,7 @@ export function useUploadQueue({
   const clear = useCallback(() => setQueue([]), []);
 
   const uploadOne = useCallback(
-    async (item: FileQueueItem, activeToken: string, options: UploadOptions) => {
+    async (item: FileQueueItem, options: UploadOptions) => {
       const update = (patch: Partial<FileQueueItem>) =>
         setQueue((prev) => prev.map((i) => (i.id === item.id ? { ...i, ...patch } : i)));
 
@@ -70,7 +70,7 @@ export function useUploadQueue({
         formData.append("title", options.title.trim());
         // "auto" lets the backend detect the department from the text ("general" would pin it).
         formData.append("category", options.category === "all" ? "auto" : options.category);
-        const report = await api.uploadReport(activeToken, formData);
+        const report = await api.uploadReport(formData);
         onUploaded(report);
         update({ step: "done", report });
         if (report.ocr_status === "FAILED") {
@@ -88,7 +88,7 @@ export function useUploadQueue({
   /** Uploads every idle file in order. Returns true when something was uploaded. */
   const uploadAll = useCallback(
     async (options: UploadOptions) => {
-      if (!token) {
+      if (!signedIn) {
         notify("error", "Please sign in again before uploading.");
         return false;
       }
@@ -97,14 +97,14 @@ export function useUploadQueue({
       setIsUploading(true);
       try {
         for (const item of idle) {
-          await uploadOne(item, token, options);
+          await uploadOne(item, options);
         }
       } finally {
         setIsUploading(false);
       }
       return true;
     },
-    [isUploading, notify, queue, token, uploadOne],
+    [isUploading, notify, queue, signedIn, uploadOne],
   );
 
   return { queue, isUploading, add, remove, clear, uploadAll };

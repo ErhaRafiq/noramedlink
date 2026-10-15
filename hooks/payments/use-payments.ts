@@ -8,7 +8,7 @@ import type { Appointment, Payment } from "@/lib/types";
 const PAGE_SIZE = 50;
 
 /** Appointments still to pay, the payment history, and opening Stripe's payment page. */
-export function usePayments(token: string | null) {
+export function usePayments(signedIn: boolean) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [status, setStatus] = useState<"loading" | "ready" | "error">("loading");
@@ -17,12 +17,12 @@ export function usePayments(token: string | null) {
   const [payError, setPayError] = useState<{ appointmentId: number; message: string } | null>(null);
 
   const load = useCallback(async () => {
-    if (!token) return;
+    if (!signedIn) return;
     setStatus("loading");
     try {
       const [appointmentPage, paymentPage] = await Promise.all([
-        api.appointments(token, { limit: PAGE_SIZE }),
-        api.payments(token, { limit: PAGE_SIZE }),
+        api.appointments({ limit: PAGE_SIZE }),
+        api.payments({ limit: PAGE_SIZE }),
       ]);
       setAppointments(appointmentPage.items);
       setPayments(paymentPage.items);
@@ -31,29 +31,29 @@ export function usePayments(token: string | null) {
       setError(err instanceof Error ? err.message : "Unable to load your payments.");
       setStatus("error");
     }
-  }, [token]);
+  }, [signedIn]);
 
   useEffect(() => {
-    if (!token) return;
+    if (!signedIn) return;
     const timer = window.setTimeout(() => void load(), 0);
     return () => window.clearTimeout(timer);
-  }, [load, token]);
+  }, [load, signedIn]);
 
   /** Sends the browser to Stripe Checkout; on failure the button shows why. */
   const pay = useCallback(
     async (appointmentId: number) => {
-      if (!token || payingId !== null) return;
+      if (!signedIn || payingId !== null) return;
       setPayingId(appointmentId);
       setPayError(null);
       try {
-        const { checkout_url } = await api.startCheckout(token, appointmentId);
+        const { checkout_url } = await api.startCheckout(appointmentId);
         window.location.assign(checkout_url);
       } catch (err) {
         setPayError({ appointmentId, message: err instanceof Error ? err.message : "The payment page could not be opened." });
         setPayingId(null);
       }
     },
-    [payingId, token],
+    [payingId, signedIn],
   );
 
   const toPay = appointments.filter((a) => a.status.toUpperCase() !== "CANCELLED" && a.payment_status.toUpperCase() !== "PAID");

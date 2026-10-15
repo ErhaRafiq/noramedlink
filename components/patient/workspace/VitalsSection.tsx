@@ -12,12 +12,10 @@ import { DashCard } from "./ui";
 
 /** The simple BP + sugar log: an entry form and the latest readings. */
 export function VitalsSection({
-  token,
   history,
   notify,
   onSaved,
 }: {
-  token: string;
   history: PatientVitals[];
   notify: Notify;
   onSaved: () => Promise<void>;
@@ -28,7 +26,7 @@ export function VitalsSection({
     useCallback(
       async (bloodPressure: string, sugarLevel: string) => {
         try {
-          await api.addBasicVitals(token, { blood_pressure: bloodPressure, sugar_level: sugarLevel });
+          await api.addBasicVitals({ blood_pressure: bloodPressure, sugar_level: sugarLevel });
           notify("success", "Vitals saved.");
           setForm({ bloodPressure: "", sugarLevel: "" });
           await onSaved();
@@ -36,7 +34,7 @@ export function VitalsSection({
           notify("error", err instanceof Error ? err.message : "Unable to save vitals.");
         }
       },
-      [notify, onSaved, token],
+      [notify, onSaved],
     ),
   );
 

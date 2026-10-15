@@ -26,9 +26,8 @@ export function useStoredSession(): { ready: boolean; session: StoredSession | n
   return useMemo(() => {
     if (snapshot === null) return { ready: false, session: null };
     if (snapshot === "") return { ready: true, session: null };
-    const [token, userJson] = [snapshot.slice(0, snapshot.indexOf("\n")), snapshot.slice(snapshot.indexOf("\n") + 1)];
     try {
-      return { ready: true, session: { token, user: JSON.parse(userJson) as AuthUser } };
+      return { ready: true, session: { user: JSON.parse(snapshot) as AuthUser } };
     } catch {
       return { ready: true, session: null };
     }

@@ -13,7 +13,7 @@ const MIN_FEE = 200;
 const MAX_FEE = 100_000;
 
 /** The doctor's consultation fee: what patients pay online with Stripe for one appointment. */
-export function ConsultationFeeCard({ token, initialFee }: { token: string; initialFee: number | null }) {
+export function ConsultationFeeCard({ initialFee }: { initialFee: number | null }) {
   const [saved, setSaved] = useState<number | null>(initialFee);
   const [value, setValue] = useState(initialFee ? String(initialFee) : "");
   const [saving, setSaving] = useState(false);
@@ -29,7 +29,7 @@ export function ConsultationFeeCard({ token, initialFee }: { token: string; init
     setSaving(true);
     setMessage(null);
     try {
-      const result = await api.setConsultationFee(token, fee);
+      const result = await api.setConsultationFee(fee);
       setSaved(result.consultation_fee);
       setMessage({ tone: "success", text: result.consultation_fee ? "Fee saved. New payments use it." : "Fee cleared: patients cannot pay online until you set one." });
     } catch (err) {

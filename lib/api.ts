@@ -80,9 +80,7 @@ function withPage(path: string, page: PageQuery = {}) {
   return withQuery(path, { limit: page.limit, offset: page.offset });
 }
 
-type RequestOptions = RequestInit & {
-  token?: string;
-};
+type RequestOptions = RequestInit;
 
 function formatApiDetail(detail: unknown) {
   if (typeof detail === "string") {
@@ -108,8 +106,10 @@ function formatApiDetail(detail: unknown) {
   return "Request failed.";
 }
 
-async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const { token, ...init } = options;
+// The session is an HttpOnly cookie the browser sends by itself (same origin); no token is ever
+// held or sent from JavaScript. The Next.js server adds it to the call it forwards to FastAPI.
+async function apiRequest<T>(path: string, options: RequestOptions = {}, base = API_BASE_URL): Promise<T> {
+  const init = options;
   const headers = new Headers(init.headers);
   const isFormData = init.body instanceof FormData;
 
@@ -117,13 +117,9 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
     headers.set("Content-Type", "application/json");
   }
 
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
   let response: Response;
   try {
-    response = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+    response = await fetch(`${base}${path}`, { ...init, headers });
   } catch (error) {
     const detail = error instanceof Error ? ` (${error.message})` : "";
     if (init.signal?.aborted) {
@@ -152,67 +148,63 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
 }
 
 export const api = {
+  // Sign-in and sign-up go to the Next.js auth routes (app/api/auth): they put the tokens into HttpOnly
+  // cookies and return only the user.
   signupAccount(payload: SignupPayload) {
-    return apiRequest<AuthResponse>("/api/auth/signup", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    return apiRequest<AuthResponse>("/signup", { method: "POST", body: JSON.stringify(payload) }, "/api/auth");
   },
   login(payload: { email: string; password: string }) {
-    return apiRequest<AuthResponse>("/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify(payload),
-    });
+    return apiRequest<AuthResponse>("/login", { method: "POST", body: JSON.stringify(payload) }, "/api/auth");
   },
-  me(token: string, init?: { signal?: AbortSignal }) {
-    return apiRequest<AuthUser>("/api/auth/me", { token, signal: init?.signal });
+  logout() {
+    return apiRequest<{ message: string }>("/logout", { method: "POST" }, "/api/auth");
   },
-  adminDashboardStats(token: string) {
-    return apiRequest<AdminDashboardStats>("/api/admin/dashboard-stats", { token });
+  me(init?: { signal?: AbortSignal }) {
+    return apiRequest<AuthUser>("/api/auth/me", { signal: init?.signal });
   },
-  adminUsers(token: string, page?: PageQuery) {
-    return apiRequest<Page<AdminUser>>(withPage("/api/admin/users", page), { token });
+  adminDashboardStats() {
+    return apiRequest<AdminDashboardStats>("/api/admin/dashboard-stats");
   },
-  adminPendingDoctors(token: string) {
-    return apiRequest<AdminDoctor[]>("/api/admin/doctors/pending", { token });
+  adminUsers(page?: PageQuery) {
+    return apiRequest<Page<AdminUser>>(withPage("/api/admin/users", page));
   },
-  approveAdminDoctor(token: string, doctorId: number) {
+  adminPendingDoctors() {
+    return apiRequest<AdminDoctor[]>("/api/admin/doctors/pending");
+  },
+  approveAdminDoctor(doctorId: number) {
     return apiRequest<AdminDoctor>(`/api/admin/doctors/${doctorId}/approve`, {
       method: "PATCH",
-      token,
     });
   },
-  rejectAdminDoctor(token: string, doctorId: number) {
+  rejectAdminDoctor(doctorId: number) {
     return apiRequest<AdminDoctor>(`/api/admin/doctors/${doctorId}/reject`, {
       method: "PATCH",
-      token,
     });
   },
-  adminRecentActivity(token: string) {
-    return apiRequest<AdminActivity[]>("/api/admin/recent-activity", { token });
+  adminRecentActivity() {
+    return apiRequest<AdminActivity[]>("/api/admin/recent-activity");
   },
-  patientDocument(token: string, documentId: number) {
-    return apiRequest<MedicalDocument>(`/patient/reports/${documentId}`, { token });
+  patientDocument(documentId: number) {
+    return apiRequest<MedicalDocument>(`/patient/reports/${documentId}`);
   },
-  patientDepartmentTiles(token: string) {
-    return apiRequest<DepartmentTile[]>("/patient/reports/tiles", { token });
+  patientDepartmentTiles() {
+    return apiRequest<DepartmentTile[]>("/patient/reports/tiles");
   },
-  basicVitalsHistory(token: string) {
-    return apiRequest<PatientVitals[]>("/patient/vitals/basic", { token });
+  basicVitalsHistory() {
+    return apiRequest<PatientVitals[]>("/patient/vitals/basic");
   },
-  addBasicVitals(token: string, payload: { blood_pressure: string; sugar_level: string }) {
+  addBasicVitals(payload: { blood_pressure: string; sugar_level: string }) {
     return apiRequest<PatientVitals>("/patient/vitals/basic", {
       method: "POST",
-      token,
       body: JSON.stringify(payload),
     });
   },
-  patientVitalsToday(token: string) {
-    return apiRequest<DailyVital | null>("/patient/vitals/today", { token });
+  patientVitalsToday() {
+    return apiRequest<DailyVital | null>("/patient/vitals/today");
   },
-  async doctors(token: string): Promise<DoctorOption[]> {
+  async doctors(): Promise<DoctorOption[]> {
     // Verified doctors only (FastAPI /appointments/doctors), in the workspace's shape.
-    const doctors = await apiRequest<AppointmentDoctor[]>("/appointments/doctors", { token });
+    const doctors = await apiRequest<AppointmentDoctor[]>("/appointments/doctors");
     return doctors.map((doctor) => ({
       id: doctor.id,
       name: doctor.name,
@@ -223,7 +215,7 @@ export const api = {
       source: doctor.source,
     }));
   },
-  reports(token: string, query: ReportListQuery = {}, init?: { signal?: AbortSignal }) {
+  reports(query: ReportListQuery = {}, init?: { signal?: AbortSignal }) {
     const path = withQuery("/patient/reports", {
       limit: query.limit,
       offset: query.offset,
@@ -231,20 +223,18 @@ export const api = {
       department: query.department,
       validation_status: query.validationStatus,
     });
-    return apiRequest<Page<MedicalDocument>>(path, { token, signal: init?.signal });
+    return apiRequest<Page<MedicalDocument>>(path, { signal: init?.signal });
   },
-  uploadReport(token: string, formData: FormData) {
+  uploadReport(formData: FormData) {
     return apiRequest<MedicalDocument>("/patient/reports/upload", {
       method: "POST",
-      token,
       body: formData,
     });
   },
-  medicines(token: string) {
-    return apiRequest<MedicationSchedule[]>("/patient/medications", { token });
+  medicines() {
+    return apiRequest<MedicationSchedule[]>("/patient/medications");
   },
   createMedicineSchedule(
-    token: string,
     payload: {
       medicineName: string;
       dosage: string;
@@ -255,34 +245,30 @@ export const api = {
   ) {
     return apiRequest<MedicationSchedule>("/patient/medications", {
       method: "POST",
-      token,
       body: JSON.stringify(payload),
     });
   },
-  issueDashboardOtp(token: string) {
+  issueDashboardOtp() {
     return apiRequest<{ message: string; otp: { code: string; expiresAt: string } }>("/patient/dashboard-otp", {
       method: "POST",
-      token,
     });
   },
-  doctorOverview(token: string) {
-    return apiRequest<DoctorOverview>("/doctor/overview", { token });
+  doctorOverview() {
+    return apiRequest<DoctorOverview>("/doctor/overview");
   },
-  unlockPatientDashboard(token: string, patientAccessOtp: string) {
+  unlockPatientDashboard(patientAccessOtp: string) {
     return apiRequest<{ message: string; patient: { id: number; name: string; email: string }; expiresAt: string }>(
       "/doctor/access/unlock",
-      { method: "POST", token, body: JSON.stringify({ patientAccessOtp }) },
+      { method: "POST", body: JSON.stringify({ patientAccessOtp }) },
     );
   },
-  endPatientDashboardAccess(token: string, patientId: number) {
+  endPatientDashboardAccess(patientId: number) {
     return apiRequest<{ message: string }>("/doctor/access/end", {
       method: "POST",
-      token,
       body: JSON.stringify({ patientId }),
     });
   },
   createEmergencyRequest(
-    token: string,
     payload: { patientName: string; phone: string; address: string; symptoms: string; latitude?: string; longitude?: string },
   ) {
     const coordinate = (value?: string) => (value && Number.isFinite(Number(value)) ? Number(value) : null);
@@ -292,7 +278,6 @@ export const api = {
       booking: { id: number; doctorName: string | null; status: string; estimatedMinutes: number | null };
     }>("/emergency/requests", {
       method: "POST",
-      token,
       body: JSON.stringify({
         ...payload,
         latitude: coordinate(payload.latitude),
@@ -300,39 +285,35 @@ export const api = {
       }),
     });
   },
-  summarizeText(token: string, text: string) {
+  summarizeText(text: string) {
     return apiRequest<SummaryResponse>("/nlp/summarize", {
       method: "POST",
-      token,
       body: JSON.stringify({ text, category: "medical-report" }),
     });
   },
-  summarizeSavedReports(token: string) {
-    return apiRequest<SummaryResponse>("/nlp/summarize/saved-reports", { method: "POST", token });
+  summarizeSavedReports() {
+    return apiRequest<SummaryResponse>("/nlp/summarize/saved-reports", { method: "POST" });
   },
-  payments(token: string, page?: PageQuery) {
-    return apiRequest<Page<Payment>>(withPage("/payments", page), { token });
+  payments(page?: PageQuery) {
+    return apiRequest<Page<Payment>>(withPage("/payments", page));
   },
   /** Opens Stripe Checkout for the patient's appointment, at the doctor's fee (set on the server). */
-  startCheckout(token: string, appointmentId: number) {
+  startCheckout(appointmentId: number) {
     return apiRequest<CheckoutResponse>("/payments/checkout", {
       method: "POST",
-      token,
       body: JSON.stringify({ appointment_id: appointmentId }),
     });
   },
-  paymentForSession(token: string, sessionId: string) {
-    return apiRequest<Payment>(`/payments/session/${encodeURIComponent(sessionId)}`, { token });
+  paymentForSession(sessionId: string) {
+    return apiRequest<Payment>(`/payments/session/${encodeURIComponent(sessionId)}`);
   },
-  setConsultationFee(token: string, fee: number | null) {
+  setConsultationFee(fee: number | null) {
     return apiRequest<{ consultation_fee: number | null }>("/doctor/consultation-fee", {
       method: "PUT",
-      token,
       body: JSON.stringify({ consultation_fee: fee }),
     });
   },
   createReminder(
-    token: string,
     payload: {
       medicationId: number;
       reminderTime: string;
@@ -341,102 +322,92 @@ export const api = {
   ) {
     return apiRequest<MedicineReminder>("/patient/medicine-reminders", {
       method: "POST",
-      token,
       body: JSON.stringify(payload),
     });
   },
-  remindersToday(token: string) {
-    return apiRequest<MedicineReminder[]>("/patient/medicine-reminders/today", { token });
+  remindersToday() {
+    return apiRequest<MedicineReminder[]>("/patient/medicine-reminders/today");
   },
-  markReminderTaken(token: string, reminderId: number) {
+  markReminderTaken(reminderId: number) {
     return apiRequest<MedicineReminder>(`/patient/medicine-reminders/${reminderId}/mark-taken`, {
       method: "PATCH",
-      token,
     });
   },
-  skipReminder(token: string, reminderId: number) {
+  skipReminder(reminderId: number) {
     return apiRequest<MedicineReminder>(`/patient/medicine-reminders/${reminderId}/skip`, {
       method: "PATCH",
-      token,
     });
   },
 
-  updateDocument(token: string, documentId: number, payload: { title?: string; department?: string; extracted_text?: string; formatted_text?: string }) {
+  updateDocument(documentId: number, payload: { title?: string; department?: string; extracted_text?: string; formatted_text?: string }) {
     return apiRequest<MedicalDocument>(`/patient/reports/${documentId}`, {
       method: "PATCH",
-      token,
       body: JSON.stringify(payload),
     });
   },
-  regenerateDocumentOcr(token: string, documentId: number) {
+  regenerateDocumentOcr(documentId: number) {
     return apiRequest<MedicalDocument>(`/patient/reports/${documentId}/regenerate-ocr`, {
       method: "POST",
-      token,
     });
   },
-  deleteDocument(token: string, documentId: number) {
+  deleteDocument(documentId: number) {
     return apiRequest<{ message: string }>(`/patient/reports/${documentId}`, {
       method: "DELETE",
-      token,
     });
   },
   /** A patient's clinical summary for the doctor (active access grant required). */
-  clinicalSummary(token: string, patientId: number, init?: { signal?: AbortSignal }) {
-    return apiRequest<ClinicalSummaryStatus>(`/doctor/patients/${patientId}/clinical-summary`, { token, signal: init?.signal });
+  clinicalSummary(patientId: number, init?: { signal?: AbortSignal }) {
+    return apiRequest<ClinicalSummaryStatus>(`/doctor/patients/${patientId}/clinical-summary`, { signal: init?.signal });
   },
-  regenerateClinicalSummary(token: string, patientId: number, init?: { signal?: AbortSignal }) {
+  regenerateClinicalSummary(patientId: number, init?: { signal?: AbortSignal }) {
     return apiRequest<ClinicalSummaryRegenerateResult>(`/doctor/patients/${patientId}/clinical-summary/regenerate`, {
       method: "POST",
-      token,
       signal: init?.signal,
     });
   },
-  clinicalSummaryVersions(token: string, patientId: number, query: { limit?: number; offset?: number } = {}) {
+  clinicalSummaryVersions(patientId: number, query: { limit?: number; offset?: number } = {}) {
     return apiRequest<Page<ClinicalSummaryVersionMeta>>(
       withQuery(`/doctor/patients/${patientId}/clinical-summary/versions`, { limit: query.limit, offset: query.offset }),
-      { token },
     );
   },
-  clinicalSummaryVersion(token: string, patientId: number, version: number) {
-    return apiRequest<ClinicalSummaryVersion>(`/doctor/patients/${patientId}/clinical-summary/versions/${version}`, { token });
+  clinicalSummaryVersion(patientId: number, version: number) {
+    return apiRequest<ClinicalSummaryVersion>(`/doctor/patients/${patientId}/clinical-summary/versions/${version}`);
   },
   /** Medicine names (generic, alias, brand), fuzzy. */
-  searchMedicines(token: string, query: string, init?: { signal?: AbortSignal }) {
-    return apiRequest<MedicineOption[]>(withQuery("/doctor/medicines/search", { q: query }), { token, signal: init?.signal });
+  searchMedicines(query: string, init?: { signal?: AbortSignal }) {
+    return apiRequest<MedicineOption[]>(withQuery("/doctor/medicines/search", { q: query }), { signal: init?.signal });
   },
-  medicineLabel(token: string, generic: string) {
-    return apiRequest<LabelEvidence>(`/doctor/medicines/${encodeURIComponent(generic)}/label`, { token });
+  medicineLabel(generic: string) {
+    return apiRequest<LabelEvidence>(`/doctor/medicines/${encodeURIComponent(generic)}/label`);
   },
-  medicationCheck(token: string, patientId: number, items: PrescriptionItemInput[], init?: { signal?: AbortSignal }) {
+  medicationCheck(patientId: number, items: PrescriptionItemInput[], init?: { signal?: AbortSignal }) {
     return apiRequest<MedicationCheck>(`/doctor/patients/${patientId}/medication-check`, {
       method: "POST",
-      token,
       body: JSON.stringify({ items }),
       signal: init?.signal,
     });
   },
   createPrescription(
-    token: string,
     patientId: number,
     payload: { items: PrescriptionItemInput[]; overrides: { alert_id: string; justification: string }[]; notes?: string },
   ) {
-    return apiRequest<Prescription>(`/doctor/patients/${patientId}/prescriptions`, { method: "POST", token, body: JSON.stringify(payload) });
+    return apiRequest<Prescription>(`/doctor/patients/${patientId}/prescriptions`, { method: "POST", body: JSON.stringify(payload) });
   },
-  prescriptions(token: string, patientId: number) {
-    return apiRequest<Page<Prescription>>(withQuery(`/doctor/patients/${patientId}/prescriptions`, { limit: 20 }), { token });
+  prescriptions(patientId: number) {
+    return apiRequest<Page<Prescription>>(withQuery(`/doctor/patients/${patientId}/prescriptions`, { limit: 20 }));
   },
-  cancelPrescription(token: string, patientId: number, prescriptionId: number) {
-    return apiRequest<Prescription>(`/doctor/patients/${patientId}/prescriptions/${prescriptionId}/cancel`, { method: "POST", token });
+  cancelPrescription(patientId: number, prescriptionId: number) {
+    return apiRequest<Prescription>(`/doctor/patients/${patientId}/prescriptions/${prescriptionId}/cancel`, { method: "POST" });
   },
-  myPrescriptions(token: string) {
-    return apiRequest<Page<PatientPrescription>>(withQuery("/patient/prescriptions", { limit: 20 }), { token });
+  myPrescriptions() {
+    return apiRequest<Page<PatientPrescription>>(withQuery("/patient/prescriptions", { limit: 20 }));
   },
   /** What the fixed rules found in the patient's reports, in everyday words (not AI). */
-  healthFlags(token: string) {
-    return apiRequest<HealthFlags>("/patient/health-flags", { token });
+  healthFlags() {
+    return apiRequest<HealthFlags>("/patient/health-flags");
   },
-  doctorDashboard(token: string) {
-    return apiRequest<DoctorDashboard>("/doctor/dashboard", { token });
+  doctorDashboard() {
+    return apiRequest<DoctorDashboard>("/doctor/dashboard");
   },
   appointmentDoctors(params: {
     query?: string;
@@ -458,12 +429,10 @@ export const api = {
   },
   /** Books a verified doctor. `date` must be an ISO string with a time zone (Date#toISOString). */
   bookAppointment(
-    token: string,
     payload: { doctorId: number; date: string; reason?: string | null; notes?: string | null; patientAccessOtp?: string | null },
   ) {
     return apiRequest<AppointmentBookingResponse>("/appointments", {
       method: "POST",
-      token,
       body: JSON.stringify({
         doctor_id: payload.doctorId,
         date: payload.date,
@@ -473,11 +442,10 @@ export const api = {
       }),
     });
   },
-  appointments(token: string, page?: PageQuery) {
-    return apiRequest<Page<Appointment>>(withPage("/appointments", page), { token });
+  appointments(page?: PageQuery) {
+    return apiRequest<Page<Appointment>>(withPage("/appointments", page));
   },
   updateAppointment(
-    token: string,
     appointmentId: number,
     payload: {
       date?: string;
@@ -487,7 +455,6 @@ export const api = {
   ) {
     return apiRequest<Appointment>(`/appointments/${appointmentId}`, {
       method: "PUT",
-      token,
       body: JSON.stringify(payload),
     });
   },

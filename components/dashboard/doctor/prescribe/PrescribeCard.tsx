@@ -28,19 +28,17 @@ const MIN_JUSTIFICATION = 20;
  * against the patient's record; high-risk alerts need a written reason to confirm. Decision
  * support only: the doctor chooses. */
 export function PrescribeCard({
-  token,
   patientId,
   patientName,
   doctorId,
   doctorName,
 }: {
-  token: string;
   patientId: number;
   patientName: string;
   doctorId: number;
   doctorName: string;
 }) {
-  const rx = usePrescribing(token, patientId);
+  const rx = usePrescribing(patientId);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [justifications, setJustifications] = useState<Record<string, string>>({});
   const [notes, setNotes] = useState("");
@@ -73,7 +71,6 @@ export function PrescribeCard({
       ) : null}
 
       <MedicineSearch
-        token={token}
         onPick={(option) => {
           setSaved(false);
           rx.add(option);
@@ -117,7 +114,7 @@ export function PrescribeCard({
           {rx.check ? (
             <>
               <ContextSummary context={rx.check.context} />
-              <CheckPanel token={token} check={rx.check} onUseAlternative={rx.replace} />
+              <CheckPanel check={rx.check} onUseAlternative={rx.replace} />
               <p className="text-xs leading-5 text-ink-muted">{rx.check.note}</p>
             </>
           ) : null}

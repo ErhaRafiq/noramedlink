@@ -11,9 +11,8 @@ export type AuthUser = {
   verification_status: "pending" | "verified" | "rejected" | string;
 };
 
+/** What sign-in and sign-up return to the browser: the user only. The tokens stay in HttpOnly cookies. */
 export type AuthResponse = {
-  access_token: string;
-  token_type: "bearer";
   user: AuthUser;
 };
 
