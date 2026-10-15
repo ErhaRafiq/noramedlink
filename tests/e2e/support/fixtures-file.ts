@@ -21,6 +21,8 @@ export type Fixtures = {
   reportId: number;
   attentionReportId: number;
   ocrKeySet: boolean;
+  /** Stripe Checkout is on: paying would open Stripe's page, so payment tests skip. */
+  stripeKeySet: boolean;
   aiKeySet: boolean;
   users: Record<"patient" | "patientEmpty" | "doctor" | "doctorWithAccess" | "doctorPendingA" | "doctorPendingB" | "doctorUnreviewed" | "admin", TestUser>;
 };

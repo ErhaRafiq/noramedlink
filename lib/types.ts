@@ -375,6 +375,8 @@ export type AppointmentDoctor = {
   location: string;
   rating: number | null;
   available_today: boolean | null;
+  /** Whole PKR, set by the doctor; null: not set, so it cannot be paid online. */
+  consultation_fee: number | null;
   source: "registered";
 };
 
@@ -387,10 +389,36 @@ export type Appointment = {
   reason?: string | null;
   date: string;
   status: string;
+  /** PENDING until Stripe confirms payment, then PAID. */
   payment_status: string;
   notes: string | null;
+  /** The doctor's current fee in whole PKR; null: not set. */
+  consultation_fee: number | null;
   created_at: string;
   updated_at: string;
+};
+
+/** A consultation payment (backend/services/payments.py). Only Stripe's webhook sets PAID. */
+export type Payment = {
+  id: number;
+  user_id: number;
+  appointment_id: number | null;
+  amount: number;
+  currency: string;
+  method: string;
+  purpose: string;
+  status: "PENDING" | "PAID" | "FAILED" | "EXPIRED" | string;
+  reference: string;
+  invoice_number: string | null;
+  paid_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CheckoutResponse = {
+  payment: Payment;
+  /** Stripe's hosted payment page. */
+  checkout_url: string;
 };
 
 export type AppointmentBookingResponse = {
@@ -462,6 +490,8 @@ export type DoctorDashboard = {
     specialization: string;
     hospital_name: string;
     verification_status: string;
+    /** Whole PKR, what patients pay online; null: not set yet. */
+    consultation_fee: number | null;
   };
 };
 

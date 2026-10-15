@@ -1,5 +1,7 @@
 import type {
   Appointment,
+  CheckoutResponse,
+  Payment,
   AppointmentBookingResponse,
   AppointmentDoctor,
   AuthResponse,
@@ -308,14 +310,25 @@ export const api = {
   summarizeSavedReports(token: string) {
     return apiRequest<SummaryResponse>("/nlp/summarize/saved-reports", { method: "POST", token });
   },
-  createPayment(
-    token: string,
-    payload: { amount: number; method: string; purpose: string; phone?: string; appointment_id?: number },
-  ) {
-    return apiRequest<{ id: number; reference: string; status: string; amount: number; method: string }>("/payments", {
+  payments(token: string, page?: PageQuery) {
+    return apiRequest<Page<Payment>>(withPage("/payments", page), { token });
+  },
+  /** Opens Stripe Checkout for the patient's appointment, at the doctor's fee (set on the server). */
+  startCheckout(token: string, appointmentId: number) {
+    return apiRequest<CheckoutResponse>("/payments/checkout", {
       method: "POST",
       token,
-      body: JSON.stringify(payload),
+      body: JSON.stringify({ appointment_id: appointmentId }),
+    });
+  },
+  paymentForSession(token: string, sessionId: string) {
+    return apiRequest<Payment>(`/payments/session/${encodeURIComponent(sessionId)}`, { token });
+  },
+  setConsultationFee(token: string, fee: number | null) {
+    return apiRequest<{ consultation_fee: number | null }>("/doctor/consultation-fee", {
+      method: "PUT",
+      token,
+      body: JSON.stringify({ consultation_fee: fee }),
     });
   },
   createReminder(
@@ -469,7 +482,6 @@ export const api = {
     payload: {
       date?: string;
       status?: string;
-      payment_status?: string;
       notes?: string | null;
     },
   ) {

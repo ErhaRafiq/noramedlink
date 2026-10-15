@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
-import { CalendarClock, RefreshCw, XCircle } from "lucide-react";
+import { CalendarClock, CreditCard, RefreshCw, XCircle } from "lucide-react";
 
 import { Alert } from "@/components/ui/alert";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateTime, toDateTimeInputValue } from "@/lib/datetime";
+import { formatMoney } from "@/lib/money";
 import type { Appointment } from "@/lib/types";
 import type { useMyAppointments } from "@/hooks/doctors/use-my-appointments";
 
@@ -126,7 +127,7 @@ function AppointmentItem({
         <Badge tone={statusTone(appointment.status)}>{appointment.status.replaceAll("_", " ").toLowerCase()}</Badge>
       </div>
       {appointment.notes ? <p className="mt-3 rounded-control bg-surface-soft px-3 py-2 text-xs leading-5 text-slate-600">{appointment.notes}</p> : null}
-      <p className="mt-2 text-xs text-ink-muted">Payment: {appointment.payment_status.replaceAll("_", " ").toLowerCase()}</p>
+      <PaymentLine appointment={appointment} cancelled={cancelled} />
 
       {!cancelled ? (
         <form className="mt-3 space-y-2" onSubmit={handleReschedule}>
@@ -159,5 +160,26 @@ function AppointmentItem({
       ) : null}
       {error ? <Alert tone="error" className="mt-3 text-xs">{error}</Alert> : null}
     </article>
+  );
+}
+
+function PaymentLine({ appointment, cancelled }: { appointment: Appointment; cancelled: boolean }) {
+  if (appointment.payment_status.toUpperCase() === "PAID") {
+    return (
+      <p className="mt-2 text-xs font-medium text-emerald-700">
+        Paid{appointment.consultation_fee ? ` · ${formatMoney(appointment.consultation_fee)}` : ""}
+      </p>
+    );
+  }
+  if (cancelled) return null;
+  if (!appointment.consultation_fee) return <p className="mt-2 text-xs text-ink-muted">Payment: the doctor has not set a fee yet.</p>;
+  return (
+    <Link
+      href={`/payments?appointmentId=${appointment.id}`}
+      className="mt-2 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-blue hover:underline"
+    >
+      <CreditCard className="h-3.5 w-3.5" aria-hidden />
+      Pay {formatMoney(appointment.consultation_fee)}
+    </Link>
   );
 }

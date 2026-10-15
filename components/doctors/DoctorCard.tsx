@@ -1,8 +1,9 @@
-import { CalendarPlus, MapPin, Star } from "lucide-react";
+import { CalendarPlus, MapPin, Star, Wallet } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatMoney } from "@/lib/money";
 import type { AppointmentDoctor } from "@/lib/types";
 
 function availability(doctor: AppointmentDoctor) {
@@ -43,6 +44,11 @@ export function DoctorCard({
           <dt className="sr-only">Rating</dt>
           <Star className="h-4 w-4 flex-shrink-0 text-slate-400" aria-hidden />
           <dd>{doctor.rating === null ? "No ratings yet" : `${doctor.rating.toFixed(1)} / 5`}</dd>
+        </div>
+        <div className="flex items-center gap-2">
+          <dt className="sr-only">Consultation fee</dt>
+          <Wallet className="h-4 w-4 flex-shrink-0 text-slate-400" aria-hidden />
+          <dd>{doctor.consultation_fee ? `${formatMoney(doctor.consultation_fee)} per consultation` : "Fee not set yet"}</dd>
         </div>
       </dl>
       <Button

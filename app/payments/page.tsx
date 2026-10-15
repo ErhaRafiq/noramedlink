@@ -8,7 +8,7 @@ import { SkeletonCard } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
   title: "Payments",
-  description: "Record a consultation payment for the clinic to confirm.",
+  description: "Pay a doctor's consultation fee by card with Stripe.",
 };
 
 export default function PaymentsPage() {
