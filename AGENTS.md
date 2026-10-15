@@ -38,9 +38,12 @@ It is **not** a certified medical device. Every medical feature is advisory only
 | 3D | Three.js + @react-three/fiber, on the landing page only |
 | Backend | **FastAPI** (the only backend), SQLAlchemy 2 ORM, slowapi rate limiting, ruff |
 | Database | PostgreSQL; schema managed by **Alembic** migrations |
-| Medication safety | MSCIE (`services/mscie/`): deterministic rules from CSV tables (interactions, contraindications, allergy cross-reactivity, dose limits, duplicate classes, alternatives, ranking weights) decide every alert; openFDA label text is shown as supporting evidence only and never changes an alert. High-risk alerts need a written reason to confirm, stored in `safety_overrides` |
+| Medication safety | MSCIE (`services/mscie/`): deterministic rules from CSV tables (interactions, contraindications, allergy cross-reactivity, dose limits, duplicate classes, alternatives, ranking weights) decide every alert; Behind the curated interaction rules: 160,235 rated pairs from DDInter 2.0 (`services/mscie/ddinter.py`, CC BY-NC-SA 4.0, academic use only), used for gaps and whenever they rate a pair higher. openFDA label text is shown as supporting evidence only and never changes an alert. High-risk alerts need a written reason to confirm, stored in `safety_overrides` |
 | Data | Knowledge bases are CSV files in `services/knowledge/data/` (data card `README.md`, sources in `sources.csv`), loaded with pandas and validated with pandera in the tests; medicine search uses rapidfuzz. Evaluation notebooks in `notebooks/` (scikit-learn, matplotlib; `requirements-ds.txt`). The knowledge bases are demo data, not clinically reviewed |
 | Auth | JWT (HS256) issued by FastAPI, stored in `localStorage` on the client |
+| Payments | Stripe Checkout (hosted page) at the doctor's consultation fee; only Stripe's signed webhook marks a payment paid (`services/payments.py`). No JazzCash, Easypaisa or manual confirmation |
+| Config | **One `.env` in the repo root** for Next.js and FastAPI (template: root `.env.example`); real environment variables win (Render) |
+| Hosting | Render monorepo, `render.yaml`: nora-web (Next.js), nora-api (FastAPI, `backend/`), nora-db (PostgreSQL), free plan |
 | OCR | **Local OCR** by default (`services/local_ocr.py`): PDF text layers are read directly; scans and photos go through RapidOCR 3 (ONNX, CPU) with the PP-OCRv5 detector and English recogniser, downloaded once to `backend/models/` (checksum-verified); boxes are rebuilt into table rows (`services/ocr_layout.py`), and numbers read with a score under 0.90 are listed as "check against the original report", never changed. No key, nothing leaves the server. OCR.space is used instead only when `OCR_SPACE_API_KEY` is set. There is no Tesseract |
 | AI | Gemini, OpenAI or Groq when a key is set (Gemini first), rule-based fallback otherwise; BioBERT NER. Patient identifiers are removed before any prompt leaves the server (`services/privacy.py`), and an AI summary with a number that is not in the report is rejected (`services/ai_guard.py`). Every patient-facing summary and alert is in everyday words: medical terms get everyday wording with the term once in brackets (`services/plain_language.py`, dictionary `services/knowledge/data/plain_terms.csv`, a demo knowledge base); without an AI key the summary is built by fixed rules (`services/patient_summary.py`) |
 
@@ -68,8 +71,10 @@ hooks/                    Generic hooks (use-*.ts); feature data hooks in hooks/
 lib/api.ts                The only API client; every call goes to /api/backend/...
 lib/auth.ts               Session helpers (getSession, clearSession, dashboardPathForRole)
 lib/types.ts              Shared TypeScript types matching FastAPI responses
-scripts/                  Icon generator, screenshot capture, phone-overflow finder; ocr_bench/ and mscie_bench/ (evaluation data)
+scripts/                  Icon generator, screenshot capture, phone-overflow finder; ocr_bench/ and mscie_bench/ (evaluation data);
+                          ddinter_import/build.py (rebuilds the DDInter tables)
 notebooks/                Evaluation notebooks (ICSE, plain language, MSCIE), committed with outputs
+render.yaml               Render blueprint (deploy); .env.example: every environment variable, documented
 backend/
   main.py                 FastAPI app; runs `alembic upgrade head` at startup
   config.py               Every environment variable, read once into `settings`
@@ -84,7 +89,7 @@ backend/
     icse/                 Module 3: entities, flags, versioned clinical summaries, AI wording of key findings
     mscie/                Module 4: medication-safety engine, alternatives, patient context, prescribing
     knowledge/            CSV knowledge bases and their loader (tables.py)
-  migrations/versions/    Alembic migrations (0001 baseline ... see `alembic current`)
+  migrations/versions/    Alembic migrations (0001 baseline ... 0011 Stripe payments; see `alembic current`)
   pyproject.toml          ruff lint and format settings
 tests/acceptance_test.py  End-to-end auth, ownership and safety checks over HTTP
 docs/claude-code-brief.md Phase plan, approved decisions, current state, known problems
@@ -109,7 +114,7 @@ The app needs **two terminals running at the same time**: backend and frontend.
 | Backend lint + format | `cd backend; .\venv\Scripts\python.exe -m ruff check .; .\venv\Scripts\python.exe -m ruff format .` |
 | Production build | `npm run build` (can run while `npm run dev` is running; Next 16 keeps dev output in `.next/dev`) |
 | Backend unit tests | `cd backend; .\venv\Scripts\python.exe -m pytest` (no database, no network; `backend/tests/`) |
-| Acceptance tests | Start the backend with `$env:DISABLE_PAID_SERVICES="1"`, then `$env:DISABLE_PAID_SERVICES="1"; backend\venv\Scripts\python.exe tests\acceptance_test.py` (both servers running; no AI or OCR.space call is made) |
+| Acceptance tests | Start the backend with `$env:DISABLE_PAID_SERVICES="1"`, then `$env:DISABLE_PAID_SERVICES="1"; backend\venv\Scripts\python.exe tests\acceptance_test.py` (both servers running; no AI, OCR.space, openFDA or Stripe call is made; with the same `STRIPE_WEBHOOK_SECRET` in both it signs test webhook events itself) |
 | Browser (e2e) tests | Same backend as above, then `$env:DISABLE_PAID_SERVICES="1"; npm run test:e2e` (report in `test-results/e2e-report`) |
 | Screenshots for review | `npm run screenshots` (dev server running; uses the installed Microsoft Edge) |
 | Phone overflow check | `node scripts/find-overflow.mjs http://localhost:3000/<page>` (lists elements wider than 390px) |
@@ -169,7 +174,7 @@ Test data belongs in tests, never in UI fallbacks.
 
 ## 8. Security and privacy rules
 
-- **Never read aloud, print, log or copy secret values** from `.env`, `.env.local` or `backend/.env`.
+- **Never read aloud, print, log or copy secret values** from `.env` (the project's one env file).
   When checking configuration, report only whether a value is set (true/false).
 - Mask database URLs in any output you show (`postgresql://user:****@host`).
 - Only edit `*.env.example` files, and only with placeholder values. Never commit real secrets.
@@ -202,9 +207,9 @@ Test data belongs in tests, never in UI fallbacks.
   - refuse to run unless every database URL points to localhost (check the hostname only);
   - create users only with the `phase0-test-` email prefix;
   - delete only those users and their rows (and upload folders) in a `finally` block.
-- **Never call paid or external services in tests** (Gemini, OpenAI, Groq, OCR.space). Tests that would
+- **Never call paid or external services in tests** (Gemini, OpenAI, Groq, OCR.space, openFDA, Stripe). Tests that would
   must skip when a key is configured. `DISABLE_PAID_SERVICES=1` (backend and test process) makes the
-  backend ignore every AI and OCR.space key, so the whole suite runs with no paid call.
+  backend ignore every AI, OCR.space and Stripe key, so the whole suite runs with no paid or external call.
 - Safety logic (red-flag rules, interaction rules, state transitions) needs unit tests with
   explicit cases, including the cases listed in the brief. Unit tests live in `backend/tests/`
   (pytest): no database, no network, and `conftest.py` blanks every AI and OCR key.
@@ -260,7 +265,7 @@ A change is done only when all of these hold:
 
 ## 14. Ask before you
 
-- add a pharmacist role, a real payment gateway (JazzCash/Easypaisa), or push notifications;
+- add a pharmacist role, another payment gateway or live (non-test) Stripe keys, or push notifications;
 - delete a page, a table, a column or any data;
 - change an approved decision recorded in `docs/claude-code-brief.md`;
 - use an external API not already in the project (and never the discontinued RxNav interaction API).
@@ -346,7 +351,7 @@ spacing and states, not the palette.
 
 - **Settings:** read configuration only from `config.settings` (`backend/config.py`). A new
   environment variable gets a field and default in `Settings`, a line in `load_settings()`, and a
-  placeholder in `backend/.env.example`. Never call `os.getenv` in app code.
+  placeholder in the root `.env.example`. Never call `os.getenv` in app code.
 - **Routers stay thin:** parse the request, check identity and ownership, call a service, build
   the response. Rules, AI calls and data shaping go in `services/` (for example
   `services/medicine_safety.py`, `services/patient_insights.py`, `services/report_service.py`).

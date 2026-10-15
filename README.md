@@ -21,6 +21,8 @@ safety, security and UI rules. The phase plan and current state are in
 | Database | PostgreSQL (a local SQLite file is used only when no database URL is set) |
 | OCR | Local OCR (RapidOCR) by default; OCR.space when a key is set (see [Reports and OCR](#reports-and-ocr)) |
 | AI | Gemini, OpenAI or Groq when a key is set (Gemini first), rule-based fallback otherwise; BioBERT for entity extraction |
+| Payments | Stripe Checkout (hosted page) with signed webhooks |
+| Hosting | Render, one monorepo: `render.yaml` (see [Deploy to Render](#deploy-to-render)) |
 
 The browser never calls FastAPI directly. It calls `/api/backend/...` on the Next.js server,
 which forwards to FastAPI.
@@ -43,27 +45,23 @@ CREATE DATABASE noramedlink;
 
 The schema is created and kept up to date by Alembic when the backend starts.
 
-### 2. Environment files
+### 2. Environment file
 
-Copy the examples and fill in your own values. Never commit the real files.
-
-| Copy | To | Used by |
-|---|---|---|
-| `backend/.env.example` | `backend/.env` | FastAPI (database, JWT secret, AI and OCR keys, rate limits) |
-| `.env.example` | `.env` | Next.js (`SERVER_API_URL`, the FastAPI address for the proxy) |
-| `.env.local.example` | `.env.local` | Nothing required; the browser needs no API URL |
-
-FastAPI reads the root `.env` first and then `backend/.env`, which wins when both set a value.
-The important backend variables:
+One file for the whole project: copy `.env.example` (repo root) to `.env` and fill it in. Both
+Next.js and FastAPI read it; never commit it. Variables already set in the environment win over it
+(on Render they are set in the dashboard; there is no `.env` there).
 
 | Variable | Needed for |
 |---|---|
-| `FASTAPI_DATABASE_URL` (or `DATABASE_URL`) | PostgreSQL, e.g. `postgresql+psycopg2://postgres:YOUR_PASSWORD@localhost:5432/noramedlink` |
+| `DATABASE_URL` | PostgreSQL, e.g. `postgresql://postgres:YOUR_PASSWORD@localhost:5432/noramedlink` |
 | `JWT_SECRET_KEY` | Signing sign-in tokens. Without it, a random secret is used and everyone is signed out on restart |
 | `ADMIN_INVITE_CODE` | Creating an admin account |
+| `FRONTEND_ORIGIN`, `SERVER_API_URL` | Where the website runs, and where Next.js reaches FastAPI (defaults suit local development) |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Online payment of consultation fees (see [Payments](#payments)) |
 | `OCR_SPACE_API_KEY` | Optional: send reports to OCR.space instead of reading them locally |
 | `GEMINI_API_KEY`, `OPENAI_API_KEY` or `GROQ_API_KEY` | AI summaries and explanations in plain language (rule-based text otherwise). Patient identifiers are removed before text is sent; on Google's free Gemini tier, content may be used to improve Google's products |
-| `RATE_LIMIT_*`, `LOG_LEVEL`, `MAX_UPLOAD_MB` | Optional; defaults are in `backend/.env.example` |
+| `BIOBERT_ENABLED` | `0` skips BioBERT (needs about 1 GB of memory); entity extraction then uses the fixed rules |
+| `RATE_LIMIT_*`, `LOG_LEVEL`, `MAX_UPLOAD_MB` | Optional; defaults are listed in `.env.example` |
 
 ### 3. Install
 
@@ -73,7 +71,7 @@ npm install
 cd backend
 python -m venv venv
 .\venv\Scripts\activate
-pip install -r requirements-dev.txt   # the app plus dev tools (ruff)
+pip install -r requirements-dev.txt   # the app, BioBERT (requirements-ml.txt) and dev tools
 ```
 
 ## Run
@@ -141,13 +139,40 @@ complex tables reduce accuracy, so always check the text before relying on a sum
 - **Rules decide, AI never does.** Alerts come only from the CSV tables in
   `backend/services/knowledge/data/` (data card and sources in its `README.md`). Without a rule the
   app says "no data", never "safe". FDA label text from openFDA is shown as supporting evidence and
-  never changes an alert. The tables are a demo knowledge base, not clinically reviewed.
+  never changes an alert. Behind the curated interaction rules sit 160,235 rated drug pairs from
+  DDInter 2.0 (CC BY-NC-SA 4.0, academic use): they fill gaps and are shown whenever they rate a pair
+  higher than the curated rule. The tables are a demo knowledge base, not clinically reviewed.
 
 ## Data and evaluation
 
 The knowledge bases are CSV files loaded with pandas and validated with pandera in the unit tests.
 `notebooks/` holds evaluation notebooks on synthetic data (entity extraction, everyday wording,
 medication safety), committed with their outputs; see [notebooks/README.md](notebooks/README.md).
+
+## Payments
+
+Patients pay a doctor's consultation fee by card on **Stripe Checkout** (Stripe's hosted page; the
+app never sees card details).
+
+1. The doctor sets a fee (PKR) on the doctor dashboard ("Consultation fee"). Patients see it on the
+   doctor's card and on their appointments.
+2. The patient presses **Pay PKR ...** (My appointments, or the Payments page). FastAPI creates a
+   Checkout session for that appointment at the doctor's fee; the amount never comes from the browser.
+3. Stripe sends the patient back to `/payments/result`. The payment is marked **paid only when Stripe's
+   signed webhook** (`POST /payments/stripe/webhook`) confirms it, for the right amount and currency.
+   Each Stripe event is applied once; nobody, not even an admin, can mark a payment paid by hand.
+
+Locally (test mode, no real money):
+
+```powershell
+# Install the Stripe CLI (https://docs.stripe.com/stripe-cli), then forward webhooks to FastAPI:
+stripe login
+stripe listen --forward-to localhost:8000/payments/stripe/webhook
+# It prints a webhook secret (whsec_...): put it in .env as STRIPE_WEBHOOK_SECRET and restart the backend.
+```
+
+Pay with the test card **4242 4242 4242 4242**, any future expiry date and any CVC. Without
+`STRIPE_SECRET_KEY` the Pay button explains that online payment is not set up.
 
 ## API conventions
 
@@ -218,3 +243,33 @@ difference between the models and the database.
 `patient_reports` is the single report table. The older `medical_documents` table is kept
 read-only: migration 0008 copied its rows into `patient_reports`, and the backend refuses to write
 to it.
+
+## Deploy to Render
+
+The repo deploys as one monorepo with the blueprint in `render.yaml`: **nora-web** (Next.js, repo
+root), **nora-api** (FastAPI, `backend/`) and **nora-db** (PostgreSQL), all on the free plan.
+
+1. Push the branch to GitHub. In Render: **New > Blueprint**, pick the repo; Render reads `render.yaml`.
+2. When asked, fill in the values marked `sync: false`:
+   - `nora-shared` group: `ADMIN_INVITE_CODE`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` (see step 4),
+     `GEMINI_API_KEY` (optional). `JWT_SECRET_KEY` is generated by Render.
+   - nora-api: `FRONTEND_ORIGIN` = nora-web's address, e.g. `https://nora-web.onrender.com`.
+   - nora-web: `SERVER_API_URL` = nora-api's address, e.g. `https://nora-api.onrender.com`.
+   `DATABASE_URL` is filled in from nora-db automatically; migrations run when nora-api starts.
+3. Build and start commands are in the blueprint: `pip install -r requirements.txt` and
+   `uvicorn main:app --host 0.0.0.0 --port $PORT` (nora-api); `npm ci && npm run build` and
+   `npm start` (nora-web). Python 3.11.9 (`backend/.python-version`) and Node 22 (`.node-version`).
+4. Stripe webhook: in the Stripe Dashboard (test mode), **Developers > Webhooks > Add endpoint**,
+   URL `https://<nora-api address>/payments/stripe/webhook`, events `checkout.session.completed`,
+   `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed` and
+   `checkout.session.expired`. Copy its signing secret into `STRIPE_WEBHOOK_SECRET`.
+
+Free plan limits, all accepted for this demo:
+
+- Services sleep after 15 idle minutes; the first request then takes about a minute.
+- **Uploaded reports are lost** on every restart or deploy (no persistent disk on the free plan).
+  A paid instance with a disk mounted at `backend/uploads` keeps them.
+- BioBERT is off (`BIOBERT_ENABLED=0`; it needs about 1 GB). Entity extraction uses the fixed rules.
+- The free database expires after a time limit set by Render; back it up or upgrade before then.
+- Rate limits keyed by IP address (login, signup) see the Next.js server's address, not each user's,
+  because requests reach FastAPI through the proxy. Per-account limits are unaffected.

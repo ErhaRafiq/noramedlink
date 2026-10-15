@@ -27,12 +27,13 @@ The project is roughly 30% implemented. Your job is to take it further in **phas
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, Tailwind |
 | Backend | **FastAPI** in `backend/` using **SQLAlchemy**: the only backend. Next.js keeps a same-origin proxy (`app/api/backend/[...path]`), thin auth proxies (`app/api/auth/login`, `signup`) and `app/api/drug-check` (old OpenFDA lookup, used by no page; superseded by `services/mscie/openfda.py`, kept until the team approves deleting it) |
-| Database | PostgreSQL. Schema = SQLAlchemy models + **Alembic** migrations (`backend/migrations/`, head `0010`: `prescriptions`, `prescription_items`, `safety_overrides`), applied by `alembic upgrade head` at startup. Migrations are additive. **No Prisma** (removed in Phase 1) |
+| Database | PostgreSQL. Schema = SQLAlchemy models + **Alembic** migrations (`backend/migrations/`, head `0011`: consultation fees and Stripe payment fields), applied by `alembic upgrade head` at startup. Migrations are additive. **No Prisma** (removed in Phase 1) |
 | OCR | Local OCR in FastAPI by default: PDF text layers, then RapidOCR 3 with PP-OCRv5 (ONNX, CPU, models cached in `backend/models/`) for scans and photos, rebuilt into table rows; numbers scored under 0.90 are listed to check against the original. OCR.space only when `OCR_SPACE_API_KEY` is set. No Tesseract anywhere |
 | AI | Gemini, OpenAI and Groq via env keys (Gemini first), rule-based fallback when no key, BioBERT NER (`d4data/biomedical-ner-all`). Identifiers removed before prompts leave the server; AI summaries with numbers not in the report are rejected. Patient-facing summaries and alerts use everyday words (`services/plain_language.py`, demo dictionary awaiting clinician review) |
-| Data | Knowledge bases are CSV tables (`backend/services/knowledge/data/`, data card and sources), loaded with pandas, validated with pandera in tests; rapidfuzz medicine search; evaluation notebooks (`notebooks/`, scikit-learn, matplotlib) on synthetic data |
+| Data | Knowledge bases are CSV tables (`backend/services/knowledge/data/`, data card and sources), loaded with pandas, validated with pandera in tests; rapidfuzz medicine search; DDInter 2.0 interaction pairs (160,235, CC BY-NC-SA 4.0) behind the curated rules; evaluation notebooks (`notebooks/`, scikit-learn, matplotlib) on synthetic data |
+| Config and hosting | One root `.env` (template `.env.example`); Render monorepo blueprint `render.yaml` (free plan: no disk, BioBERT off) |
 | Auth | JWT (HS256) issued by FastAPI, stored in `localStorage` on the client; FastAPI role dependencies (`require_patient`, `require_doctor`, admin) on every protected endpoint |
-| Tests | `backend/tests/` (pytest, no database or network), `tests/acceptance_test.py` (route authentication, ownership, access grants, medication safety) and `tests/e2e/` (Playwright, desktop and 390px). Run the backend and tests with `DISABLE_PAID_SERVICES=1` so no AI, OCR.space or openFDA call is made |
+| Tests | `backend/tests/` (pytest, no database or network), `tests/acceptance_test.py` (route authentication, ownership, access grants, medication safety) and `tests/e2e/` (Playwright, desktop and 390px). Run the backend and tests with `DISABLE_PAID_SERVICES=1` so no AI, OCR.space, openFDA or Stripe call is made |
 
 There is **no** Flutter app and **no** Node gateway, despite what the design documents say. Don't create them.
 
@@ -46,7 +47,7 @@ There is **no** Flutter app and **no** Node gateway, despite what the design doc
 | 5 | Doctor search & booking | Partial | `app/doctors/page.tsx` and booking on the patient dashboard; only verified doctors are bookable. **Missing:** filters, availability slots, double-booking prevention |
 | 6 | Home visit | Not started | `EmergencyBooking` requests are recorded honestly (status `REQUESTED`, no doctor, no ETA), but nothing assigns a doctor (conflicts with scope limitation LI-5; replaced in 2d) |
 | 7 | Symptom → specialist | Not started | The generic AI chat was removed in Phase 1 |
-| 8 | Payments | Partial | Manual/wallet payments are recorded as `PENDING` until an admin confirms; only admins can update payments. JazzCash/Easypaisa are env placeholders only |
+| 8 | Payments | Done (prototype, Stripe test mode) | Doctors set a consultation fee; patients pay on Stripe Checkout; only Stripe's signed webhook marks a payment and its appointment PAID (each event once, amount and currency checked). JazzCash/Easypaisa, manual recording and admin confirmation were removed |
 | 9 | Admin panel | Partial | Overview stats, doctor verification, payment confirmation, all admin-only in FastAPI. **Missing:** audit log view |
 
 ### Dashboards
