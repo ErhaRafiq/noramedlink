@@ -26,6 +26,7 @@ from routers import (
     nlp,
     patient_insights,
     payments,
+    profile,
     reports,
     vitals,
 )
@@ -80,6 +81,7 @@ app.include_router(mscie.router)
 app.include_router(nlp.router)
 app.include_router(appointments.router)
 app.include_router(payments.router)
+app.include_router(profile.router)
 app.include_router(vitals.router)
 app.include_router(medications.router)
 app.include_router(medicine_reminders.router)

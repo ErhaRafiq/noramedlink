@@ -283,6 +283,12 @@ class AppointmentDoctorOut(BaseModel):
     rating: float | None = None
     available_today: bool | None = None
     consultation_fee: int | None = None  # whole PKR, set by the doctor; None: not set
+    qualifications: str | None = None
+    experience_years: int | None = None
+    bio: str | None = None
+    city: str | None = None
+    languages: list[str] = Field(default_factory=list)
+    consultation_modes: list[str] = Field(default_factory=list)  # online, in_clinic, home
     source: Literal["registered"] = "registered"
 
 
@@ -314,14 +320,6 @@ class CheckoutOut(BaseModel):
 class WebhookAck(BaseModel):
     received: bool
     outcome: str
-
-
-class ConsultationFeeIn(BaseModel):
-    consultation_fee: int | None = Field(default=None, ge=200, le=100_000)  # whole PKR; None clears it
-
-
-class ConsultationFeeOut(BaseModel):
-    consultation_fee: int | None
 
 
 # --- Clinical summary for doctors (ICSE) -------------------------------------------------------
@@ -467,3 +465,153 @@ class LabelEvidenceOut(BaseModel):
     set_id: str | None = None
     effective_time: str | None = None
     source: str | None = None
+
+
+# --- profiles (Module 1) ------------------------------------------------------------------------
+
+GENDERS = ("Male", "Female", "Other")
+BLOOD_GROUPS = ("A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
+CONSULTATION_MODES = ("online", "in_clinic", "home")
+
+
+def _clean(value: str | None) -> str | None:
+    value = " ".join((value or "").split())
+    return value or None
+
+
+class AccountOut(BaseModel):
+    id: int
+    full_name: str
+    email: str
+    phone: str
+    role: Role
+    created_at: datetime
+
+
+class PatientProfileOut(BaseModel):
+    date_of_birth: date
+    age: int
+    gender: str
+    cnic_masked: str  # the CNIC is collected at signup and never shown in full again
+    city: str | None
+    address: str | None
+    blood_group: str | None
+    emergency_contact_name: str | None
+    emergency_contact_phone: str | None
+
+
+class DoctorProfileOut(BaseModel):
+    pmdc_number: str
+    specialization: str
+    verification_status: str
+    hospital_name: str
+    city: str | None
+    qualifications: str | None
+    experience_years: int | None
+    bio: str | None
+    languages: list[str]
+    consultation_modes: list[str]
+    consultation_fee: int | None
+
+
+class ActivityOut(BaseModel):
+    """What is linked to this profile (Module 1, FE-4): counts only, each opening its own page."""
+
+    reports: int = 0  # patients: uploaded reports
+    appointments: int = 0
+    prescriptions: int = 0  # patients: confirmed ones received; doctors: confirmed ones written
+    payments: int = 0  # patients: payments made; doctors: payments received (paid)
+
+
+class ProfileOut(BaseModel):
+    account: AccountOut
+    patient: PatientProfileOut | None = None
+    doctor: DoctorProfileOut | None = None
+    activity: ActivityOut = Field(default_factory=ActivityOut)
+
+
+class AccountUpdate(BaseModel):
+    full_name: str = Field(min_length=2, max_length=160)
+    phone: str = Field(min_length=7, max_length=40)
+
+    @field_validator("full_name", "phone")
+    @classmethod
+    def tidy(cls, value: str) -> str:
+        return " ".join(value.split())
+
+
+class PatientProfileUpdate(BaseModel):
+    date_of_birth: date
+    gender: str
+    city: str | None = Field(default=None, max_length=80)
+    address: str | None = Field(default=None, max_length=240)
+    blood_group: str | None = None
+    emergency_contact_name: str | None = Field(default=None, max_length=120)
+    emergency_contact_phone: str | None = Field(default=None, max_length=40)
+
+    @field_validator("date_of_birth")
+    @classmethod
+    def plausible_birth_date(cls, value: date) -> date:
+        today = date.today()
+        if value > today or (today.year - value.year) > 120:
+            raise ValueError("Enter a real date of birth.")
+        return value
+
+    @field_validator("gender")
+    @classmethod
+    def known_gender(cls, value: str) -> str:
+        match = next((g for g in GENDERS if g.lower() == value.strip().lower()), None)
+        if match is None:
+            raise ValueError("Gender must be Male, Female or Other.")
+        return match
+
+    @field_validator("blood_group")
+    @classmethod
+    def known_blood_group(cls, value: str | None) -> str | None:
+        value = _clean(value)
+        if value is not None and value.upper() not in BLOOD_GROUPS:
+            raise ValueError("Blood group must be A+, A-, B+, B-, AB+, AB-, O+ or O-.")
+        return value.upper() if value else None
+
+    @field_validator("city", "address", "emergency_contact_name", "emergency_contact_phone")
+    @classmethod
+    def tidy_optional(cls, value: str | None) -> str | None:
+        return _clean(value)
+
+
+class DoctorProfileUpdate(BaseModel):
+    # Specialization and the PMDC number are verified by an admin, so they are not editable here.
+    hospital_name: str = Field(min_length=2, max_length=180)
+    city: str | None = Field(default=None, max_length=80)
+    qualifications: str | None = Field(default=None, max_length=1000)
+    experience_years: int | None = Field(default=None, ge=0, le=70)
+    bio: str | None = Field(default=None, max_length=2000)
+    languages: list[str] = Field(default_factory=list, max_length=10)
+    consultation_modes: list[str] = Field(min_length=1)
+    consultation_fee: int | None = Field(default=None, ge=200, le=100_000)  # whole PKR; None: not set
+
+    @field_validator("hospital_name")
+    @classmethod
+    def tidy_hospital(cls, value: str) -> str:
+        return " ".join(value.split())
+
+    @field_validator("city", "qualifications", "bio")
+    @classmethod
+    def tidy_optional(cls, value: str | None) -> str | None:
+        return _clean(value)
+
+    @field_validator("languages")
+    @classmethod
+    def tidy_languages(cls, values: list[str]) -> list[str]:
+        cleaned = list(dict.fromkeys(v for v in (" ".join(x.split()) for x in values) if v))
+        if any(len(v) > 30 for v in cleaned):
+            raise ValueError("Each language must be 30 characters or fewer.")
+        return cleaned
+
+    @field_validator("consultation_modes")
+    @classmethod
+    def known_modes(cls, values: list[str]) -> list[str]:
+        unknown = [v for v in values if v not in CONSULTATION_MODES]
+        if unknown:
+            raise ValueError("Consultation modes are online, in_clinic and home.")
+        return [m for m in CONSULTATION_MODES if m in values]

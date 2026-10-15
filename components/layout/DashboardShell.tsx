@@ -1,9 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
-import { LogOut, type LucideIcon } from "lucide-react";
+import { LogOut, UserRound, type LucideIcon } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, ButtonLink } from "@/components/ui/button";
 import { NoraLogo } from "@/components/ui/NoraLogo";
 import { cn } from "@/lib/cn";
 import { useScrollSpy } from "@/hooks/use-scroll-spy";
@@ -65,7 +66,11 @@ export function DashboardShell({
         <div className="border-t border-white/10 pt-4">
           <p className="truncate text-sm font-semibold text-white">{userName}</p>
           {userMeta ? <p className="truncate text-xs text-slate-300">{userMeta}</p> : null}
-          <button type="button" onClick={onSignOut} className="nm-sidebar-item mt-3 w-full text-left text-slate-300">
+          <Link href="/profile" className="nm-sidebar-item mt-3 w-full text-left text-slate-300">
+            <UserRound className="h-4 w-4" aria-hidden />
+            My profile
+          </Link>
+          <button type="button" onClick={onSignOut} className="nm-sidebar-item w-full text-left text-slate-300">
             <LogOut className="h-4 w-4" aria-hidden />
             Sign out
           </button>
@@ -75,9 +80,14 @@ export function DashboardShell({
       <header className="sticky top-0 z-20 border-b border-line bg-white/90 backdrop-blur-xl lg:hidden">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <NoraLogo />
-          <Button variant="ghost" size="sm" onClick={onSignOut} icon={<LogOut className="h-4 w-4" />}>
-            Sign out
-          </Button>
+          <div className="flex items-center gap-1">
+            <ButtonLink href="/profile" variant="ghost" size="sm" icon={<UserRound className="h-4 w-4" />}>
+              Profile
+            </ButtonLink>
+            <Button variant="ghost" size="sm" onClick={onSignOut} icon={<LogOut className="h-4 w-4" />}>
+              Sign out
+            </Button>
+          </div>
         </div>
         <nav aria-label="Dashboard sections" className="flex gap-2 overflow-x-auto px-4 pb-3">
           {nav.map((item) => (

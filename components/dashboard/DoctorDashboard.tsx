@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { CalendarDays, ClipboardList, FileSearch, KeyRound, LayoutDashboard, Pill, Siren, Stethoscope, Users, Wallet } from "lucide-react";
+import { CalendarDays, ClipboardList, FileSearch, KeyRound, LayoutDashboard, Pill, Siren, Stethoscope, Users } from "lucide-react";
 
 import { DashboardShell, type DashboardNavItem } from "@/components/layout/DashboardShell";
 import { Alert } from "@/components/ui/alert";
@@ -13,7 +13,6 @@ import { signOut as endSession } from "@/lib/auth";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useDoctorDashboard } from "@/hooks/doctor/use-doctor-dashboard";
 import { ClinicalSummaryCard } from "./doctor/clinical-summary/ClinicalSummaryCard";
-import { ConsultationFeeCard } from "./doctor/ConsultationFeeCard";
 import { PrescribeCard } from "./doctor/prescribe/PrescribeCard";
 import { ActivePatientsCard, AppointmentsCard, EmergencyCard, PatientFileCard, UnlockCard } from "./doctor/sections";
 
@@ -25,7 +24,6 @@ const NAV: DashboardNavItem[] = [
   { id: "clinical-summary", label: "Clinical summary", icon: ClipboardList },
   { id: "prescribe", label: "Prescribe", icon: Pill },
   { id: "emergency", label: "Emergency visits", icon: Siren },
-  { id: "fee", label: "Consultation fee", icon: Wallet },
 ];
 
 const VERIFIED_STATUSES = ["approved", "verified"];
@@ -133,7 +131,6 @@ export function DoctorDashboard() {
 
           <EmergencyCard bookings={overview.emergencyBookings} />
 
-          {profile ? <ConsultationFeeCard key={profile.id} initialFee={profile.consultation_fee} /> : null}
         </>
       ) : null}
     </DashboardShell>

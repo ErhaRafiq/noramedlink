@@ -10,12 +10,11 @@ test.describe("consultation payments", () => {
 
     const doctorPage = await (await browser.newContext()).newPage();
     await signInAs(doctorPage, users.doctor);
-    await doctorPage.goto("/dashboard/doctor");
-    const feeCard = doctorPage.getByRole("region", { name: "Consultation fee" });
-    await feeCard.getByLabel("Fee (PKR)").fill("1500");
-    await feeCard.getByRole("button", { name: "Save fee" }).click();
-    await expect(feeCard.getByText("Fee saved")).toBeVisible({ timeout: 20_000 });
-    await expect(feeCard.getByText("Patients pay PKR 1,500 online")).toBeVisible();
+    await doctorPage.goto("/profile");
+    const form = doctorPage.getByRole("region", { name: "Doctor profile" });
+    await form.getByLabel("Consultation fee (PKR)").fill("1500");
+    await form.getByRole("button", { name: "Save doctor profile" }).click();
+    await expect(form.getByText("Your doctor profile was saved.")).toBeVisible({ timeout: 20_000 });
 
     const page = await (await browser.newContext()).newPage();
     await signInAs(page, users.patientEmpty);

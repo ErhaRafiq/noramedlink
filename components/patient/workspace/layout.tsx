@@ -10,6 +10,7 @@ import {
   KeyRound,
   LockKeyhole,
   LogOut,
+  UserRound,
   Pill,
   Plus,
   Search,
@@ -198,9 +199,14 @@ export function SettingsStrip({ onSignOut }: { onSignOut: () => void }) {
             </p>
           </div>
         </div>
-        <Button variant="secondary" onClick={onSignOut} icon={<LogOut className="h-4 w-4" />} className="flex-shrink-0">
-          Sign out
-        </Button>
+        <div className="flex flex-shrink-0 flex-wrap gap-2">
+          <ButtonLink href="/profile" variant="secondary" icon={<UserRound className="h-4 w-4" />}>
+            My profile
+          </ButtonLink>
+          <Button variant="secondary" onClick={onSignOut} icon={<LogOut className="h-4 w-4" />}>
+            Sign out
+          </Button>
+        </div>
       </div>
     </section>
   );

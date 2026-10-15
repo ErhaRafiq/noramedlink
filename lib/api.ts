@@ -33,6 +33,9 @@ import type {
   AdminDoctor,
   AdminUser,
   Page,
+  PatientProfileInput,
+  DoctorProfileInput,
+  Profile,
 } from "@/lib/types";
 
 // All FastAPI calls go through the same-origin proxy (app/api/backend/[...path]),
@@ -307,11 +310,17 @@ export const api = {
   paymentForSession(sessionId: string) {
     return apiRequest<Payment>(`/payments/session/${encodeURIComponent(sessionId)}`);
   },
-  setConsultationFee(fee: number | null) {
-    return apiRequest<{ consultation_fee: number | null }>("/doctor/consultation-fee", {
-      method: "PUT",
-      body: JSON.stringify({ consultation_fee: fee }),
-    });
+  profile() {
+    return apiRequest<Profile>("/profile");
+  },
+  updateAccount(payload: { full_name: string; phone: string }) {
+    return apiRequest<Profile>("/profile/account", { method: "PATCH", body: JSON.stringify(payload) });
+  },
+  updatePatientProfile(payload: PatientProfileInput) {
+    return apiRequest<Profile>("/patient/profile", { method: "PUT", body: JSON.stringify(payload) });
+  },
+  updateDoctorProfile(payload: DoctorProfileInput) {
+    return apiRequest<Profile>("/doctor/profile", { method: "PUT", body: JSON.stringify(payload) });
   },
   createReminder(
     payload: {

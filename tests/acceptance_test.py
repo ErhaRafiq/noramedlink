@@ -551,13 +551,16 @@ def run_tests() -> None:
           f"got {response.status_code}")
 
     print("\n[5f] Payments: the doctor sets the fee, Stripe confirms; nobody marks a payment paid by hand")
-    response = call("PUT", "/api/backend/doctor/consultation-fee", tok_doctor, {"consultation_fee": 1500})
-    check("doctor sets a consultation fee -> 200", response.status_code == 200 and response.json().get("consultation_fee") == 1500,
-          f"got {response.status_code}")
-    response = call("PUT", "/api/backend/doctor/consultation-fee", tok_doctor, {"consultation_fee": 50})
+    doctor_form = {"hospital_name": "Test Hospital", "city": "Lahore", "qualifications": "MBBS, FCPS", "experience_years": 8,
+                   "bio": "Phase0 test doctor", "languages": ["Urdu", "English"], "consultation_modes": ["in_clinic", "online"],
+                   "consultation_fee": 1500}
+    response = call("PUT", "/api/backend/doctor/profile", tok_doctor, doctor_form)
+    check("doctor saves a profile with a fee -> 200", response.status_code == 200
+          and response.json()["doctor"]["consultation_fee"] == 1500, f"got {response.status_code}")
+    response = call("PUT", "/api/backend/doctor/profile", tok_doctor, {**doctor_form, "consultation_fee": 50})
     check("a fee under PKR 200 -> 422", response.status_code == 422, f"got {response.status_code}")
-    response = call("PUT", "/api/backend/doctor/consultation-fee", tok_a, {"consultation_fee": 10})
-    check("a patient setting a fee -> 403", response.status_code == 403, f"got {response.status_code}")
+    response = call("PUT", "/api/backend/doctor/profile", tok_a, doctor_form)
+    check("a patient saving a doctor profile -> 403", response.status_code == 403, f"got {response.status_code}")
     listed = {d["doctor_id"]: d for d in call("GET", "/api/backend/appointments/doctors").json()}
     check("the directory shows the doctor's fee", (listed.get(doctor) or {}).get("consultation_fee") == 1500)
 
@@ -1204,6 +1207,50 @@ def run_tests() -> None:
     check("a made-up refresh token -> 401", httpx.post(f"{BACKEND_URL}/auth/refresh", json={"refresh_token": "x" * 40}).status_code == 401)
     with engine.begin() as conn:
         conn.execute(text("delete from refresh_tokens where user_id = :id"), {"id": session_user})
+
+    client.cookies.clear()  # section 18 signed this client in through the website; later checks use tokens only
+    print("\n[19] Profiles (Module 1): own profile only, verified fields locked, public doctor card")
+    response = call("GET", "/api/backend/profile", tok_a)
+    mine = response.json() if response.status_code == 200 else {}
+    check("a patient reads their own profile (age, masked CNIC, no doctor part)",
+          response.status_code == 200 and mine["account"]["id"] == patient_a and mine["patient"]["age"] >= 0
+          and mine["patient"]["cnic_masked"].startswith("*****-") and mine["doctor"] is None, f"got {response.status_code}")
+    check("profile without a token -> 401", call("GET", "/api/backend/profile").status_code == 401)
+    form = {"date_of_birth": "1990-05-17", "gender": "female", "city": "Lahore", "blood_group": "o+",
+            "emergency_contact_name": "Test Contact", "emergency_contact_phone": "0300 7654321", "user_id": patient_b}
+    response = call("PUT", "/api/backend/patient/profile", tok_a, form)
+    saved = response.json() if response.status_code == 200 else {}
+    check("a patient saves details (body user_id=B ignored, gender and blood group normalised)",
+          response.status_code == 200 and saved["patient"]["gender"] == "Female" and saved["patient"]["blood_group"] == "O+"
+          and saved["account"]["id"] == patient_a, f"got {response.status_code}")
+    check("B's profile is untouched", call("GET", "/api/backend/profile", tok_b).json()["patient"]["city"] is None)
+    check("a future birth date -> 422",
+          call("PUT", "/api/backend/patient/profile", tok_a, {**form, "date_of_birth": "2999-01-01"}).status_code == 422)
+    check("a doctor saving a patient profile -> 403", call("PUT", "/api/backend/patient/profile", tok_doctor, form).status_code == 403)
+    response = call("PATCH", "/api/backend/profile/account", tok_a, {"full_name": f"{TEST_PREFIX}patient A renamed", "phone": "0322 1112223"})
+    check("a user changes their own name and phone",
+          response.status_code == 200 and response.json()["account"]["phone"] == "0322 1112223", f"got {response.status_code}")
+    check("a phone number already used by another account -> 409",
+          call("PATCH", "/api/backend/profile/account", tok_b, {"full_name": f"{TEST_PREFIX}patient B", "phone": "0322 1112223"}).status_code == 409)
+    pmdc_before = scalar("select pmdc_number from doctor_profiles where user_id = :id", id=doctor)
+    response = call("PUT", "/api/backend/doctor/profile", tok_doctor,
+                    {**doctor_form, "specialization": "Cardiology", "pmdc_number": "HACKED", "verification_status": "approved"})
+    check("a doctor cannot change specialization or the PMDC number",
+          response.status_code == 200 and response.json()["doctor"]["specialization"] == "General Physician"
+          and scalar("select pmdc_number from doctor_profiles where user_id = :id", id=doctor) == pmdc_before, f"got {response.status_code}")
+    card = next((d for d in call("GET", "/api/backend/appointments/doctors").json() if d["doctor_id"] == doctor), {})
+    check("the public doctor card shows qualifications, experience, languages, modes and fee",
+          card.get("qualifications") == "MBBS, FCPS" and card.get("experience_years") == 8
+          and card.get("languages") == ["Urdu", "English"] and card.get("consultation_modes") == ["online", "in_clinic"]
+          and card.get("consultation_fee") == 1500, f"got {card}")
+    check("the public card never carries the PMDC number or phone", "pmdc_number" not in card and "phone" not in card)
+    mine = call("GET", "/api/backend/profile", tok_a).json()["activity"]
+    check("a patient's profile counts their own appointments and payments only",
+          mine["appointments"] == scalar("select count(*) from appointments where user_id = :id", id=patient_a)
+          and mine["payments"] == scalar("select count(*) from payments where user_id = :id", id=patient_a), f"got {mine}")
+    theirs = call("GET", "/api/backend/profile", tok_doctor).json()["activity"]
+    check("a doctor's profile counts appointments booked with them",
+          theirs["appointments"] == scalar("select count(*) from appointments where doctor_id = :id", id=doctor), f"got {theirs}")
 
 
 def main() -> int:

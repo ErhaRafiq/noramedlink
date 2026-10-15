@@ -274,6 +274,12 @@ export type AppointmentDoctor = {
   available_today: boolean | null;
   /** Whole PKR, set by the doctor; null: not set, so it cannot be paid online. */
   consultation_fee: number | null;
+  qualifications: string | null;
+  experience_years: number | null;
+  bio: string | null;
+  city: string | null;
+  languages: string[];
+  consultation_modes: ConsultationMode[];
   source: "registered";
 };
 
@@ -604,4 +610,63 @@ export type LabelEvidence = {
   sections?: Record<string, string | null> | null;
   effective_time?: string | null;
   source?: string | null;
+};
+
+export type ConsultationMode = "online" | "in_clinic" | "home";
+
+/** GET /profile: the signed-in user's own profile (backend/services/profiles.py). */
+export type Profile = {
+  account: { id: number; full_name: string; email: string; phone: string; role: UserRole; created_at: string };
+  patient: PatientProfile | null;
+  doctor: DoctorProfile | null;
+  /** Counts of what is linked to this profile. */
+  activity: { reports: number; appointments: number; prescriptions: number; payments: number };
+};
+
+export type PatientProfile = {
+  date_of_birth: string;
+  age: number;
+  gender: string;
+  /** The CNIC is collected at signup and never shown in full again. */
+  cnic_masked: string;
+  city: string | null;
+  address: string | null;
+  blood_group: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+};
+
+export type DoctorProfile = {
+  pmdc_number: string;
+  specialization: string;
+  verification_status: string;
+  hospital_name: string;
+  city: string | null;
+  qualifications: string | null;
+  experience_years: number | null;
+  bio: string | null;
+  languages: string[];
+  consultation_modes: ConsultationMode[];
+  consultation_fee: number | null;
+};
+
+export type PatientProfileInput = {
+  date_of_birth: string;
+  gender: string;
+  city: string | null;
+  address: string | null;
+  blood_group: string | null;
+  emergency_contact_name: string | null;
+  emergency_contact_phone: string | null;
+};
+
+export type DoctorProfileInput = {
+  hospital_name: string;
+  city: string | null;
+  qualifications: string | null;
+  experience_years: number | null;
+  bio: string | null;
+  languages: string[];
+  consultation_modes: ConsultationMode[];
+  consultation_fee: number | null;
 };

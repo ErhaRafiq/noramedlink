@@ -16,6 +16,7 @@ from schemas import (
     AppointmentUpdate,
 )
 from services.dashboard_access import ensure_otp_attempts_allowed, grant_access_by_otp, record_otp_attempt
+from services.profiles import split_list
 
 router = APIRouter(prefix="/appointments", tags=["appointments"])
 
@@ -78,6 +79,12 @@ def doctor_to_out(doctor: User) -> AppointmentDoctorOut:
         specialty=profile.specialization if profile else "General Medicine",
         location=profile.hospital_name if profile else "Nora MedLink Clinic",
         consultation_fee=profile.consultation_fee if profile else None,
+        qualifications=profile.qualifications if profile else None,
+        experience_years=profile.experience_years if profile else None,
+        bio=profile.bio if profile else None,
+        city=profile.city if profile else None,
+        languages=split_list(profile.languages) if profile else [],
+        consultation_modes=split_list(profile.consultation_modes) if profile else [],
     )
 
 

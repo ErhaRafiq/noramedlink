@@ -114,6 +114,8 @@ ANY_SIGNED_IN_ROLE = {
     "/appointments": "lists the caller's own appointments (patients: booked by them; doctors: booked with them)",
     "/appointments/{appointment_id}": "owner, treating doctor or admin only (can_access_appointment); no payment status changes",
     "/payments": "the caller's own payments",
+    "/profile": "the caller's own profile",
+    "/profile/account": "the caller's own name and phone",
 }
 
 

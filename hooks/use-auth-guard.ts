@@ -21,7 +21,7 @@ export type AuthGuardState =
  * - signed in with another role: goes to that role's dashboard;
  * - backend unreachable: reports an error but keeps the session, so a retry can work.
  */
-export function useAuthGuard(role: Role): AuthGuardState {
+export function useAuthGuard(role: Role | "any"): AuthGuardState {
   const router = useRouter();
   const [state, setState] = useState<AuthGuardState>({ status: "checking" });
 
@@ -36,7 +36,7 @@ export function useAuthGuard(role: Role): AuthGuardState {
     api
       .me({ signal: controller.signal })
       .then((user) => {
-        if (user.role !== role) {
+        if (role !== "any" && user.role !== role) {
           router.replace(dashboardPathForRole(user.role));
           return;
         }

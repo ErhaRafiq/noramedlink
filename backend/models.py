@@ -91,6 +91,12 @@ class PatientProfile(Base):
     date_of_birth: Mapped[date] = mapped_column(Date, nullable=False)
     gender: Mapped[str] = mapped_column(String(30), nullable=False)
     verification_status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
+    # Contact and emergency details the patient keeps up to date (Module 1, FE-2).
+    city: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    address: Mapped[str | None] = mapped_column(String(240), nullable=True)
+    blood_group: Mapped[str | None] = mapped_column(String(3), nullable=True)
+    emergency_contact_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    emergency_contact_phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -113,6 +119,15 @@ class DoctorProfile(Base):
     # Set by the doctor; what a patient pays online for one consultation (whole PKR). None: not set,
     # so the appointment cannot be paid online yet.
     consultation_fee: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # What patients see on the doctor's card (Module 1, FE-3).
+    qualifications: Mapped[str | None] = mapped_column(Text, nullable=True)
+    experience_years: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    bio: Mapped[str | None] = mapped_column(Text, nullable=True)
+    city: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    languages: Mapped[str | None] = mapped_column(String(200), nullable=True)  # comma-separated
+    consultation_modes: Mapped[str] = mapped_column(
+        String(40), default="in_clinic", server_default="in_clinic", nullable=False
+    )  # online, in_clinic, home
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
