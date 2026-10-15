@@ -124,6 +124,31 @@ why; the patient can type the text and save to get the summary.
 OCR works best on clear, straight, well-lit printed text. Handwriting, blur, folds, stamps and
 complex tables reduce accuracy, so always check the text before relying on a summary.
 
+## Clinical summaries and medication safety
+
+- **Clinical summary (doctor).** Fixed rules pull medicines, conditions, allergies and lab values out
+  of the patient's reports (with negation and family history), and flag readings outside the same
+  ranges the report checks use, each flag with its source report and date. The summary is stored in
+  versions and rebuilt when the reports change. With an AI key, only the key findings are reworded,
+  and a rewording that adds a number is rejected. Patients see the same flags in everyday words.
+- **Prescribing (doctor).** While a patient's access grant is active, the doctor searches medicines
+  (brand or generic, typos allowed) and each one is checked live against the patient's record:
+  allergies and cross-reactions, interactions, duplicate classes, conditions and lab values (eGFR,
+  potassium), dose limits and earlier reactions. Every alert says what, why (the rule and the
+  record), what to do and the source. Safer alternatives are ranked by a weighted score shown in
+  full, and each one is re-checked for the patient. Confirming despite a high-risk alert needs a
+  written reason, stored with the prescription. The patient sees confirmed prescriptions read-only.
+- **Rules decide, AI never does.** Alerts come only from the CSV tables in
+  `backend/services/knowledge/data/` (data card and sources in its `README.md`). Without a rule the
+  app says "no data", never "safe". FDA label text from openFDA is shown as supporting evidence and
+  never changes an alert. The tables are a demo knowledge base, not clinically reviewed.
+
+## Data and evaluation
+
+The knowledge bases are CSV files loaded with pandas and validated with pandera in the unit tests.
+`notebooks/` holds evaluation notebooks on synthetic data (entity extraction, everyday wording,
+medication safety), committed with their outputs; see [notebooks/README.md](notebooks/README.md).
+
 ## API conventions
 
 - **Pagination:** list endpoints take `?limit=` (1–100, default 20) and `&offset=` and return
@@ -143,8 +168,8 @@ complex tables reduce accuracy, so always check the text before relying on a sum
 | Production build | `npm run build` |
 | Backend lint and format | `cd backend; .\venv\Scripts\python.exe -m ruff check .; .\venv\Scripts\python.exe -m ruff format .` |
 | Backend unit tests | `cd backend; .\venv\Scripts\python.exe -m pytest` (no database or network needed) |
-| Acceptance tests | `backend\venv\Scripts\python.exe tests\acceptance_test.py` (both servers running) |
-| Browser (e2e) tests | `npm run test:e2e` (both servers running; uses the installed Microsoft Edge) |
+| Acceptance tests | Start the backend with `$env:DISABLE_PAID_SERVICES="1"`, then `$env:DISABLE_PAID_SERVICES="1"; backend\venv\Scripts\python.exe tests\acceptance_test.py` (both servers running; no AI, OCR.space or openFDA call is made) |
+| Browser (e2e) tests | Same backend as above, then `$env:DISABLE_PAID_SERVICES="1"; npm run test:e2e` (uses the installed Microsoft Edge) |
 | Screenshots for review | `npm run screenshots` (dev server running; uses the installed Microsoft Edge) |
 | Regenerate app icons | `backend\venv\Scripts\python.exe scripts\generate-icons.py` |
 
@@ -152,7 +177,8 @@ complex tables reduce accuracy, so always check the text before relying on a sum
 
 `tests/acceptance_test.py` checks the running app over HTTP: 401 without a token, 403 for the
 wrong role or an inactive account, patients isolated from each other, doctors limited to patients
-who granted access, pagination and search, rate limits, and the medicine-safety rules.
+who granted access, pagination and search, rate limits, the medicine-safety rules, and
+prescribing (high-risk alerts need a written reason; only the prescribing doctor can cancel).
 
 It refuses to run unless every database URL points to localhost. It creates temporary users whose
 email starts with `phase0-test-` and deletes only those users and their rows when it finishes, even
@@ -163,9 +189,9 @@ if a check fails. Set `PHASE0_BASE_URL` to test a dev server on another port (de
 
 `tests/e2e/` drives the real pages in Microsoft Edge, on a desktop window and at phone width
 (390px): the landing page, sign in and sign up, the patient dashboard (search, vitals, upload,
-doctor access code), the report page, the doctor unlocking a patient file with that code, the
-doctor directory and booking, and the admin approving or rejecting a doctor. Every page checked at
-phone width must not scroll sideways.
+doctor access code), the report page, the doctor unlocking a patient file with that code and
+prescribing (with the live safety check), the doctor directory and booking, and the admin
+approving or rejecting a doctor. Every page checked at phone width must not scroll sideways.
 
 `tests/e2e/fixtures.py` creates the test users before the run and deletes them afterwards, with
 the same localhost guard and `phase0-test-` cleanup as the acceptance tests. Run one suite at a

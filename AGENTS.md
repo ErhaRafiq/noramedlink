@@ -38,9 +38,11 @@ It is **not** a certified medical device. Every medical feature is advisory only
 | 3D | Three.js + @react-three/fiber, on the landing page only |
 | Backend | **FastAPI** (the only backend), SQLAlchemy 2 ORM, slowapi rate limiting, ruff |
 | Database | PostgreSQL; schema managed by **Alembic** migrations |
+| Medication safety | MSCIE (`services/mscie/`): deterministic rules from CSV tables (interactions, contraindications, allergy cross-reactivity, dose limits, duplicate classes, alternatives, ranking weights) decide every alert; openFDA label text is shown as supporting evidence only and never changes an alert. High-risk alerts need a written reason to confirm, stored in `safety_overrides` |
+| Data | Knowledge bases are CSV files in `services/knowledge/data/` (data card `README.md`, sources in `sources.csv`), loaded with pandas and validated with pandera in the tests; medicine search uses rapidfuzz. Evaluation notebooks in `notebooks/` (scikit-learn, matplotlib; `requirements-ds.txt`). The knowledge bases are demo data, not clinically reviewed |
 | Auth | JWT (HS256) issued by FastAPI, stored in `localStorage` on the client |
 | OCR | **Local OCR** by default (`services/local_ocr.py`): PDF text layers are read directly; scans and photos go through RapidOCR 3 (ONNX, CPU) with the PP-OCRv5 detector and English recogniser, downloaded once to `backend/models/` (checksum-verified); boxes are rebuilt into table rows (`services/ocr_layout.py`), and numbers read with a score under 0.90 are listed as "check against the original report", never changed. No key, nothing leaves the server. OCR.space is used instead only when `OCR_SPACE_API_KEY` is set. There is no Tesseract |
-| AI | Gemini, OpenAI or Groq when a key is set (Gemini first), rule-based fallback otherwise; BioBERT NER. Patient identifiers are removed before any prompt leaves the server (`services/privacy.py`), and an AI summary with a number that is not in the report is rejected (`services/ai_guard.py`). Every patient-facing summary and alert is in everyday words: medical terms get everyday wording with the term once in brackets (`services/plain_language.py`, dictionary `services/knowledge/data/plain_terms.json`, a demo knowledge base); without an AI key the summary is built by fixed rules (`services/patient_summary.py`) |
+| AI | Gemini, OpenAI or Groq when a key is set (Gemini first), rule-based fallback otherwise; BioBERT NER. Patient identifiers are removed before any prompt leaves the server (`services/privacy.py`), and an AI summary with a number that is not in the report is rejected (`services/ai_guard.py`). Every patient-facing summary and alert is in everyday words: medical terms get everyday wording with the term once in brackets (`services/plain_language.py`, dictionary `services/knowledge/data/plain_terms.csv`, a demo knowledge base); without an AI key the summary is built by fixed rules (`services/patient_summary.py`) |
 
 There is **no** Flutter app, **no** Node gateway and **no** Prisma. Do not create them.
 The SRS/SDS documents describe some of these; the code is the source of truth.
@@ -53,7 +55,7 @@ The SRS/SDS documents describe some of these; the code is the source of truth.
 app/                      Next.js pages (App Router)
   api/backend/[...path]/  Same-origin proxy: the browser reaches FastAPI only through this
   api/auth/*              Login/signup proxies; request-otp and verify-otp-signup return 410 (disabled)
-  api/drug-check/         OpenFDA lookup, to be moved into FastAPI in Phase 3b
+  api/drug-check/         Old OpenFDA lookup, used by no page; superseded by services/mscie/openfda.py (ask before deleting)
   dashboard/patient/      Patient dashboard (renders components/patient/PatientWorkspace.tsx)
   dashboard/doctor/       Doctor dashboard (renders components/dashboard/DoctorDashboard.tsx)
   admin/                  Admin dashboard
@@ -66,7 +68,8 @@ hooks/                    Generic hooks (use-*.ts); feature data hooks in hooks/
 lib/api.ts                The only API client; every call goes to /api/backend/...
 lib/auth.ts               Session helpers (getSession, clearSession, dashboardPathForRole)
 lib/types.ts              Shared TypeScript types matching FastAPI responses
-scripts/                  Icon generator, screenshot capture, phone-overflow finder
+scripts/                  Icon generator, screenshot capture, phone-overflow finder; ocr_bench/ and mscie_bench/ (evaluation data)
+notebooks/                Evaluation notebooks (ICSE, plain language, MSCIE), committed with outputs
 backend/
   main.py                 FastAPI app; runs `alembic upgrade head` at startup
   config.py               Every environment variable, read once into `settings`
@@ -78,6 +81,9 @@ backend/
   dependencies.py         get_current_user, require_patient / require_doctor / require_admin
   routers/                One router per feature area; thin (parse, check access, call a service)
   services/               Business logic (medicine_safety, patient_insights, report_service, OCR, AI, ...)
+    icse/                 Module 3: entities, flags, versioned clinical summaries, AI wording of key findings
+    mscie/                Module 4: medication-safety engine, alternatives, patient context, prescribing
+    knowledge/            CSV knowledge bases and their loader (tables.py)
   migrations/versions/    Alembic migrations (0001 baseline ... see `alembic current`)
   pyproject.toml          ruff lint and format settings
 tests/acceptance_test.py  End-to-end auth, ownership and safety checks over HTTP
