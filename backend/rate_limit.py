@@ -9,13 +9,12 @@ Keys
 
 Client IP
 The browser reaches FastAPI through the Next.js proxy, so the direct peer is usually
-that proxy. X-Forwarded-For is trusted only when the peer is in TRUSTED_PROXY_IPS
-(localhost by default); otherwise the peer address is used, so clients cannot spoof it.
+that proxy. The proxy sends the real client address in X-Forwarded-For and proves who it is
+with an X-Nora-Proxy header (services/proxy_trust.py). X-Forwarded-For is believed only with a
+valid proof, or from localhost; otherwise the peer address is used, so clients cannot spoof it.
 
-Every limit can be overridden with an environment variable (see LIMITS below), and
-RATE_LIMIT_ENABLED=false turns limiting off. Counters live in process memory: fine for
-one server process, but several workers would each count separately (use a shared
-store such as Redis via RATE_LIMIT_STORAGE_URI in that case).
+Limits are defaults in config.py. Counters live in process memory: fine for one server process,
+but several workers would each count separately (use a shared store such as Redis in that case).
 """
 
 import math
@@ -30,6 +29,7 @@ from slowapi.errors import RateLimitExceeded
 
 from auth import decode_access_token
 from config import settings
+from services.proxy_trust import PROXY_HEADER, valid_proxy_proof
 
 # Limit strings use the `limits` notation: "<count>/<second|minute|hour|day>".
 DEFAULT_LIMIT = settings.rate_limit_default
@@ -49,7 +49,7 @@ TRUSTED_PROXY_IPS = set(settings.trusted_proxy_ips)
 def client_ip(request: Request) -> str:
     peer = request.client.host if request.client else "unknown"
     forwarded = request.headers.get("x-forwarded-for")
-    if forwarded and peer in TRUSTED_PROXY_IPS:
+    if forwarded and (peer in TRUSTED_PROXY_IPS or valid_proxy_proof(request.headers.get(PROXY_HEADER))):
         first = forwarded.split(",")[0].strip()
         if first:
             return first

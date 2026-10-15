@@ -68,7 +68,7 @@ def test_defaults():
     assert defaults.rate_limit_default == "200/minute"
     assert defaults.rate_limit_login_account == "5/minute"
     assert defaults.max_upload_mb == 10
-    assert defaults.access_token_expire_minutes == 1440
+    assert defaults.access_token_expire_minutes == 15
     assert defaults.trusted_proxy_ips == ["127.0.0.1", "::1"]
 
 

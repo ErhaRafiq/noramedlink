@@ -56,8 +56,17 @@ class LoginRequest(BaseModel):
 
 class TokenResponse(BaseModel):
     access_token: str
+    refresh_token: str  # the Next.js server keeps both in HttpOnly cookies; browsers never see them
     token_type: str = "bearer"
     user: UserOut
+
+
+class MessageOut(BaseModel):
+    message: str
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str = Field(min_length=20, max_length=200)
 
 
 class VitalsOut(BaseModel):

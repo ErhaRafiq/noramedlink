@@ -248,20 +248,3 @@ def update_appointment(
     db.commit()
     db.refresh(appointment)
     return appointment_to_out(appointment, fees_for(db, {appointment.doctor_id} if appointment.doctor_id else set()))
-
-
-@router.delete("/{appointment_id}")
-def delete_appointment(
-    appointment_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db),
-):
-    appointment = db.get(Appointment, appointment_id)
-    if not appointment:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found.")
-    if not can_access_appointment(current_user, appointment):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Appointment access denied.")
-
-    db.delete(appointment)
-    db.commit()
-    return {"message": "Appointment deleted successfully."}

@@ -9,10 +9,11 @@ from fastapi import HTTPException, status
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from auth import create_access_token, hash_password
+from auth import hash_password
 from config import settings
 from models import DoctorProfile, PatientProfile, User
 from schemas import SignupRequest, TokenResponse, UserOut
+from services.sessions import start_session
 
 
 def normalize_email(email: str) -> str:
@@ -53,11 +54,11 @@ def user_to_out(user: User) -> UserOut:
     )
 
 
-def build_token_response(user: User) -> TokenResponse:
-    return TokenResponse(
-        access_token=create_access_token(str(user.id), {"email": user.email, "role": user.role.lower()}),
-        user=user_to_out(user),
-    )
+def build_token_response(db: Session, user: User) -> TokenResponse:
+    """Start a sign-in session for the user: an access token and a refresh token."""
+    access, refresh = start_session(db, user)
+    db.commit()
+    return TokenResponse(access_token=access, refresh_token=refresh, user=user_to_out(user))
 
 
 def normalize_pmdc(value: str) -> str:

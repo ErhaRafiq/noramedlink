@@ -21,7 +21,7 @@ PUBLIC = {
     "/files/{file_path:path}": "signed, short-lived links; the signature is checked in the handler",
     "/payments/stripe/webhook": "called by Stripe; trusted only with a valid Stripe-Signature (services/payments.py)",
     **{f"{prefix}/{path}": "signing in and signing up" for prefix in ("/auth", "/api/auth")
-       for path in ("login", "signup")},
+       for path in ("login", "signup", "refresh", "logout")},
 }  # fmt: skip
 
 # Older routes that return plain dicts; known, and not to grow. New routes need a response model.
@@ -103,3 +103,39 @@ def test_no_route_takes_a_user_id_from_the_query_string():
         if param.name.lower() in {"user_id", "userid", "patient_id", "doctor_id", "admin_id"}
     ]
     assert offenders == []
+
+
+# Signed-in routes open to every role, each reviewed: they answer only about the caller's own data,
+# or check the object (owner, treating doctor) inside the handler. Anything else needs a role.
+ANY_SIGNED_IN_ROLE = {
+    "/auth/me": "the caller's own account",
+    "/api/auth/me": "the caller's own account",
+    "/nlp/summarize": "summarises text the caller pastes; stores nothing",
+    "/appointments": "lists the caller's own appointments (patients: booked by them; doctors: booked with them)",
+    "/appointments/{appointment_id}": "owner, treating doctor or admin only (can_access_appointment); no payment status changes",
+    "/payments": "the caller's own payments",
+}
+
+
+def test_a_route_without_a_role_is_a_reviewed_exception():
+    roles = {require_admin, require_doctor, require_patient}
+    no_role = {
+        r.path
+        for r in ROUTES
+        if get_current_user in dependencies(r.dependant) and not roles & set(dependencies(r.dependant))
+    }
+    assert no_role == set(ANY_SIGNED_IN_ROLE), f"routes open to every role: {sorted(no_role ^ set(ANY_SIGNED_IN_ROLE))}"
+
+
+def test_each_role_has_only_its_own_routes():
+    """A route names at most one role: nothing is shared between patient, doctor and admin by accident."""
+    several = {}
+    for route in ROUTES:
+        required = {
+            role.__name__
+            for role in (require_admin, require_doctor, require_patient)
+            if role in dependencies(route.dependant)
+        }
+        if len(required) > 1:
+            several[route.path] = sorted(required)
+    assert several == {}

@@ -707,6 +707,23 @@ class PatientDashboardAccess(Base):
     )
 
 
+class RefreshToken(Base):
+    """A sign-in session's refresh token (services/sessions.py). Only a hash is stored. Each use
+    rotates it: the old row is revoked and a new one issued in the same family. A revoked token
+    used again means a stolen copy, so the whole family is revoked."""
+
+    __tablename__ = "refresh_tokens"
+    __table_args__ = (Index("refresh_tokens_user_id_idx", "user_id"), Index("refresh_tokens_family_idx", "family_id"))
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    family_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
 class DashboardOtpAttempt(Base):
     """Every attempt to redeem a patient dashboard OTP, for rate limiting and audit.
     The OTP code itself is never stored here."""

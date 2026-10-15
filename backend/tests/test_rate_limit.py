@@ -60,3 +60,25 @@ def test_account_limit_allows_the_limit_then_returns_429():
     assert int(caught.value.headers["Retry-After"]) >= 1
     # Another account is unaffected.
     enforce_account_limit("login-test", f"other-{email}", "5/minute")
+
+
+def test_forwarded_header_is_used_from_our_proxy_with_valid_proof(monkeypatch):
+    from dataclasses import replace
+
+    from services import proxy_trust
+
+    monkeypatch.setattr(proxy_trust, "settings", replace(proxy_trust.settings, jwt_secret="shared-test-secret"))
+    proof = proxy_trust.expected_proof()
+    headers = {"X-Forwarded-For": "198.51.100.1", "X-Nora-Proxy": proof}
+    assert client_ip(make_request("10.1.2.3", headers)) == "198.51.100.1"
+    forged = {"X-Forwarded-For": "198.51.100.1", "X-Nora-Proxy": "0" * 64}
+    assert client_ip(make_request("10.1.2.3", forged)) == "10.1.2.3"
+
+
+def test_without_a_shared_secret_there_is_no_proof(monkeypatch):
+    from dataclasses import replace
+
+    from services import proxy_trust
+
+    monkeypatch.setattr(proxy_trust, "settings", replace(proxy_trust.settings, jwt_secret=""))
+    assert proxy_trust.expected_proof() is None and not proxy_trust.valid_proxy_proof("anything")

@@ -56,7 +56,7 @@ class Settings:
     # Auth
     jwt_secret: str = ""  # empty: a random per-process secret (tokens die on restart)
     jwt_algorithm: str = "HS256"
-    access_token_expire_minutes: int = 1440
+    access_token_expire_minutes: int = 15  # short; the refresh token (services/sessions.py) renews it
     admin_invite_code: str = ""
     frontend_origin: str = "http://localhost:3000"
 
