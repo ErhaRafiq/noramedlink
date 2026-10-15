@@ -24,7 +24,8 @@ VERIFIED_DOCTOR_STATUS = "approved"
 PATIENT_SETTABLE_STATUSES = {"CANCELLED"}
 
 
-def appointment_to_out(appointment: Appointment) -> AppointmentOut:
+def appointment_to_out(appointment: Appointment, fees: dict[int, int | None] | None = None) -> AppointmentOut:
+    """`fees`: doctor id -> current consultation fee, looked up once per page (fees_for)."""
     return AppointmentOut(
         id=appointment.id,
         user_id=appointment.user_id,
@@ -36,9 +37,17 @@ def appointment_to_out(appointment: Appointment) -> AppointmentOut:
         notes=appointment.notes,
         specialty=appointment.specialty,
         reason=appointment.reason,
+        consultation_fee=(fees or {}).get(appointment.doctor_id) if appointment.doctor_id else None,
         created_at=appointment.created_at,
         updated_at=appointment.updated_at,
     )
+
+
+def fees_for(db: Session, doctor_ids: set[int]) -> dict[int, int | None]:
+    if not doctor_ids:
+        return {}
+    rows = db.query(DoctorProfile.user_id, DoctorProfile.consultation_fee).filter(DoctorProfile.user_id.in_(doctor_ids))
+    return dict(rows.all())
 
 
 def can_access_appointment(user: User, appointment: Appointment) -> bool:
@@ -68,6 +77,7 @@ def doctor_to_out(doctor: User) -> AppointmentDoctorOut:
         name=doctor.full_name,
         specialty=profile.specialization if profile else "General Medicine",
         location=profile.hospital_name if profile else "Nora MedLink Clinic",
+        consultation_fee=profile.consultation_fee if profile else None,
     )
 
 
@@ -136,7 +146,9 @@ def list_appointments(
     else:
         query = query.filter(Appointment.user_id == current_user.id)
 
-    return paginate(query.order_by(Appointment.date.desc(), Appointment.id.desc()), params, appointment_to_out)
+    page = paginate(query.order_by(Appointment.date.desc(), Appointment.id.desc()), params, lambda a: a)
+    fees = fees_for(db, {a.doctor_id for a in page["items"] if a.doctor_id})
+    return {**page, "items": [appointment_to_out(a, fees) for a in page["items"]]}
 
 
 @router.post("", response_model=AppointmentBookingResponse, status_code=status.HTTP_201_CREATED)
@@ -190,7 +202,7 @@ def create_appointment(
     )
     return AppointmentBookingResponse(
         message=message,
-        appointment=appointment_to_out(appointment),
+        appointment=appointment_to_out(appointment, fees_for(db, {doctor.id})),
         dashboard_access_granted=dashboard_access_granted,
     )
 
@@ -209,8 +221,10 @@ def update_appointment(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Appointment access denied.")
 
     role = current_user.role.lower()
-    if payload.payment_status is not None and role != "admin":
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only an admin can change payment status.")
+    if payload.payment_status is not None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Payment status changes only when Stripe confirms a payment."
+        )
     if (
         payload.status is not None
         and role == "patient"
@@ -228,14 +242,12 @@ def update_appointment(
         appointment.date = new_date
     if payload.status is not None:
         appointment.status = payload.status.strip().upper()
-    if payload.payment_status is not None:
-        appointment.payment_status = payload.payment_status.strip().upper()
     if payload.notes is not None:
         appointment.notes = payload.notes.strip() or None
 
     db.commit()
     db.refresh(appointment)
-    return appointment_to_out(appointment)
+    return appointment_to_out(appointment, fees_for(db, {appointment.doctor_id} if appointment.doctor_id else set()))
 
 
 @router.delete("/{appointment_id}")

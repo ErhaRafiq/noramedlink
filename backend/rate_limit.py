@@ -39,6 +39,7 @@ SIGNUP_LIMIT = settings.rate_limit_signup  # per IP
 UPLOAD_LIMIT = settings.rate_limit_upload  # per user
 AI_LIMIT = settings.rate_limit_ai  # per user: OCR, summaries, generated insights
 ACCESS_CODE_LIMIT = settings.rate_limit_access_code  # per patient, issuing doctor codes
+PAYMENT_LIMIT = settings.rate_limit_payment  # per user: starting a Stripe Checkout
 
 RATE_LIMIT_ENABLED = settings.rate_limit_enabled
 STORAGE_URI = settings.rate_limit_storage_uri

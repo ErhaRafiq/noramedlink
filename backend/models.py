@@ -110,6 +110,9 @@ class DoctorProfile(Base):
     specialization: Mapped[str] = mapped_column(String(120), nullable=False)
     hospital_name: Mapped[str] = mapped_column(String(180), nullable=False)
     verification_status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
+    # Set by the doctor; what a patient pays online for one consultation (whole PKR). None: not set,
+    # so the appointment cannot be paid online yet.
+    consultation_fee: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -187,12 +190,26 @@ class Payment(Base):
     transaction_id: Mapped[str | None] = mapped_column(String(160), nullable=True)
     invoice_number: Mapped[str | None] = mapped_column(String(120), unique=True, nullable=True)
     invoice_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    # Stripe Checkout: the session that collects this payment; the webhook marks it paid.
+    currency: Mapped[str] = mapped_column(String(3), default="pkr", server_default="pkr", nullable=False)
+    stripe_session_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class StripeEvent(Base):
+    """Stripe webhook events already applied, so a redelivered event changes nothing twice."""
+
+    __tablename__ = "stripe_events"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)  # Stripe's event id (evt_...)
+    type: Mapped[str] = mapped_column(String(80), nullable=False)
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class Vitals(Base):

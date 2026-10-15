@@ -19,6 +19,7 @@ PUBLIC = {
     "/health/database": "up or down only, no address or credentials",
     "/appointments/doctors": "the public list of verified, active doctors",
     "/files/{file_path:path}": "signed, short-lived links; the signature is checked in the handler",
+    "/payments/stripe/webhook": "called by Stripe; trusted only with a valid Stripe-Signature (services/payments.py)",
     **{f"{prefix}/{path}": "signing in and signing up" for prefix in ("/auth", "/api/auth")
        for path in ("login", "signup")},
 }  # fmt: skip

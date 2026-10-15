@@ -1,46 +1,27 @@
-from uuid import uuid4
+"""Consultation payments: the patient's list, Stripe Checkout, and Stripe's webhook.
 
-from fastapi import APIRouter, Depends, HTTPException, status
+The rules live in services/payments.py. The webhook is called by Stripe, not by a signed-in user;
+it is trusted only when Stripe's signature checks out.
+"""
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from sqlalchemy.orm import Session
+from starlette.concurrency import run_in_threadpool
 
 from database import get_db
-from dependencies import get_current_user, require_admin, require_patient
-from models import Appointment, Payment, User
+from dependencies import get_current_user, require_patient
+from models import Payment, User
 from pagination import Page, PageParams, page_params, paginate
-from schemas import PaymentCreate, PaymentOut, PaymentUpdate
+from rate_limit import PAYMENT_LIMIT, limiter
+from schemas import CheckoutOut, CheckoutRequest, PaymentOut, WebhookAck
+from services import payments
+from services.payments import PaymentError
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
-WALLET_METHODS = {"JAZZCASH", "EASYPAISA", "NAYAPAY"}
-PAYMENT_METHODS = WALLET_METHODS | {"CARD", "RAAST", "CASH"}
-PAYMENT_STATUSES = {"PENDING", "SUCCESS", "FAILED", "REFUNDED", "PAY_ON_VISIT"}
 
-
-def create_reference() -> str:
-    return f"NML-{uuid4().hex[:12].upper()}"
-
-
-def create_invoice_number() -> str:
-    return f"INV-{uuid4().hex[:10].upper()}"
-
-
-def payment_to_out(payment: Payment) -> PaymentOut:
-    return PaymentOut(
-        id=payment.id,
-        user_id=payment.user_id,
-        appointment_id=payment.appointment_id,
-        amount=payment.amount,
-        method=payment.method,
-        purpose=payment.purpose,
-        status=payment.status,
-        phone=payment.phone,
-        reference=payment.reference,
-        transaction_id=payment.transaction_id,
-        invoice_number=payment.invoice_number,
-        invoice_url=payment.invoice_url,
-        created_at=payment.created_at,
-        updated_at=payment.updated_at,
-    )
+def _http(error: PaymentError) -> HTTPException:
+    return HTTPException(status_code=error.status_code, detail=error.detail)
 
 
 @router.get("", response_model=Page[PaymentOut])
@@ -54,80 +35,44 @@ def list_payments(
         .filter(Payment.user_id == current_user.id)
         .order_by(Payment.created_at.desc(), Payment.id.desc())
     )
-    return paginate(query, params, payment_to_out)
+    return paginate(query, params, payments.to_out)
 
 
-@router.post("", response_model=PaymentOut, status_code=status.HTTP_201_CREATED)
-def create_payment(
-    payload: PaymentCreate, current_user: User = Depends(require_patient), db: Session = Depends(get_db)
-):
-    method = payload.method.strip().upper()
-    if method not in PAYMENT_METHODS:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unsupported payment method.")
-
-    phone = payload.phone.strip() if payload.phone else None
-    if method in WALLET_METHODS and not phone:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Phone number is required for wallet payments."
-        )
-
-    appointment = None
-    if payload.appointment_id:
-        appointment = (
-            db.query(Appointment)
-            .filter(Appointment.id == payload.appointment_id, Appointment.user_id == current_user.id)
-            .first()
-        )
-        if not appointment:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Appointment not found for this user.")
-
-    # No payment gateway is connected, so a wallet payment is only recorded: it stays
-    # PENDING until an admin confirms it (PUT /payments/{id}). Cash is paid on visit.
-    payment_status = "PAY_ON_VISIT" if method == "CASH" else "PENDING"
-    payment = Payment(
-        user_id=current_user.id,
-        appointment_id=appointment.id if appointment else None,
-        amount=payload.amount,
-        method=method,
-        purpose=payload.purpose.strip(),
-        phone=phone,
-        reference=create_reference(),
-        invoice_number=create_invoice_number(),
-        status=payment_status,
-    )
-
-    db.add(payment)
-    db.commit()
-    db.refresh(payment)
-    return payment_to_out(payment)
-
-
-@router.put("/{payment_id}", response_model=PaymentOut)
-def update_payment(
-    payment_id: int,
-    payload: PaymentUpdate,
-    current_user: User = Depends(require_admin),
+@router.post("/checkout", response_model=CheckoutOut, status_code=status.HTTP_201_CREATED)
+@limiter.limit(PAYMENT_LIMIT)
+def start_checkout(
+    request: Request,
+    payload: CheckoutRequest,
+    current_user: User = Depends(require_patient),
     db: Session = Depends(get_db),
 ):
-    # Admin only: payers must not be able to mark their own payments as paid.
-    payment = db.get(Payment, payment_id)
-    if not payment:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found.")
+    """Open Stripe's hosted payment page for one of the patient's own appointments, at the doctor's fee."""
+    try:
+        payment, url = payments.start_checkout(db, current_user, payload.appointment_id)
+    except PaymentError as error:
+        raise _http(error) from error
+    return CheckoutOut(payment=payments.to_out(payment), checkout_url=url)
 
-    if payload.status is not None:
-        normalized_status = payload.status.strip().upper()
-        if normalized_status not in PAYMENT_STATUSES:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid payment status.")
-        payment.status = normalized_status
-        if payment.appointment_id:
-            appointment = db.get(Appointment, payment.appointment_id)
-            if appointment:
-                appointment.payment_status = normalized_status
-    if payload.transaction_id is not None:
-        payment.transaction_id = payload.transaction_id.strip() or None
-    if payload.invoice_url is not None:
-        payment.invoice_url = payload.invoice_url.strip() or None
 
-    db.commit()
-    db.refresh(payment)
-    return payment_to_out(payment)
+@router.get("/session/{session_id}", response_model=PaymentOut)
+def payment_for_session(session_id: str, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+    """The payment behind a Checkout session, for the page Stripe sends the patient back to."""
+    try:
+        return payments.to_out(payments.payment_for_session(db, current_user, session_id))
+    except PaymentError as error:
+        raise _http(error) from error
+
+
+@router.post("/stripe/webhook", response_model=WebhookAck)
+async def stripe_webhook(
+    request: Request,
+    stripe_signature: str | None = Header(default=None, alias="Stripe-Signature"),
+    db: Session = Depends(get_db),
+):
+    payload = await request.body()
+    try:
+        event = payments.verified_event(payload, stripe_signature)
+    except PaymentError as error:
+        raise _http(error) from error
+    # The database work is synchronous: keep it off the event loop.
+    return WebhookAck(received=True, outcome=await run_in_threadpool(payments.apply_event, db, event))

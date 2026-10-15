@@ -17,12 +17,14 @@ Safety:
 
 Usage (from the repo root, with `npm run dev` running):
     backend\\venv\\Scripts\\python.exe tests\\acceptance_test.py
-Optional: PHASE0_BASE_URL=http://localhost:3001
+Optional: PHASE0_BASE_URL=http://localhost:3001 (Next.js), PHASE0_BACKEND_URL=http://localhost:8000 (FastAPI)
 """
 
 from __future__ import annotations
 
 import base64
+import hashlib
+import hmac
 import io
 import json
 import os
@@ -44,9 +46,12 @@ sys.path.insert(0, str(ROOT / "backend"))
 
 from database import DATABASE_URL, get_upload_root_path  # noqa: E402  (backend/database.py; loads .env files first)
 from auth import create_access_token  # noqa: E402  (backend/auth.py; reads JWT secret from env)
+from config import settings  # noqa: E402  (Stripe webhook secret, to sign test events; never printed)
 from services.file_access import _signature  # noqa: E402  (to forge expired links in tests)
 
 BASE_URL = os.environ.get("PHASE0_BASE_URL", "http://localhost:3000").rstrip("/")
+# FastAPI itself, for calls that do not go through the Next.js proxy (Stripe webhooks).
+BACKEND_URL = os.environ.get("PHASE0_BACKEND_URL", "http://localhost:8000").rstrip("/")
 TEST_PREFIX = "phase0-test-"
 LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1"}
 
@@ -87,7 +92,8 @@ FASTAPI_PATIENT_ROUTES = [
     ("PATCH", "/api/backend/patient/medicine-reminders/1/mark-taken"),
     ("PATCH", "/api/backend/patient/medicine-reminders/1/skip"),
     ("POST", "/api/backend/appointments"),
-    ("POST", "/api/backend/payments"),
+    ("POST", "/api/backend/payments/checkout"),
+    ("GET", "/api/backend/payments/session/cs_x"),
     ("GET", "/api/backend/patient/overview"),
     ("POST", "/api/backend/patient/dashboard-otp"),
     ("POST", "/api/backend/emergency/requests"),
@@ -100,7 +106,6 @@ FASTAPI_PATIENT_ROUTES = [
 ]
 # FastAPI endpoints restricted to admins.
 FASTAPI_ADMIN_ROUTES = [
-    ("PUT", "/api/backend/payments/1"),
     ("GET", "/api/backend/api/admin/dashboard-stats"),
     ("GET", "/api/backend/api/admin/users"),
     ("GET", "/api/backend/api/admin/doctors/pending"),
@@ -314,6 +319,8 @@ def cleanup_test_users() -> None:
             if table in existing:
                 deleted += conn.execute(text(f"delete from {table} where {column} = any(:ids)"), {"ids": ids}).rowcount
         users = conn.execute(text("delete from users where id = any(:ids)"), {"ids": ids}).rowcount
+        # Stripe events signed by the payment checks (ids carry the test prefix; no user column).
+        deleted += conn.execute(text("delete from stripe_events where id like :p"), {"p": f"evt_{TEST_PREFIX}%"}).rowcount
     upload_root = get_upload_root_path()
     folders = 0
     for user_id in ids:
@@ -563,37 +570,93 @@ def run_tests() -> None:
     check("a date without a time zone is accepted (was a 500)", response.status_code == 200, f"got {response.status_code}")
     response = call("PUT", appt, tok_a, {"date": later.isoformat(), "status": "BOOKED"})
     check("patient setting status BOOKED is still refused -> 403", response.status_code == 403, f"got {response.status_code}")
-    response = call("PUT", appt, tok_admin, {"payment_status": "SUCCESS"})
-    check("admin can change payment status -> 200", response.status_code == 200 and response.json().get("payment_status") == "SUCCESS",
-          f"got {response.status_code}")
     response = call("PUT", appt, tok_a, {"status": "CANCELLED"})
     check("patient can cancel own appointment -> 200", response.status_code == 200 and response.json().get("status") == "CANCELLED",
           f"got {response.status_code}")
 
-    print("\n[5f] Payments: payers cannot mark payments paid")
-    pay = {"amount": 1500, "method": "CASH", "purpose": "Consultation", "appointment_id": booked.get("id"), "user_id": patient_b}
-    response = call("POST", "/api/backend/payments", tok_a, pay)
-    payment = response.json() if response.status_code == 201 else {}
-    check("A records a cash payment for own appointment -> 201 PAY_ON_VISIT",
-          response.status_code == 201 and payment.get("status") == "PAY_ON_VISIT" and payment.get("user_id") == patient_a,
-          f"got {response.status_code} {payment.get('status')}")
-    response = call("POST", "/api/backend/payments", tok_b, pay)
-    check("B paying against A's appointment -> 404", response.status_code == 404, f"got {response.status_code}")
-    for wallet in ("EASYPAISA", "JAZZCASH", "NAYAPAY"):
-        response = call("POST", "/api/backend/payments", tok_a,
-                        {"amount": 500, "method": wallet, "purpose": "Consultation", "phone": "03000000000"})
-        check(f"{wallet} payment is recorded as PENDING, not SUCCESS (no gateway)",
-              response.status_code == 201 and response.json().get("status") == "PENDING",
-              f"got {response.status_code} {response.json().get('status') if response.status_code == 201 else ''}")
-    response = call("PUT", f"/api/backend/payments/{payment.get('id')}", tok_a, {"status": "SUCCESS"})
-    check("A marking own payment SUCCESS -> 403", response.status_code == 403, f"got {response.status_code}")
-    response = call("PUT", f"/api/backend/payments/{payment.get('id')}", tok_doctor, {"status": "SUCCESS"})
-    check("doctor marking a payment SUCCESS -> 403", response.status_code == 403, f"got {response.status_code}")
-    response = call("PUT", f"/api/backend/payments/{payment.get('id')}", tok_admin, {"status": "SUCCESS"})
-    check("admin marks it SUCCESS -> 200", response.status_code == 200 and response.json().get("status") == "SUCCESS",
+    print("\n[5f] Payments: the doctor sets the fee, Stripe confirms; nobody marks a payment paid by hand")
+    response = call("PUT", "/api/backend/doctor/consultation-fee", tok_doctor, {"consultation_fee": 1500})
+    check("doctor sets a consultation fee -> 200", response.status_code == 200 and response.json().get("consultation_fee") == 1500,
           f"got {response.status_code}")
-    check("linked appointment payment status follows",
-          scalar("select payment_status from appointments where id = :id", id=booked.get("id", 0)) == "SUCCESS")
+    response = call("PUT", "/api/backend/doctor/consultation-fee", tok_doctor, {"consultation_fee": 50})
+    check("a fee under PKR 200 -> 422", response.status_code == 422, f"got {response.status_code}")
+    response = call("PUT", "/api/backend/doctor/consultation-fee", tok_a, {"consultation_fee": 10})
+    check("a patient setting a fee -> 403", response.status_code == 403, f"got {response.status_code}")
+    listed = {d["doctor_id"]: d for d in call("GET", "/api/backend/appointments/doctors").json()}
+    check("the directory shows the doctor's fee", (listed.get(doctor) or {}).get("consultation_fee") == 1500)
+
+    response = call("POST", "/api/backend/appointments", tok_a, {"doctor_id": doctor, "date": future, "reason": "Payment test"})
+    to_pay = (response.json() or {}).get("appointment", {}) if response.status_code == 201 else {}
+    check("a new appointment carries the fee and is unpaid",
+          to_pay.get("consultation_fee") == 1500 and to_pay.get("payment_status") == "PENDING", f"got {to_pay}")
+    response = call("POST", "/api/backend/payments/checkout", tok_b, {"appointment_id": to_pay.get("id")})
+    check("B opening checkout for A's appointment -> 404", response.status_code == 404, f"got {response.status_code}")
+    response = call("POST", "/api/backend/payments/checkout", tok_doctor, {"appointment_id": to_pay.get("id")})
+    check("a doctor opening checkout -> 403", response.status_code == 403, f"got {response.status_code}")
+    response = call("POST", "/api/backend/payments/checkout", tok_a, {"appointment_id": booked.get("id")})
+    check("checkout for a cancelled appointment -> 409", response.status_code == 409, f"got {response.status_code}")
+    if not settings.stripe_secret_key:
+        response = call("POST", "/api/backend/payments/checkout", tok_a, {"appointment_id": to_pay.get("id")})
+        check("checkout without a Stripe key -> 503 and no payment recorded", response.status_code == 503
+              and scalar("select count(*) from payments where appointment_id = :id", id=to_pay.get("id", 0)) == 0,
+              f"got {response.status_code}")
+    response = call("PUT", f"/api/backend/appointments/{to_pay.get('id')}", tok_admin, {"payment_status": "PAID"})
+    check("even an admin cannot mark an appointment paid -> 403", response.status_code == 403, f"got {response.status_code}")
+
+    if not settings.stripe_webhook_secret:
+        response = call("POST", "/api/backend/payments/stripe/webhook", None, {})
+        check("webhook without STRIPE_WEBHOOK_SECRET set -> 503", response.status_code == 503, f"got {response.status_code}")
+        print("  SKIP  signed webhook checks (set STRIPE_WEBHOOK_SECRET to run them; no Stripe call is made)")
+    else:
+        # Stripe calls FastAPI directly (the Next.js proxy does not pass Stripe-Signature on).
+        backend = httpx.Client(base_url=BACKEND_URL, timeout=30)
+        session_id = f"cs_{TEST_PREFIX}{run_id}"
+        with engine.begin() as conn:
+            conn.execute(text(
+                "insert into payments (user_id, appointment_id, amount, currency, method, purpose, status, reference, "
+                "stripe_session_id) values (:u, :a, 1500, 'pkr', 'STRIPE_CARD', 'Consultation', 'PENDING', :r, :s)"),
+                {"u": patient_a, "a": to_pay.get("id"), "r": f"{TEST_PREFIX}{run_id}", "s": session_id})
+
+        def stripe_event(event_id: str, kind: str, **session) -> tuple[bytes, dict]:
+            body = json.dumps({"id": f"evt_{TEST_PREFIX}{run_id}-{event_id}", "type": kind, "data": {"object": {
+                "id": session_id, "payment_status": "paid", "amount_total": 150_000, "currency": "pkr",
+                "payment_intent": "pi_test", **session}}}).encode()
+            stamp = int(time.time())
+            digest = hmac.new(settings.stripe_webhook_secret.encode(), f"{stamp}.".encode() + body, hashlib.sha256).hexdigest()
+            return body, {"Stripe-Signature": f"t={stamp},v1={digest}", "Content-Type": "application/json"}
+
+        def paid_status() -> str:
+            return scalar("select status from payments where stripe_session_id = :s", s=session_id)
+
+        body, headers = stripe_event("forged", "checkout.session.completed")
+        response = backend.post("/payments/stripe/webhook", content=body, headers={**headers, "Stripe-Signature": "t=1,v1=00"})
+        check("a webhook with a forged signature -> 400, nothing paid", response.status_code == 400 and paid_status() == "PENDING",
+              f"got {response.status_code}")
+        body, headers = stripe_event("short", "checkout.session.completed", amount_total=100)
+        response = backend.post("/payments/stripe/webhook", content=body, headers=headers)
+        check("a paid session for the wrong amount does not mark it paid",
+              response.status_code == 200 and response.json().get("outcome") == "amount mismatch" and paid_status() == "PENDING",
+              f"got {response.status_code}")
+        body, headers = stripe_event("paid", "checkout.session.completed")
+        response = backend.post("/payments/stripe/webhook", content=body, headers=headers)
+        check("a signed checkout.session.completed marks the payment PAID",
+              response.status_code == 200 and response.json().get("outcome") == "paid" and paid_status() == "PAID",
+              f"got {response.status_code}")
+        check("and the appointment PAID",
+              scalar("select payment_status from appointments where id = :id", id=to_pay.get("id", 0)) == "PAID")
+        response = backend.post("/payments/stripe/webhook", content=body, headers=headers)
+        check("the same event delivered again changes nothing (duplicate)", response.json().get("outcome") == "duplicate")
+        body, headers = stripe_event("late-expiry", "checkout.session.expired")
+        response = backend.post("/payments/stripe/webhook", content=body, headers=headers)
+        check("a late 'expired' event never undoes a paid payment",
+              response.json().get("outcome") == "already paid" and paid_status() == "PAID")
+        response = call("GET", f"/api/backend/payments/session/{session_id}", tok_a)
+        check("A reads the paid payment for the result page", response.status_code == 200 and response.json().get("status") == "PAID")
+        response = call("GET", f"/api/backend/payments/session/{session_id}", tok_b)
+        check("B reading A's payment -> 404", response.status_code == 404, f"got {response.status_code}")
+        response = call("POST", "/api/backend/payments/checkout", tok_a, {"appointment_id": to_pay.get("id")})
+        check("checkout for a paid appointment -> 409", response.status_code == 409, f"got {response.status_code}")
+        backend.close()
     check("B sees no payments", call("GET", "/api/backend/payments", tok_b).json()["items"] == [])
 
     print("\n[5g] Home-visit requests: no invented dispatch")

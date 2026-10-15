@@ -384,6 +384,7 @@ class AppointmentCreate(BaseModel):
 class AppointmentUpdate(BaseModel):
     date: datetime | None = None
     status: str | None = Field(default=None, max_length=40)
+    # Always refused (403): only Stripe's webhook marks an appointment paid (services/payments.py).
     payment_status: str | None = Field(default=None, max_length=40)
     notes: str | None = None
 
@@ -399,6 +400,8 @@ class AppointmentOut(BaseModel):
     notes: str | None
     specialty: str | None = None
     reason: str | None = None
+    # The doctor's current fee (whole PKR), what the patient pays online; None: not set.
+    consultation_fee: int | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -419,38 +422,46 @@ class AppointmentDoctorOut(BaseModel):
     # never an estimate.
     rating: float | None = None
     available_today: bool | None = None
+    consultation_fee: int | None = None  # whole PKR, set by the doctor; None: not set
     source: Literal["registered"] = "registered"
-
-
-class PaymentCreate(BaseModel):
-    amount: int = Field(gt=0)
-    method: str = Field(min_length=1, max_length=40)
-    purpose: str = Field(min_length=1, max_length=160)
-    phone: str | None = Field(default=None, max_length=40)
-    appointment_id: int | None = None
-
-
-class PaymentUpdate(BaseModel):
-    status: str | None = Field(default=None, max_length=40)
-    transaction_id: str | None = Field(default=None, max_length=160)
-    invoice_url: str | None = Field(default=None, max_length=500)
 
 
 class PaymentOut(BaseModel):
     id: int
     user_id: int
     appointment_id: int | None
-    amount: int
+    amount: int  # whole units of `currency` (PKR)
+    currency: str
     method: str
     purpose: str
-    status: str
-    phone: str | None
+    status: str  # PENDING, PAID, FAILED or EXPIRED (older manual records may show other values)
     reference: str
-    transaction_id: str | None
     invoice_number: str | None
-    invoice_url: str | None
+    paid_at: datetime | None
     created_at: datetime
     updated_at: datetime
+
+
+class CheckoutRequest(BaseModel):
+    appointment_id: int
+
+
+class CheckoutOut(BaseModel):
+    payment: PaymentOut
+    checkout_url: str  # Stripe's hosted payment page
+
+
+class WebhookAck(BaseModel):
+    received: bool
+    outcome: str
+
+
+class ConsultationFeeIn(BaseModel):
+    consultation_fee: int | None = Field(default=None, ge=200, le=100_000)  # whole PKR; None clears it
+
+
+class ConsultationFeeOut(BaseModel):
+    consultation_fee: int | None
 
 
 class ReminderCreate(BaseModel):
