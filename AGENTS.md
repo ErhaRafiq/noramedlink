@@ -40,7 +40,7 @@ It is **not** a certified medical device. Every medical feature is advisory only
 | Database | PostgreSQL; schema managed by **Alembic** migrations |
 | Medication safety | MSCIE (`services/mscie/`): deterministic rules from CSV tables (interactions, contraindications, allergy cross-reactivity, dose limits, duplicate classes, alternatives, ranking weights) decide every alert; Behind the curated interaction rules: 160,235 rated pairs from DDInter 2.0 (`services/mscie/ddinter.py`, CC BY-NC-SA 4.0, academic use only), used for gaps and whenever they rate a pair higher. openFDA label text is shown as supporting evidence only and never changes an alert. High-risk alerts need a written reason to confirm, stored in `safety_overrides` |
 | Data | Knowledge bases are CSV files in `services/knowledge/data/` (data card `README.md`, sources in `sources.csv`), loaded with pandas and validated with pandera in the tests; medicine search uses rapidfuzz. Evaluation notebooks in `notebooks/` (scikit-learn, matplotlib; `requirements-ds.txt`). The knowledge bases are demo data, not clinically reviewed |
-| Auth | JWT (HS256) issued by FastAPI, stored in `localStorage` on the client |
+| Auth | FastAPI issues a 15-minute JWT (HS256) and a rotating refresh token (7 days, stored hashed in `refresh_tokens`). **The browser never holds either**: the Next.js server keeps them in HttpOnly, SameSite cookies (`nora_at`, `nora_rt`; `lib/server-session.ts`, `app/api/auth/*`), adds the access token to calls it forwards, and renews it from the refresh cookie when it expires. A reused refresh token revokes its whole session. Only the user's profile is in `localStorage` |
 | Payments | Stripe Checkout (hosted page) at the doctor's consultation fee; only Stripe's signed webhook marks a payment paid (`services/payments.py`). No JazzCash, Easypaisa or manual confirmation |
 | Config | **One `.env` in the repo root** for Next.js and FastAPI (template: root `.env.example`); real environment variables win (Render) |
 | Hosting | Render monorepo, `render.yaml`: nora-web (Next.js), nora-api (FastAPI, `backend/`), nora-db (PostgreSQL), free plan |
@@ -57,7 +57,7 @@ The SRS/SDS documents describe some of these; the code is the source of truth.
 ```
 app/                      Next.js pages (App Router)
   api/backend/[...path]/  Same-origin proxy: the browser reaches FastAPI only through this
-  api/auth/*              Login and signup proxies (signup is direct; there is no email or SMS code)
+  api/auth/*              login, signup, logout: set or clear the HttpOnly session cookies (signup is direct; no email or SMS code)
   api/drug-check/         Old OpenFDA lookup, used by no page; superseded by services/mscie/openfda.py (ask before deleting)
   dashboard/patient/      Patient dashboard (renders components/patient/PatientWorkspace.tsx)
   dashboard/doctor/       Doctor dashboard (renders components/dashboard/DoctorDashboard.tsx)
@@ -131,7 +131,7 @@ The app needs **two terminals running at the same time**: backend and frontend.
   Do not add Next.js API routes with business logic or database access.
 - **The frontend calls the backend only through `lib/api.ts`**, which goes through the
   `/api/backend` proxy. Never call `localhost:8000` from the browser.
-- **Identity comes only from the verified token.** Never read a user ID from the query string or
+- **Identity comes only from the verified token** (the session cookie, added by the Next.js proxy). Never read a user ID from the query string or
   request body. Use the `require_*` dependencies for role checks.
 - **Ownership checks are mandatory:** a patient touches only their own data; a doctor sees a
   patient's data only while an active `PatientDashboardAccess` grant exists; admin routes use

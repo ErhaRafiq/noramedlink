@@ -946,7 +946,7 @@ def run_tests() -> None:
           and scalar("select verification_status from doctor_profiles where id = :id", id=profile_id) == "rejected")
 
     taken = scalar("select pmdc_number from doctor_profiles where user_id = :id", id=doctor)
-    response = call("POST", "/api/backend/api/auth/signup", body={
+    response = call("POST", "/api/auth/signup", body={
         "role": "doctor", "full_name": f"{TEST_PREFIX}pmdc duplicate", "email": f"{TEST_PREFIX}pmdc-dup-{run_id}@example.com",
         "password": "Pmdc-test-pass-1", "confirm_password": "Pmdc-test-pass-1", "phone": f"0311 {secrets.randbelow(10**7):07d}",
         "pmdc_number": f"  {taken.upper()} ", "specialization": "Cardiology", "hospital_name": "Test Hospital",
@@ -1141,6 +1141,69 @@ def run_tests() -> None:
     check("the doctor's list keeps the cancelled prescription", response.status_code == 200 and response.json()["total"] == 1)
     create_grant(doctor_c, patient_c, expires_in=timedelta(hours=-1))
     check("after the grant expires -> 403", call("POST", f"{rx_base}/medication-check", tok_doctor_c, body).status_code == 403)
+
+    print("\n[18] Sessions: HttpOnly cookies, refresh-token rotation, replay detection, logout")
+    from auth import hash_password
+
+    password = "Session-test-pass-1"
+    session_user = create_user("session", "PATIENT")
+    with engine.begin() as conn:
+        conn.execute(text("update users set hashed_password = :pw, email = :email where id = :id"),
+                     {"pw": hash_password(password), "email": f"{TEST_PREFIX}session-{run_id}@example.com", "id": session_user})
+    session_email = f"{TEST_PREFIX}session-{run_id}@example.com"
+
+    response = call("POST", "/api/auth/login", body={"email": session_email, "password": password})
+    set_cookies = response.headers.get_list("set-cookie")
+    check("login through the website -> 200 with only the user in the body",
+          response.status_code == 200 and set(response.json()) == {"user"} and response.json()["user"]["email"] == session_email,
+          f"got {response.status_code} {list(response.json())}")
+    cookie_names = {c.split("=", 1)[0] for c in set_cookies}
+    check("the access and refresh tokens are set as cookies", {"nora_at", "nora_rt"} <= cookie_names, f"got {cookie_names}")
+    check("both cookies are HttpOnly and SameSite (JavaScript cannot read them)",
+          len(set_cookies) == 2 and all("HttpOnly" in c and "SameSite=Lax" in c for c in set_cookies), f"got {set_cookies}")
+    check("neither token appears in the response body", "eyJ" not in response.text and "token" not in response.text)
+
+    cookies = {c.split("=", 1)[0]: c.split("=", 1)[1].split(";", 1)[0] for c in set_cookies}
+    me = httpx.get(f"{BASE_URL}/api/backend/api/auth/me", headers={"Cookie": f"nora_at={cookies['nora_at']}"})
+    check("the access cookie authenticates a request through the proxy -> 200", me.status_code == 200, f"got {me.status_code}")
+    refreshed = httpx.get(f"{BASE_URL}/api/backend/api/auth/me", headers={"Cookie": f"nora_at=expired; nora_rt={cookies['nora_rt']}"})
+    new_cookies = refreshed.headers.get_list("set-cookie")
+    check("a bad access cookie with a valid refresh cookie is renewed in place -> 200 and new cookies",
+          refreshed.status_code == 200 and len(new_cookies) == 2, f"got {refreshed.status_code} {len(new_cookies)}")
+    time.sleep(4)  # past the 3-second grace for requests that raced the rotation
+    replay = httpx.get(f"{BASE_URL}/api/backend/api/auth/me", headers={"Cookie": f"nora_at=expired; nora_rt={cookies['nora_rt']}"})
+    check("the used refresh token presented again -> 401 (and its cookies are cleared)",
+          replay.status_code == 401 and all("Max-Age=0" in c for c in replay.headers.get_list("set-cookie")), f"got {replay.status_code}")
+    newest = {c.split("=", 1)[0]: c.split("=", 1)[1].split(";", 1)[0] for c in new_cookies}
+    after_replay = httpx.get(f"{BASE_URL}/api/backend/api/auth/me", headers={"Cookie": f"nora_at=expired; nora_rt={newest['nora_rt']}"})
+    check("the replay revoked the whole session: even the newest refresh token is dead -> 401", after_replay.status_code == 401,
+          f"got {after_replay.status_code}")
+
+    response = call("POST", "/api/backend/auth/login", body={"email": session_email, "password": password})
+    check("the proxy does not expose login (tokens only leave through the cookie routes) -> 404", response.status_code == 404,
+          f"got {response.status_code}")
+    check("a cross-site browser post through the proxy is refused -> 403",
+          httpx.post(f"{BASE_URL}/api/backend/appointments", headers={"Origin": "https://evil.example"}, json={}).status_code == 403)
+
+    login = call("POST", "/api/auth/login", body={"email": session_email, "password": password})
+    login_cookies = {c.split("=", 1)[0]: c.split("=", 1)[1].split(";", 1)[0] for c in login.headers.get_list("set-cookie")}
+    out = httpx.post(f"{BASE_URL}/api/auth/logout", headers={"Cookie": f"nora_rt={login_cookies['nora_rt']}"})
+    check("logout clears both cookies -> 200", out.status_code == 200 and all("Max-Age=0" in c for c in out.headers.get_list("set-cookie")),
+          f"got {out.status_code}")
+    gone = httpx.get(f"{BASE_URL}/api/backend/api/auth/me", headers={"Cookie": f"nora_at=expired; nora_rt={login_cookies['nora_rt']}"})
+    check("after logout the refresh token no longer works -> 401", gone.status_code == 401, f"got {gone.status_code}")
+
+    direct = httpx.post(f"{BACKEND_URL}/auth/login", json={"email": session_email, "password": password})
+    first_refresh = direct.json().get("refresh_token", "")
+    check("FastAPI login returns both tokens (for the Next.js server, never for browsers)",
+          direct.status_code == 200 and first_refresh and direct.json().get("access_token"), f"got {direct.status_code}")
+    with engine.begin() as conn:
+        conn.execute(text("update users set is_active = false where id = :id"), {"id": session_user})
+    inactive = httpx.post(f"{BACKEND_URL}/auth/refresh", json={"refresh_token": first_refresh})
+    check("an account turned inactive cannot refresh -> 401", inactive.status_code == 401, f"got {inactive.status_code}")
+    check("a made-up refresh token -> 401", httpx.post(f"{BACKEND_URL}/auth/refresh", json={"refresh_token": "x" * 40}).status_code == 401)
+    with engine.begin() as conn:
+        conn.execute(text("delete from refresh_tokens where user_id = :id"), {"id": session_user})
 
 
 def main() -> int:

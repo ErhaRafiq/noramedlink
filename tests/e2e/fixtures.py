@@ -15,6 +15,7 @@ tests that would call those paid services can skip themselves.
 from __future__ import annotations
 
 import json
+import time
 import secrets
 import sys
 from datetime import timedelta
@@ -56,7 +57,7 @@ def make_user(key: str, role: str, **options) -> dict:
         "email": email,
         "fullName": full_name,
         "role": role.lower(),
-        "token": base.token_for(user_id),
+        "token": base.token_for(user_id, exp=int(time.time()) + 8 * 3600),  # outlasts the run; real sign-ins get 15 minutes + a refresh token
     }
 
 

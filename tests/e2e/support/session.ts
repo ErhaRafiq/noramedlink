@@ -2,22 +2,21 @@ import { expect, type Page } from "@playwright/test";
 
 import { BASE_URL, fixtures, type TestUser } from "./fixtures-file";
 
+/** The session cookies the app sets at login (lib/server-session.ts). */
+export const ACCESS_COOKIE = "nora_at";
+export const REFRESH_COOKIE = "nora_rt";
+
 /**
- * Signs `user` in the way the app does after login (token + user in localStorage), without
- * going through the login form. Used by every test except the login tests themselves, so
- * the suite stays well under the login rate limits.
+ * Signs `user` in the way the app does after login (the access token in its HttpOnly cookie, the profile
+ * in localStorage), without going through the login form. Used by every test except the login tests
+ * themselves, so the suite stays well under the login rate limits.
  */
 export async function signInAs(page: Page, user: TestUser) {
   const response = await fetch(`${BASE_URL}/api/backend/api/auth/me`, { headers: { Authorization: `Bearer ${user.token}` } });
   expect(response.ok, `/auth/me for ${user.email}`).toBeTruthy();
   const me = await response.json();
-  await page.addInitScript(
-    ([token, userJson]) => {
-      localStorage.setItem("nora_medlink_token", token);
-      localStorage.setItem("nora_medlink_user", userJson);
-    },
-    [user.token, JSON.stringify(me)] as const,
-  );
+  await page.context().addCookies([{ name: ACCESS_COOKIE, value: user.token, url: BASE_URL, httpOnly: true, sameSite: "Lax" }]);
+  await page.addInitScript((userJson) => localStorage.setItem("nora_medlink_user", userJson), JSON.stringify(me));
 }
 
 /** Signs in through the real login form. */

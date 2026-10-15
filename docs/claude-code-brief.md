@@ -32,7 +32,7 @@ The project is roughly 30% implemented. Your job is to take it further in **phas
 | AI | One AI_API_KEY (Gemini, OpenAI or Claude), rule-based fallback when no key, BioBERT NER (`d4data/biomedical-ner-all`). Identifiers removed before prompts leave the server; AI summaries with numbers not in the report are rejected. Patient-facing summaries and alerts use everyday words (`services/plain_language.py`, demo dictionary awaiting clinician review) |
 | Data | Knowledge bases are CSV tables (`backend/services/knowledge/data/`, data card and sources), loaded with pandas, validated with pandera in tests; rapidfuzz medicine search; DDInter 2.0 interaction pairs (160,235, CC BY-NC-SA 4.0) behind the curated rules; evaluation notebooks (`notebooks/`, scikit-learn, matplotlib) on synthetic data |
 | Config and hosting | One root `.env` (template `.env.example`); Render monorepo blueprint `render.yaml` (free plan: no disk, BioBERT off) |
-| Auth | JWT (HS256) issued by FastAPI, stored in `localStorage` on the client; FastAPI role dependencies (`require_patient`, `require_doctor`, admin) on every protected endpoint |
+| Auth | 15-minute JWT + rotating refresh token from FastAPI, held only in HttpOnly cookies set by the Next.js server (never in JavaScript or `localStorage`); FastAPI role dependencies (`require_patient`, `require_doctor`, admin) on every protected endpoint |
 | Tests | `backend/tests/` (pytest, no database or network), `tests/acceptance_test.py` (route authentication, ownership, access grants, medication safety) and `tests/e2e/` (Playwright, desktop and 390px). Run the backend and tests with `DISABLE_PAID_SERVICES=1` so no AI, OCR.space, openFDA or Stripe call is made |
 
 There is **no** Flutter app and **no** Node gateway, despite what the design documents say. Don't create them.
@@ -72,7 +72,7 @@ There is **no** Flutter app and **no** Node gateway, despite what the design doc
 5. **Patient sub-routes are not separate views.** `/dashboard/patient/records`, `/upload`, `/summary`, `/profile` and `/ocr-results` all render the full workspace (`initialView` is ignored), though the landing page links to them.
 6. **Doctor overview lists are capped** (30 appointments, 12 emergency visits, 40 reports), and the stat cards count those lists.
 7. **Leftover client code:** `app/emergency`, `app/payments` and `app/summarize` still gate on `localStorage.userId` (not sent to the server); a few `lib/api.ts` methods (`patientOverview`, `addReminder`) have no caller; `npm run lint` shows 9 unused-variable warnings.
-8. **JWT in `localStorage`** is readable by any script on the page; acceptable for the prototype, worth noting in the report.
+8. ~~JWT in `localStorage`~~ *(fixed)*: tokens live in HttpOnly cookies, the access token lasts 15 minutes and a rotating refresh token renews it (reuse revokes the session).
 
 ---
 

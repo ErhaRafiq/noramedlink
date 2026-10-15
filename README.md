@@ -27,6 +27,13 @@ safety, security and UI rules. The phase plan and current state are in
 The browser never calls FastAPI directly. It calls `/api/backend/...` on the Next.js server,
 which forwards to FastAPI.
 
+**Sign-in and roles.** Signing in sets two HttpOnly cookies (JavaScript cannot read them, so a script injected into
+a page cannot steal them): a 15-minute access token and a 7-day refresh token. The Next.js server adds the access
+token to each call it forwards and, when it has expired, swaps the refresh token for a new pair (the used one stops
+working; presenting it again ends the whole session). Cross-site posts are refused. Every FastAPI route names its
+role (`patient`, `doctor` or `admin`) or is on a reviewed list, enforced by `backend/tests/test_api_routes.py`;
+the role is read from the database on each request, so changes apply at once.
+
 ## Prerequisites
 
 - Node.js 20 or later
