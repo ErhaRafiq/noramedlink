@@ -18,8 +18,9 @@ test.describe("summarize a report", () => {
 
     await expect(page.getByText("Hemoglobin: 10.8 g/dL")).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText("Stated as absent: chest pain")).toBeVisible();
-    await expect(page.getByText(/Blood pressure text appears elevated/)).toBeVisible();
-    await expect(page.getByText("AI-generated and advisory only.", { exact: false }).first()).toBeVisible();
+    await expect(page.getByText(/Blood Pressure 145\/92 mmHg is raised/)).toBeVisible();
+    // No AI key: the summary is labelled as rule-based, still advisory.
+    await expect(page.getByText(/Built by fixed rules from the report text, not by AI\. Advisory only/)).toBeVisible();
   });
 
   test("too little text is refused before calling the API", async ({ page }) => {
