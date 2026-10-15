@@ -619,3 +619,103 @@ export type ClinicalSummaryRegenerateResult = {
   summary: ClinicalSummaryVersion;
   created: boolean;
 };
+
+/* --- Medication safety and prescribing (MSCIE, Module 4) ------------------------------------- */
+
+export type MedicineOption = { name: string; generic: string; brand: string | null; classes: string[]; match: number };
+
+export type SafetySeverity = "contraindicated" | "major" | "moderate" | "minor" | "info";
+
+/** One alert, set by fixed rules; every one has its rule, evidence from the record and sources. */
+export type SafetyAlert = {
+  id: string;
+  rule_id: string;
+  kind: "allergy" | "interaction" | "duplicate" | "contraindication" | "dose" | "previous_response" | "high_alert" | "no_data" | string;
+  severity: SafetySeverity;
+  level: "HIGH_RISK" | "CAUTION" | "INFO";
+  requires_justification: boolean;
+  medicine: string;
+  title: string;
+  effect: string;
+  management: string;
+  evidence: string[];
+  sources: { label: string; reference?: string }[];
+};
+
+export type RankedAlternative = {
+  rank: number;
+  medicine: string;
+  classes: string[];
+  use: string;
+  reason: string;
+  sources: { label: string }[];
+  alerts: SafetyAlert[];
+  score: number;
+  breakdown: { factor: string; value: number; weight: number; contribution: number; reason: string }[];
+};
+
+export type CheckedItem = {
+  medicine: string;
+  resolved: { name: string; generics: string[]; classes: string[]; high_alert: boolean; known: boolean };
+  dose: string | null;
+  frequency: string | null;
+  duration: string | null;
+  alerts: SafetyAlert[];
+  worst: SafetySeverity | null;
+  alternatives: RankedAlternative[];
+};
+
+export type MedicationCheck = {
+  context: {
+    medicines: { name: string; known: boolean; source: string; date: string | null }[];
+    conditions: { name: string; source: string }[];
+    allergies: { name: string; source: string }[];
+    allergy_status: "listed" | "none_recorded" | "not_recorded";
+    labs: { test: string; value: number; unit: string; date: string | null; source: string }[];
+    previous: { generic: string; problem: boolean; note: string }[];
+  };
+  items: CheckedItem[];
+  worst: SafetySeverity | null;
+  requires_justification: SafetyAlert[];
+  note: string;
+};
+
+export type PrescriptionItemInput = {
+  medicine: string;
+  dose?: string;
+  frequency?: string;
+  duration?: string;
+  instructions?: string;
+  replaced_medicine?: string;
+};
+
+export type Prescription = {
+  id: number;
+  patient_id: number;
+  doctor_id: number | null;
+  doctor_name: string;
+  status: "confirmed" | "cancelled";
+  notes: string | null;
+  created_at: string;
+  cancelled_at: string | null;
+  items: (PrescriptionItemInput & { generic: string | null })[];
+  overrides: { alert_id: string; severity: string; title: string; justification: string; created_at: string }[];
+  alerts_at_confirmation: SafetyAlert[];
+};
+
+export type PatientPrescription = {
+  id: number;
+  doctor_name: string;
+  status: "confirmed" | "cancelled";
+  created_at: string;
+  items: { medicine: string; generic: string | null; how_to_take: string; duration: string | null; instructions: string | null }[];
+};
+
+export type LabelEvidence = {
+  generic: string;
+  available: boolean;
+  reason?: string | null;
+  sections?: Record<string, string | null> | null;
+  effective_time?: string | null;
+  source?: string | null;
+};

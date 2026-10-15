@@ -24,6 +24,7 @@ import { NAV_ITEMS, QuickLinks, SettingsStrip, WorkspaceHeader, WorkspaceSidebar
 import { MedicineScheduleCard } from "./workspace/MedicineScheduleCard";
 import { RemindersSection } from "./workspace/RemindersSection";
 import { HealthFlagsCard } from "./workspace/HealthFlagsCard";
+import { PrescriptionsCard } from "./workspace/PrescriptionsCard";
 import { HealthCategoriesCard, RecentReportsCard } from "./workspace/ReportsSection";
 import { ToastBar } from "./workspace/ui";
 import { UploadCard } from "./workspace/UploadCard";
@@ -188,6 +189,8 @@ export function PatientWorkspace({
             onMark={(id, action) => void markReminder(id, action)}
             onSeeAll={() => navigate("reminders")}
           />
+
+          <PrescriptionsCard prescriptions={data.prescriptions} onRetry={() => void refresh()} />
 
           <HealthCategoriesCard tiles={data.departmentTiles} activeDepartment={department} onSelect={selectDepartment} />
 

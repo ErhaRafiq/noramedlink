@@ -14,6 +14,12 @@ import type {
   ClinicalSummaryVersion,
   ClinicalSummaryVersionMeta,
   HealthFlags,
+  LabelEvidence,
+  MedicationCheck,
+  MedicineOption,
+  PatientPrescription,
+  Prescription,
+  PrescriptionItemInput,
   MedicalDocument,
   MedicationSchedule,
   MedicineReminder,
@@ -91,6 +97,10 @@ function formatApiDetail(detail: unknown) {
       .join(" ");
   }
   if (detail && typeof detail === "object") {
+    // A structured detail (e.g. {message, alerts}) is shown by its message.
+    if ("message" in detail && typeof (detail as { message: unknown }).message === "string") {
+      return (detail as { message: string }).message;
+    }
     return JSON.stringify(detail);
   }
   return "Request failed.";
@@ -376,6 +386,37 @@ export const api = {
   },
   clinicalSummaryVersion(token: string, patientId: number, version: number) {
     return apiRequest<ClinicalSummaryVersion>(`/doctor/patients/${patientId}/clinical-summary/versions/${version}`, { token });
+  },
+  /** Medicine names (generic, alias, brand), fuzzy. */
+  searchMedicines(token: string, query: string, init?: { signal?: AbortSignal }) {
+    return apiRequest<MedicineOption[]>(withQuery("/doctor/medicines/search", { q: query }), { token, signal: init?.signal });
+  },
+  medicineLabel(token: string, generic: string) {
+    return apiRequest<LabelEvidence>(`/doctor/medicines/${encodeURIComponent(generic)}/label`, { token });
+  },
+  medicationCheck(token: string, patientId: number, items: PrescriptionItemInput[], init?: { signal?: AbortSignal }) {
+    return apiRequest<MedicationCheck>(`/doctor/patients/${patientId}/medication-check`, {
+      method: "POST",
+      token,
+      body: JSON.stringify({ items }),
+      signal: init?.signal,
+    });
+  },
+  createPrescription(
+    token: string,
+    patientId: number,
+    payload: { items: PrescriptionItemInput[]; overrides: { alert_id: string; justification: string }[]; notes?: string },
+  ) {
+    return apiRequest<Prescription>(`/doctor/patients/${patientId}/prescriptions`, { method: "POST", token, body: JSON.stringify(payload) });
+  },
+  prescriptions(token: string, patientId: number) {
+    return apiRequest<Page<Prescription>>(withQuery(`/doctor/patients/${patientId}/prescriptions`, { limit: 20 }), { token });
+  },
+  cancelPrescription(token: string, patientId: number, prescriptionId: number) {
+    return apiRequest<Prescription>(`/doctor/patients/${patientId}/prescriptions/${prescriptionId}/cancel`, { method: "POST", token });
+  },
+  myPrescriptions(token: string) {
+    return apiRequest<Page<PatientPrescription>>(withQuery("/patient/prescriptions", { limit: 20 }), { token });
   },
   /** What the fixed rules found in the patient's reports, in everyday words (not AI). */
   healthFlags(token: string) {

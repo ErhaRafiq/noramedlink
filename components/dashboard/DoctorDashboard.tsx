@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { CalendarDays, ClipboardList, FileSearch, KeyRound, LayoutDashboard, Siren, Stethoscope, Users } from "lucide-react";
+import { CalendarDays, ClipboardList, FileSearch, KeyRound, LayoutDashboard, Pill, Siren, Stethoscope, Users } from "lucide-react";
 
 import { DashboardShell, type DashboardNavItem } from "@/components/layout/DashboardShell";
 import { Alert } from "@/components/ui/alert";
@@ -13,6 +13,7 @@ import { clearSession } from "@/lib/auth";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useDoctorDashboard } from "@/hooks/doctor/use-doctor-dashboard";
 import { ClinicalSummaryCard } from "./doctor/clinical-summary/ClinicalSummaryCard";
+import { PrescribeCard } from "./doctor/prescribe/PrescribeCard";
 import { ActivePatientsCard, AppointmentsCard, EmergencyCard, PatientFileCard, UnlockCard } from "./doctor/sections";
 
 const NAV: DashboardNavItem[] = [
@@ -21,6 +22,7 @@ const NAV: DashboardNavItem[] = [
   { id: "appointments", label: "Appointments", icon: CalendarDays },
   { id: "patient-file", label: "Patient file", icon: FileSearch },
   { id: "clinical-summary", label: "Clinical summary", icon: ClipboardList },
+  { id: "prescribe", label: "Prescribe", icon: Pill },
   { id: "emergency", label: "Emergency visits", icon: Siren },
 ];
 
@@ -115,7 +117,17 @@ export function DoctorDashboard() {
           </div>
 
           {activePatient && auth.status === "ready" ? (
-            <ClinicalSummaryCard key={activePatient.id} token={auth.token} patientId={activePatient.id} patientName={activePatient.name} />
+            <>
+              <ClinicalSummaryCard key={activePatient.id} token={auth.token} patientId={activePatient.id} patientName={activePatient.name} />
+              <PrescribeCard
+                key={`rx-${activePatient.id}`}
+                token={auth.token}
+                patientId={activePatient.id}
+                patientName={activePatient.name}
+                doctorId={auth.user.id}
+                doctorName={auth.user.full_name}
+              />
+            </>
           ) : null}
 
           <EmergencyCard bookings={overview.emergencyBookings} />

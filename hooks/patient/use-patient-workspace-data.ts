@@ -9,6 +9,7 @@ import type {
   DepartmentTile,
   DoctorOption,
   HealthFlags,
+  PatientPrescription,
   MedicalDocument,
   MedicationSchedule,
   MedicineReminder,
@@ -29,6 +30,8 @@ export type PatientWorkspaceData = {
   reminders: MedicineReminder[];
   /** null: the flags could not be loaded (shown as an error, never as "nothing flagged"). */
   healthFlags: HealthFlags | null;
+  /** null: could not be loaded (shown as an error, never as "none"). */
+  prescriptions: PatientPrescription[] | null;
 };
 
 // The report list itself is paged by useReportList; this hook loads the summaries.
@@ -46,6 +49,7 @@ const EMPTY: PatientWorkspaceData = {
   medications: [],
   reminders: [],
   healthFlags: null,
+  prescriptions: null,
 };
 
 /**
@@ -67,7 +71,7 @@ export function usePatientWorkspaceData(token: string | null) {
 
   const refresh = useCallback(async () => {
     if (!token) return;
-    const [vitalsToday, departmentTiles, highRisk, doctors, appointments, medications, reminders, healthFlags, basicVitals] =
+    const [vitalsToday, departmentTiles, highRisk, doctors, appointments, medications, reminders, healthFlags, basicVitals, prescriptions] =
       await Promise.all([
         api.patientVitalsToday(token).catch(() => null),
         api.patientDepartmentTiles(token).catch(() => []),
@@ -78,6 +82,7 @@ export function usePatientWorkspaceData(token: string | null) {
         api.remindersToday(token).catch(() => []),
         api.healthFlags(token).catch(() => null),
         api.basicVitalsHistory(token).catch(() => []),
+        api.myPrescriptions(token).then((page) => page.items).catch(() => null),
       ]);
     if (!mountedRef.current) return;
     setData({
@@ -90,6 +95,7 @@ export function usePatientWorkspaceData(token: string | null) {
       medications,
       reminders,
       healthFlags,
+      prescriptions,
       basicVitals,
     });
   }, [token]);

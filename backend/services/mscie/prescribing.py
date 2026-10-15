@@ -122,6 +122,7 @@ def to_out(prescription: Prescription) -> dict[str, Any]:
     return {
         "id": prescription.id,
         "patient_id": prescription.patient_id,
+        "doctor_id": prescription.doctor_id,
         "doctor_name": prescription.doctor_name,
         "status": prescription.status,
         "notes": prescription.notes,

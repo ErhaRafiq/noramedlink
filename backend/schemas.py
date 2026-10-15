@@ -680,6 +680,7 @@ class MedicationCheckOut(BaseModel):
 class PrescriptionOut(BaseModel):
     id: int
     patient_id: int
+    doctor_id: int | None
     doctor_name: str
     status: str
     notes: str | None

@@ -91,3 +91,78 @@ test.describe("clinical summary for the doctor", () => {
     await expectNoHorizontalScroll(page);
   });
 });
+
+test.describe("prescribing with the medication-safety check", () => {
+  test("a contraindicated medicine is flagged, a ranked alternative replaces it, and the patient sees the prescription", async ({ browser }) => {
+    const { users } = fixtures();
+    const doctorContext = await browser.newContext();
+    const page = await doctorContext.newPage();
+    await signInAs(page, users.doctorWithAccess);
+    await page.goto("/dashboard/doctor");
+    await page.getByRole("button", { name: new RegExp(users.patient.fullName) }).click();
+
+    const card = page.locator("#prescribe");
+    await card.getByRole("combobox", { name: "Add a medicine" }).fill("glucophag");
+    await card.getByRole("option", { name: /Glucophage/ }).click();
+    const check = card.getByRole("region", { name: /Safety check: Glucophage/ });
+    await expect(check).toContainText("Contraindicated", { timeout: 30_000 });
+    await expect(check).toContainText("metformin with eGFR < 30");
+    await expect(check).toContainText("Why: Latest eGFR: 25");
+    await expect(check).toContainText("Safer alternatives for this patient, ranked");
+
+    // Choose the first ranked alternative; it is re-checked and needs no justification.
+    await check.getByRole("button", { name: "Use instead" }).first().click();
+    await expect(card.getByText("Chosen instead of Glucophage.")).toBeVisible();
+    await expect(card.getByText(/high-risk alert\(s\) need your written reason/)).toHaveCount(0, { timeout: 30_000 });
+    await card.getByRole("button", { name: "Confirm prescription" }).click();
+    await expect(card.getByText("Prescription saved.")).toBeVisible({ timeout: 30_000 });
+    await expect(card.getByRole("heading", { name: "Prescriptions for this patient" })).toBeVisible();
+    await doctorContext.close();
+
+    const patientContext = await browser.newContext();
+    const patientPage = await patientContext.newPage();
+    await signInAs(patientPage, users.patient);
+    await patientPage.goto("/dashboard/patient");
+    const mine = patientPage.locator("#prescriptions");
+    await expect(mine.getByRole("heading", { name: "Prescriptions from your doctors" })).toBeVisible();
+    await expect(mine).toContainText(users.doctorWithAccess.fullName);
+    await expect(mine).toContainText(/once a day/i);
+    await patientContext.close();
+  });
+
+  test("a high-risk alert needs a written reason before the prescription is confirmed", async ({ page }) => {
+    const { users } = fixtures();
+    await signInAs(page, users.doctorWithAccess);
+    await page.goto("/dashboard/doctor");
+    await page.getByRole("button", { name: new RegExp(users.patient.fullName) }).click();
+    const card = page.locator("#prescribe");
+    await card.getByRole("combobox", { name: "Add a medicine" }).fill("brufen");
+    await card.getByRole("option", { name: /Brufen/ }).click();
+    await expect(card.getByText(/high-risk alert\(s\) need your written reason/)).toBeVisible({ timeout: 30_000 });
+    await card.getByRole("button", { name: "Confirm prescription" }).click();
+
+    const dialog = page.getByRole("dialog", { name: "Prescribe despite high-risk alerts?" });
+    const confirm = dialog.getByRole("button", { name: "Confirm with these reasons" });
+    await expect(confirm).toBeDisabled();
+    // One reason per high-risk alert (the optional notes box gets one too).
+    for (const field of await dialog.getByRole("textbox").all()) {
+      await field.fill("Short course agreed with the patient; kidney function rechecked in 3 days.");
+    }
+    await expect(confirm).toBeEnabled();
+    await confirm.click();
+    await expect(card.getByText("Prescription saved.")).toBeVisible({ timeout: 30_000 });
+    await expect(card.getByText(/alert\(s\) overridden/).first()).toBeVisible();
+  });
+
+  test("the prescribing panel fits a phone screen @mobile", async ({ page }) => {
+    const { users } = fixtures();
+    await signInAs(page, users.doctorWithAccess);
+    await page.goto("/dashboard/doctor");
+    await page.getByRole("button", { name: new RegExp(users.patient.fullName) }).click();
+    const card = page.locator("#prescribe");
+    await card.getByRole("combobox", { name: "Add a medicine" }).fill("glucophag");
+    await card.getByRole("option", { name: /Glucophage/ }).click();
+    await expect(card.getByText("Safer alternatives for this patient, ranked")).toBeVisible({ timeout: 30_000 });
+    await expectNoHorizontalScroll(page);
+  });
+});
