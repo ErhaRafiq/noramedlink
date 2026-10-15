@@ -1,0 +1,76 @@
+# Render Blueprint: Nora MedLink as one monorepo, two web services and a database.
+#   nora-web  Next.js (repo root)        the website; proxies /api/backend/* to nora-api
+#   nora-api  FastAPI (backend/)         the API; runs `alembic upgrade head` at startup
+#   nora-db   PostgreSQL
+# Free plan limits (see README, "Deploy to Render"): services sleep after 15 idle minutes,
+# uploaded files are lost on every restart or deploy (no disk), BioBERT is off (512 MB memory),
+# and the free database has an expiry date.
+
+databases:
+  - name: nora-db
+    plan: free
+    databaseName: noramedlink
+    user: nora
+
+envVarGroups:
+  # Shared by both services. Secrets are entered in the Render dashboard (sync: false), never here.
+  - name: nora-shared
+    envVars:
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: ADMIN_INVITE_CODE
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_WEBHOOK_SECRET
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+
+services:
+  - type: web
+    name: nora-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    buildFilter:
+      paths:
+        - backend/**
+    envVars:
+      - fromGroup: nora-shared
+      - key: DATABASE_URL
+        fromDatabase:
+          name: nora-db
+          property: connectionString
+      # The website's public address, e.g. https://nora-web.onrender.com (CORS and Stripe's return pages).
+      - key: FRONTEND_ORIGIN
+        sync: false
+      # BioBERT needs about 1 GB of memory; the free instance has 512 MB. The fixed rules still run.
+      - key: BIOBERT_ENABLED
+        value: "0"
+
+  - type: web
+    name: nora-web
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start  # next start listens on Render's $PORT
+    healthCheckPath: /
+    buildFilter:
+      ignoredPaths:
+        - backend/**
+        - notebooks/**
+        - docs/**
+        - tests/**
+        - scripts/mscie_bench/**
+        - scripts/ocr_bench/**
+        - scripts/icse_bench/**
+        - scripts/plain_bench/**
+    envVars:
+      # nora-api's public address, e.g. https://nora-api.onrender.com (free services cannot use the
+      # private network). Used only by the Next.js server; the browser never calls FastAPI directly.
+      - key: SERVER_API_URL
+        sync: false

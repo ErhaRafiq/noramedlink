@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "backend": "python backend/dev_server.py",
-    "backend:install": "python -m pip install -r backend/requirements.txt",
+    "backend:install": "python -m pip install -r backend/requirements-dev.txt",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
@@ -35,5 +35,8 @@
     "postcss": "^8.5.10",
     "tailwindcss": "^3.4.19",
     "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }
