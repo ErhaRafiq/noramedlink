@@ -145,13 +145,8 @@ def setup(out_file: Path) -> None:
                 "users": users,
                 "reportId": report_id,
                 "attentionReportId": attention_report_id,
-                "ocrKeySet": bool(settings.ocr_space_api_key),
                 "stripeKeySet": bool(settings.stripe_secret_key),
-                "aiKeySet": bool(
-                    settings.gemini_api_key
-                    or settings.openai_api_key
-                    or settings.groq_api_key
-                ),
+                "aiKeySet": bool(settings.gemini_api_key or settings.openai_api_key),
             },
             indent=2,
         ),

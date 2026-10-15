@@ -11,7 +11,7 @@ import pytest
 from PIL import Image
 
 from services import local_ocr, report_ocr
-from services.ocr_space_service import OcrError
+from services.report_text import OcrError
 
 
 class FakeOutput:
@@ -154,7 +154,7 @@ def test_a_model_with_the_wrong_checksum_is_rejected(tmp_path, monkeypatch):
 
 
 @pytest.mark.anyio
-async def test_local_ocr_is_used_without_an_ocr_space_key(tmp_path, fake_engine):
+async def test_uploads_are_read_with_local_ocr(tmp_path, fake_engine):
     fake_engine([cell("Hemoglobin", 0.97, 20, 100), cell("10.8", 0.97, 300, 100)])
     result = await report_ocr.extract_report_text(str(png(tmp_path)), "scan.png", None)
     assert result["structured_data_json"]["source"] == "local_ocr"
@@ -168,17 +168,3 @@ async def test_no_text_found_is_an_error_not_an_empty_report(tmp_path, fake_engi
     with pytest.raises(OcrError) as caught:
         await report_ocr.extract_report_text(str(png(tmp_path)), "scan.png", None)
     assert caught.value.status_code == 422
-
-
-@pytest.mark.anyio
-async def test_ocr_space_is_used_when_a_key_is_set(tmp_path, monkeypatch):
-    monkeypatch.setattr(report_ocr, "settings", replace(report_ocr.settings, ocr_space_api_key="test-key"))
-    called = {}
-
-    async def fake_ocr_space(path, file_name="", fallback_department=None):
-        called["path"] = path
-        return {"source": "ocr_space"}
-
-    monkeypatch.setattr(report_ocr, "extract_report_with_ocr_space", fake_ocr_space)
-    assert await report_ocr.extract_report_text(str(png(tmp_path)), "scan.png") == {"source": "ocr_space"}
-    assert called["path"].endswith("scan.png")

@@ -4,7 +4,6 @@ from types import SimpleNamespace
 
 import pytest
 
-from services.ocr_space_service import DEPARTMENTS, department_slug
 from services.report_service import (
     dict_field,
     health_status_for_department,
@@ -14,6 +13,7 @@ from services.report_service import (
     requested_department,
     risk_level_for_status,
 )
+from services.report_text import DEPARTMENTS, department_slug
 
 
 def report(status=None, summary=None, formatted=None, extracted=None) -> SimpleNamespace:

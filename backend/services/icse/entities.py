@@ -272,7 +272,7 @@ _TIME_UNIT = re.compile(r"^(?:hrs?|hours?|h|mins?|minutes?)$", re.IGNORECASE)
 _URINE_BEFORE = re.compile(r"\burine\b[^\n\d]{0,12}$", re.IGNORECASE)
 
 
-# --- values from structured fields (OCR.space's parser) ----------------------------------------------
+# --- values from structured fields (report_text's parser) ----------------------------------------------
 
 _FIELD_TESTS = {
     "glucose": "Blood Glucose",
@@ -498,7 +498,7 @@ def _report_date(text: str) -> dict[str, Any] | None:
 
 
 def _norm_line(line: str) -> str:
-    from services.ocr_space_service import clean_ocr_text  # the cleaning the stored text went through
+    from services.report_text import clean_ocr_text  # the cleaning the stored text went through
 
     return " ".join(clean_ocr_text(line).replace("|", " ").split())
 

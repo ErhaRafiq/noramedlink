@@ -81,10 +81,7 @@ ANY_USER_ROUTES = [
 FASTAPI_PATIENT_ROUTES = [
     ("POST", "/api/backend/patient/vitals/basic"),
     ("GET", "/api/backend/patient/vitals/basic"),
-    ("POST", "/api/backend/patient/vitals"),
     ("GET", "/api/backend/patient/vitals/today"),
-    ("GET", "/api/backend/patient/vitals/trends"),
-    ("GET", "/api/backend/patient/vitals/latest"),
     ("GET", "/api/backend/patient/medications"),
     ("POST", "/api/backend/patient/medications"),
     ("POST", "/api/backend/patient/medicine-reminders"),
@@ -94,7 +91,6 @@ FASTAPI_PATIENT_ROUTES = [
     ("POST", "/api/backend/appointments"),
     ("POST", "/api/backend/payments/checkout"),
     ("GET", "/api/backend/payments/session/cs_x"),
-    ("GET", "/api/backend/patient/overview"),
     ("POST", "/api/backend/patient/dashboard-otp"),
     ("POST", "/api/backend/emergency/requests"),
     ("GET", "/api/backend/patient/reports"),
@@ -115,8 +111,6 @@ FASTAPI_ADMIN_ROUTES = [
 ]
 # FastAPI endpoints open to any signed-in role.
 FASTAPI_ANY_USER_ROUTES = [
-    ("GET", "/api/backend/reminders"),
-    ("POST", "/api/backend/reminders"),
     ("GET", "/api/backend/appointments"),
     ("PUT", "/api/backend/appointments/1"),
     ("GET", "/api/backend/payments"),
@@ -164,11 +158,11 @@ USER_OWNED_ROWS = [
 def assert_local_databases() -> None:
     """Abort unless every database URL the app uses points to localhost."""
     candidates = {"backend DATABASE_URL in use": DATABASE_URL}
-    for env_file in (ROOT / ".env.local", ROOT / ".env", ROOT / "backend" / ".env"):
+    for env_file in (ROOT / ".env",):  # the project's one env file
         if not env_file.exists():
             continue
         values = dotenv_values(env_file)
-        for key in ("DATABASE_URL", "FASTAPI_DATABASE_URL"):
+        for key in ("DATABASE_URL",):
             if values.get(key):
                 candidates[f"{env_file.relative_to(ROOT)} {key}"] = values[key]
 
@@ -291,7 +285,7 @@ def configured_paid_keys() -> list[str]:
     """Names of the AI/OCR keys that are set. Tests never call a paid service: they skip instead."""
     if (os.environ.get("DISABLE_PAID_SERVICES") or "").strip().lower() in {"1", "true", "yes"}:
         return []  # the backend ignores every key in this run (config.py), so nothing paid is called
-    names = ("OCR_SPACE_API_KEY", "OPENAI_API_KEY", "GROQ_API_KEY", "GEMINI_API_KEY", "GOOGLE_API_KEY")
+    names = ("OPENAI_API_KEY", "GEMINI_API_KEY")
     return [k for k in names if (os.environ.get(k) or "").strip().strip('"').strip("'")]
 
 
@@ -399,11 +393,11 @@ def run_tests() -> None:
         check(f"{method} {path} without token -> 401", response.status_code == 401, f"got {response.status_code}")
 
     print("\n[2] Invalid tokens -> 401")
-    response = call("GET", "/api/backend/patient/overview", token_for(patient_a, exp=int(time.time()) - 60))
+    response = call("GET", "/api/backend/patient/reports", token_for(patient_a, exp=int(time.time()) - 60))
     check("expired token -> 401", response.status_code == 401, f"got {response.status_code}")
     response = call("GET", "/api/backend/api/admin/dashboard-stats", tampered_token(tok_a, admin))
     check("token with tampered subject -> 401", response.status_code == 401, f"got {response.status_code}")
-    response = call("GET", "/api/backend/patient/overview", "not-a-jwt")
+    response = call("GET", "/api/backend/patient/reports", "not-a-jwt")
     check("malformed token -> 401", response.status_code == 401, f"got {response.status_code}")
 
     print("\n[3] Wrong role -> 403")
@@ -420,7 +414,7 @@ def run_tests() -> None:
         check(f"doctor on {path} -> 403", response.status_code == 403, f"got {response.status_code}")
     response = call("POST", "/api/backend/nlp/summarize/saved-reports", tok_doctor)
     check("doctor on summarize saved-report mode -> 403", response.status_code == 403, f"got {response.status_code}")
-    response = call("GET", "/api/backend/patient/overview", token_for(inactive))
+    response = call("GET", "/api/backend/patient/reports", token_for(inactive))
     check("inactive patient account -> 403", response.status_code == 403, f"got {response.status_code}")
     response = call("GET", "/api/backend/patient/vitals/today", token_for(inactive))
     check("inactive patient account on vitals -> 403", response.status_code == 403, f"got {response.status_code}")
@@ -428,16 +422,16 @@ def run_tests() -> None:
     print("\n[4] Correct role -> allowed (positive controls)")
     check("admin on admin dashboard-stats -> 200", call("GET", "/api/backend/api/admin/dashboard-stats", tok_admin).status_code == 200)
     check("doctor on doctor/overview -> 200", call("GET", "/api/backend/doctor/overview", tok_doctor).status_code == 200)
-    check("patient on overview -> 200", call("GET", "/api/backend/patient/overview", tok_a).status_code == 200)
+    check("patient on reports -> 200", call("GET", "/api/backend/patient/reports", tok_a).status_code == 200)
 
     print("\n[5] Ownership: Patient A cannot read or delete Patient B's records")
     record_a = create_record(patient_a, f"{TEST_PREFIX}record A")
     record_b = create_record(patient_b, f"{TEST_PREFIX}record B")
 
-    response = call("GET", f"/api/backend/patient/overview?user_id={patient_b}&userId={patient_b}", tok_a)
-    record_ids = [record["id"] for record in response.json().get("medicalRecords", [])]
-    check("A's dashboard lists A's record", record_a in record_ids, f"ids={record_ids}")
-    check("A's dashboard (with ?userId=B) does not list B's record", record_b not in record_ids, f"ids={record_ids}")
+    response = call("GET", f"/api/backend/patient/reports?user_id={patient_b}&userId={patient_b}", tok_a)
+    record_ids = [record["id"] for record in response.json().get("items", [])]
+    check("A's report list has A's record", record_a in record_ids, f"ids={record_ids}")
+    check("A's report list (with ?userId=B) does not list B's record", record_b not in record_ids, f"ids={record_ids}")
 
     response = call("DELETE", f"/api/backend/patient/reports/{record_b}?user_id={patient_b}", tok_a)
     check("A deleting B's report -> 404", response.status_code == 404, f"got {response.status_code}")
@@ -454,9 +448,6 @@ def run_tests() -> None:
     check("A adds vitals (body user id=B ignored) -> 201", response.status_code == 201, f"got {response.status_code}")
     check("vitals stored under A", scalar("select count(*) from vitals where user_id = :id", id=patient_a) == 1)
     check("no vitals stored under B", scalar("select count(*) from vitals where user_id = :id", id=patient_b) == 0)
-    response = call("GET", f"/api/backend/patient/vitals/latest?user_id={patient_b}&userId={patient_b}", tok_a)
-    vitals = response.json() or {}
-    check("vitals/latest (with ?user_id=B) returns A's vitals", vitals.get("user_id") == patient_a, f"got {vitals.get('user_id')}")
     response = call("GET", f"/api/backend/patient/vitals/basic?user_id={patient_b}&userId={patient_b}", tok_a)
     history = response.json() if response.status_code == 200 else []
     check("vitals/basic history (with ?user_id=B) lists only A's entry",
@@ -471,16 +462,6 @@ def run_tests() -> None:
     check("simple log only -> BP parsed from it", (today.get("blood_pressure_systolic"), today.get("blood_pressure_diastolic")) == (120, 80), f"got {today}")
     check("simple log only -> heart rate, SpO2, temperature are null (not 72/98/98.4)",
           today.get("heart_rate") is None and today.get("spo2") is None and today.get("temperature") is None, f"got {today}")
-    reading = {"bloodPressureSystolic": 130, "bloodPressureDiastolic": 85, "heartRate": 77, "spo2": 97, "temperature": 98.9}
-    response = call("POST", "/api/backend/patient/vitals", tok_a, reading)
-    check("A adds a detailed reading -> 201", response.status_code == 201, f"got {response.status_code}")
-    today = call("GET", "/api/backend/patient/vitals/today", tok_a).json() or {}
-    check("today returns the detailed reading", (today.get("heart_rate"), today.get("spo2")) == (77, 97), f"got {today}")
-    trends = call("GET", "/api/backend/patient/vitals/trends", tok_a).json()
-    check("trends has A's reading", len(trends) == 1 and trends[0]["heart_rate"] == 77, f"got {trends}")
-    check("B has no trends", call("GET", "/api/backend/patient/vitals/trends", tok_b).json() == [])
-    check("detailed reading mirrored into the simple log",
-          scalar("select count(*) from vitals where user_id = :id and blood_pressure = '130/85'", id=patient_a) == 1)
 
     print("\n[5c] Medication schedules are per patient")
     med = {"medicineName": "Phase0 Testamol", "dosage": "1 tablet", "startDate": "2026-01-01", "userId": patient_b}
@@ -496,11 +477,6 @@ def run_tests() -> None:
 
     print("\n[5d] Reminders are per patient")
     due = datetime.now(timezone.utc).isoformat()
-    response = call("POST", "/api/backend/reminders", tok_a, {"title": "Take Phase0 Testamol", "due_at": due, "user_id": patient_b})
-    check("A adds a free-text reminder (body user_id=B ignored) -> 201", response.status_code == 201, f"got {response.status_code}")
-    check("free-text reminder stored under A", scalar("select count(*) from reminders where user_id = :id", id=patient_a) == 1)
-    check("B's reminder list is empty", call("GET", "/api/backend/reminders", tok_b).json()["items"] == [])
-
     med_id = created.get("id")
     schedule = {"medicationId": med_id, "reminderTime": due, "frequency": "Once daily"}
     response = call("POST", "/api/backend/patient/medicine-reminders", tok_b, schedule)
@@ -702,8 +678,8 @@ def run_tests() -> None:
               response.status_code == 201 and uploaded.get("ocr_status") == "COMPLETED", f"got {response.status_code}")
         check("file stored under A's upload folder, not as base64",
               str(uploaded.get("file_url", "")).startswith(f"uploads/{patient_a}/"), f"got {uploaded.get('file_url')}")
-        overview_records = call("GET", "/api/backend/patient/overview", tok_a).json()["medicalRecords"]
-        check("upload appears on A's /dashboard data", uploaded.get("id") in [r["id"] for r in overview_records])
+        listed = call("GET", "/api/backend/patient/reports", tok_a).json()["items"]
+        check("upload appears in A's report list", uploaded.get("id") in [r["id"] for r in listed])
         response = call("DELETE", f"/api/backend/patient/reports/{uploaded.get('id')}", tok_b)
         check("B deleting A's upload -> 404", response.status_code == 404, f"got {response.status_code}")
         # B's report gets a value A's reports do not have; A's summary must never contain it.
@@ -721,11 +697,6 @@ def run_tests() -> None:
         response = call("POST", "/api/backend/nlp/summarize", tok_doctor, {"text": "Hemoglobin 10.2 g/dL, glucose 250 mg/dL."})
         check("doctor can summarize pasted text -> 200", response.status_code == 200 and bool(response.json().get("summary")),
               f"got {response.status_code}")
-        response = call("POST", "/api/backend/patient/doctor-summaries/generate", tok_a)
-        summary_text = (response.json() or {}).get("summary_text", "") if response.status_code == 200 else ""
-        check("doctor-summary generator reads reports from patient_reports",
-              response.status_code == 200 and f"{TEST_PREFIX}record A" in summary_text,
-              f"got {response.status_code} {summary_text[:120]!r}")
 
     print("\n[6] Doctor grant lifecycle on doctor/overview")
     profile = call("GET", "/api/backend/doctor/dashboard", tok_doctor).json()
@@ -853,9 +824,9 @@ def run_tests() -> None:
     check("after access/end -> doctor gets 403 by token", call("GET", files_path, tok_doctor).status_code == 403)
     check("after access/end -> doctor's unexpired signed link also stops (403)", call("GET", doctor_link).status_code == 403)
 
-    records = call("GET", "/api/backend/patient/overview", tok_a).json()["medicalRecords"]
-    link = next((r["imageUrl"] for r in records if r["id"] == file_report), None) or ""
-    check("overview gives the owner a signed link, not the raw path",
+    detail = call("GET", f"/api/backend/patient/reports/{file_report}", tok_a).json()
+    link = detail.get("file_access_url") or ""
+    check("the report gives the owner a signed link, not the raw path",
           link.startswith(f"files/{relative}?") and "sig=" in link and "uploads/" not in link, f"got {link[:80]!r}")
     response = call("GET", f"/api/backend/{link}")
     check("signed link works without a token -> 200", response.status_code == 200 and response.content == file_bytes,
@@ -967,20 +938,6 @@ def run_tests() -> None:
     response = call("PATCH", f"/api/backend/api/admin/doctors/{twin_profile}/reject", tok_admin)
     check("that doctor can still be rejected -> 200", response.status_code == 200, f"got {response.status_code}")
 
-    print("\n[13d] Medicine safety check (deterministic status, AGENTS.md 6.2)")
-    tok_safety = token_for(create_user("safety", "PATIENT"))
-    safety_url = "/api/backend/patient/medicine-safety/check"
-    response = call("POST", safety_url, tok_safety, {"medicine_name": "Paracetamol"})
-    body = response.json() if response.status_code == 200 else {}
-    check("no matching rule -> 'No data', never 'Safe'",
-          body.get("status") == "No data" and "does not mean the medicine is safe" in body.get("reason", ""),
-          f"got {response.status_code} {body.get('status')}")
-    response = call("POST", safety_url, tok_safety, {"medicine_name": "Penicillin", "known_allergies": "penicillin rash"})
-    check("medicine named in the allergy text -> High Risk",
-          response.status_code == 200 and response.json().get("status") == "High Risk", f"got {response.status_code}")
-    response = call("POST", safety_url, tok_safety, {"medicine_name": "Paracetamol", "dosage": "double dose"})
-    check("'double' dosage wording -> Caution",
-          response.status_code == 200 and response.json().get("status") == "Caution", f"got {response.status_code}")
 
     print("\n[14] Rate limits")
     limited_patient = create_user("ratelimit", "PATIENT")

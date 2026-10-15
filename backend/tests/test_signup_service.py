@@ -1,6 +1,6 @@
 """Signup checks (services/signup_service.py and the signup schemas)."""
 
-from datetime import UTC, date, datetime, timedelta, timezone
+from datetime import date
 
 import pytest
 from fastapi import HTTPException
@@ -8,7 +8,7 @@ from pydantic import ValidationError
 
 from schemas import SignupRequest
 from services import signup_service
-from services.signup_service import as_utc, normalize_email, normalize_phone, validate_role_specific_fields
+from services.signup_service import normalize_email, normalize_phone, validate_role_specific_fields
 
 BASE = {
     "full_name": "Test Patient",
@@ -32,13 +32,6 @@ def rejected(request: SignupRequest) -> HTTPException:
 def test_normalizers():
     assert normalize_email("  Patient1@Test.COM ") == "patient1@test.com"
     assert normalize_phone("  0300   123  4567 ") == "0300 123 4567"
-
-
-def test_as_utc_treats_naive_times_as_utc_and_converts_aware_ones():
-    naive = datetime(2026, 1, 1, 12, 0)
-    assert as_utc(naive) == datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
-    karachi = datetime(2026, 1, 1, 17, 0, tzinfo=timezone(timedelta(hours=5)))
-    assert as_utc(karachi) == datetime(2026, 1, 1, 12, 0, tzinfo=UTC)
 
 
 @pytest.mark.parametrize("cnic", ["12345-1234567-1", "1234512345671"])

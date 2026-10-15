@@ -20,7 +20,6 @@ export type Fixtures = {
   password: string;
   reportId: number;
   attentionReportId: number;
-  ocrKeySet: boolean;
   /** Stripe Checkout is on: paying would open Stripe's page, so payment tests skip. */
   stripeKeySet: boolean;
   aiKeySet: boolean;

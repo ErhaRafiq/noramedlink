@@ -46,7 +46,7 @@ CATEGORY_DEPARTMENTS = {
     "medicine": "Medicine", "prescription": "Medicine",
     "lab": "Lab", "pathology": "Lab",
 }
-DEPARTMENT_KEYWORDS = {  # same lists and order as services/ocr_space_service.py
+DEPARTMENT_KEYWORDS = {  # same lists and order as services/report_text.py
     "Heart": ["ecg", "cardiac", "troponin", "cholesterol", "heart", "cardiology", "blood pressure"],
     "Kidney": ["creatinine", "kidney", "renal", "nephro", "urea", "egfr"],
     "Ortho": ["fracture", "bone", "spine", "knee", "orthopedic", "xray", "x-ray"],

@@ -114,7 +114,7 @@ def uncertain_values(text: str, rows: list[dict], below: float = UNCERTAIN_BELOW
     A row the patient has since edited no longer appears in the text, so its numbers count as
     entered by the patient and are not listed.
     """
-    from services.ocr_space_service import clean_ocr_text  # the cleaning the stored text went through
+    from services.report_text import clean_ocr_text  # the cleaning the stored text went through
 
     lines = set(clean_ocr_text(text).splitlines())
     found = []

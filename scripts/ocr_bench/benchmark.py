@@ -455,7 +455,7 @@ def value_in_text(row: dict[str, str], ocr: str) -> str:
 
 def extractor_value(row: dict[str, str], cleaned_text: str, fields: dict[str, str]) -> str:
     """What the app's extract_structured_data gives for this test (only tests it has a field for)."""
-    from services.ocr_space_service import STRUCTURED_FIELDS
+    from services.report_text import STRUCTURED_FIELDS
 
     test = row["test"].lower()
     if "vldl" in test:  # the app has no VLDL field; "cholesterol" would wrongly map it to total cholesterol
@@ -517,7 +517,7 @@ def previous_runs(engine_name: str) -> dict[str, dict]:
 
 
 def run(engine: Engine, samples: list[Sample], reuse: bool = False) -> list[dict]:
-    from services.ocr_space_service import build_ocr_result
+    from services.report_text import build_ocr_result
 
     out_dir = RESULTS / engine.name
     out_dir.mkdir(parents=True, exist_ok=True)

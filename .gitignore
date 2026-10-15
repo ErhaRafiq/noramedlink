@@ -35,12 +35,9 @@ yarn-error.log*
 # runtime logs (dev servers, uvicorn)
 *.log
 
-# env files (can opt-in for committing if needed)
+# Environment: one .env in the repo root (never committed); .env.example is the committed template
 .env*
 !.env.example
-!.env.local.example
-.env
-.env.local
 
 # local database
 *.db
@@ -83,7 +80,5 @@ backend/models/
 /.venv-ocr-bench*/
 /icse_samples/
 
-# DDInter downloads (re-downloaded by scripts/ddinter_import/build.py instructions; CC BY-NC-SA 4.0)
+# DDInter downloads (see scripts/ddinter_import/build.py; CC BY-NC-SA 4.0)
 /scripts/ddinter_import/raw/
-# Local backup of the old root .env made when the env files were merged
-.env.before-cleanup

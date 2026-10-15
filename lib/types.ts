@@ -17,15 +17,6 @@ export type AuthResponse = {
   user: AuthUser;
 };
 
-export type AdminSignupPayload = {
-  full_name: string;
-  email: string;
-  password: string;
-  confirm_password: string;
-  phone: string;
-  admin_invite_code: string;
-};
-
 export type SignupPayload = {
   role: UserRole;
   full_name: string;
@@ -226,26 +217,6 @@ export type DepartmentTile = {
   validation_status?: "SAFE" | "CAUTION" | "HIGH_RISK" | string;
 };
 
-export type DashboardCategory = {
-  category: string;
-  document_count: number;
-  last_updated: string | null;
-};
-
-export type PatientDashboard = {
-  patient: AuthUser;
-  total_reports: number;
-  categories_used: number;
-  latest_upload: MedicalDocument | null;
-  ocr_processed_reports: number;
-  ai_summaries_generated: number;
-  categories: DashboardCategory[];
-  recent_documents: MedicalDocument[];
-  medicine_count: number;
-  latest_risk_prediction: HealthRiskPrediction | null;
-  latest_doctor_summary: DoctorSummary | null;
-};
-
 export type PatientVitals = {
   id: number;
   user_id: number;
@@ -266,32 +237,6 @@ export type DailyVital = {
   weight: number | null;
   recorded_at: string;
   created_at: string;
-};
-
-export type VitalTrendPoint = {
-  recorded_at: string;
-  blood_pressure_systolic: number;
-  blood_pressure_diastolic: number;
-  heart_rate: number;
-  spo2: number;
-  temperature: number;
-  sugar_level: number | null;
-  weight: number | null;
-};
-
-export type MedicineHistory = {
-  id: number;
-  patient_id: number;
-  medicine_name: string;
-  dosage: string;
-  frequency: string;
-  start_date: string;
-  end_date: string | null;
-  reason: string;
-  prescribed_by: string | null;
-  side_effects: string | null;
-  created_at: string;
-  updated_at: string;
 };
 
 export type MedicationSchedule = {
@@ -318,53 +263,6 @@ export type MedicineReminder = {
   created_at: string;
   updated_at: string;
   medication?: MedicationSchedule;
-};
-
-export type ReminderLog = {
-  id: number;
-  reminder_id: number;
-  patient_id: number;
-  scheduled_for: string;
-  status: "UPCOMING" | "DUE_NOW" | "TAKEN" | "MISSED" | "SKIPPED" | string;
-  taken_at: string | null;
-  created_at: string;
-};
-
-export type MedicineHistoryPayload = {
-  medicine_name: string;
-  dosage: string;
-  frequency: string;
-  start_date: string;
-  end_date?: string | null;
-  reason: string;
-  prescribed_by?: string | null;
-  side_effects?: string | null;
-};
-
-export type HealthRiskPrediction = {
-  id: number;
-  patient_id: number;
-  risk_title: string;
-  risk_level: "Low" | "Medium" | "High" | string;
-  reason: string;
-  recommendation: string;
-  created_at: string;
-};
-
-export type HealthTip = {
-  id: number;
-  patient_id: number;
-  category: "Food to prefer" | "Food to avoid" | "Lifestyle advice" | "When to consult a doctor" | string;
-  tip_text: string;
-  based_on_data: string;
-  created_at: string;
-};
-
-export type DoctorSummary = {
-  id: number;
-  patient_id: number;
-  summary_text: string;
-  generated_at: string;
 };
 
 export type AppointmentDoctor = {
@@ -437,31 +335,6 @@ export type DoctorOption = {
   source: "registered";
 };
 
-export type PatientReportCategorySummary = {
-  category: string;
-  document_count: number;
-  latest_status: string;
-  latest_upload_date: string | null;
-  icon: string;
-};
-
-export type AIReportAnalysis = {
-  category: string;
-  reportType: string;
-  patientSummary: string;
-  doctorSummary: string;
-  abnormalFindings: string[];
-  possibleRiskFlags: string[];
-  recommendedSpecialist: string;
-  urgencyLevel: "Low" | "Medium" | "High" | string;
-  disclaimer: string;
-};
-
-export type AIChatResponse = {
-  answer: string;
-  disclaimer: string;
-};
-
 /** POST /nlp/summarize and /nlp/summarize/saved-reports. */
 export type SummaryResponse = {
   summary: string;
@@ -472,13 +345,6 @@ export type SummaryResponse = {
   /** Alerts from the backend's deterministic report rules only. */
   risk_indicators: string[];
   recommendations: string[];
-};
-
-export type MedicineSafetyCheck = {
-  /** Set by deterministic rules only; "No data" means no rule matched, never "safe". */
-  status: "No data" | "Caution" | "High Risk";
-  reason: string;
-  warnings: string[];
 };
 
 export type DoctorDashboard = {

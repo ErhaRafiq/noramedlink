@@ -112,7 +112,7 @@ test.describe("patient dashboard", () => {
   });
 
   test("uploading a report saves it and says honestly whether its text was read", async ({ page }) => {
-    test.skip(fixtures().ocrKeySet || fixtures().aiKeySet, "would call OCR.space or an LLM (paid services)");
+    test.skip(fixtures().aiKeySet, "would call an LLM (paid service)");
     await signInAs(page, fixtures().users.patientEmpty);
     await page.goto("/dashboard/patient");
     await page.locator("input[type=file]").first().setInputFiles({ name: "e2e-scan.png", mimeType: "image/png", buffer: tinyPng() });

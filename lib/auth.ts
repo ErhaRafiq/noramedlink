@@ -55,12 +55,6 @@ export function getSession(): StoredSession | null {
   }
 }
 
-/** Authorization header for the stored session, or an empty object when signed out. */
-export function authHeaders(): Record<string, string> {
-  const session = getSession();
-  return session ? { Authorization: `Bearer ${session.token}` } : {};
-}
-
 export function updateStoredUser(user: AuthUser) {
   if (typeof window === "undefined") {
     return;

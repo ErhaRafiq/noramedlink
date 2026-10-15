@@ -12,14 +12,14 @@ from models import MedicalAiAnalysis, MedicalDepartment, PatientReport
 from schemas import PatientReportOut
 from services.file_access import file_access_url
 from services.ocr_layout import uncertain_values
-from services.ocr_space_service import (
+from services.plain_language import patient_message, plain_name, rewrite_sections
+from services.privacy import patient_identity_patterns, redact_identifiers
+from services.report_ai_pipeline import run_report_ai_pipeline
+from services.report_text import (
     DEPARTMENTS,
     department_slug,
     normalize_department_name,
 )
-from services.plain_language import patient_message, plain_name, rewrite_sections
-from services.privacy import patient_identity_patterns, redact_identifiers
-from services.report_ai_pipeline import run_report_ai_pipeline
 
 
 def ensure_medical_departments(db: Session) -> None:

@@ -60,33 +60,6 @@ class TokenResponse(BaseModel):
     user: UserOut
 
 
-class OcrOutput(BaseModel):
-    raw_text: str
-    cleaned_text: str
-    possible_report_type: str
-    detected_keywords: list[str]
-    structured_sections: dict[str, str]
-
-
-class MedicalDocumentOut(BaseModel):
-    id: int
-    patient_id: int
-    category: str
-    title: str
-    notes: str | None
-    original_filename: str
-    stored_file_path: str
-    file_type: str
-    upload_date: datetime
-    ocr_status: str
-    ocr_raw_text: str | None
-    ocr_cleaned_text: str | None
-    possible_report_type: str | None
-    detected_keywords: list[str]
-    structured_sections: dict[str, str]
-    ai_summary: str | None
-
-
 class VitalsOut(BaseModel):
     id: int
     user_id: int
@@ -100,21 +73,6 @@ class BasicVitalsCreate(BaseModel):
 
     blood_pressure: str = Field(min_length=1, max_length=80)
     sugar_level: str = Field(min_length=1, max_length=80)
-
-
-class PatientVitalCreate(BaseModel):
-    """Detailed reading. Accepts the camelCase names the workspace sends."""
-
-    model_config = {"populate_by_name": True}
-
-    blood_pressure_systolic: int = Field(alias="bloodPressureSystolic")
-    blood_pressure_diastolic: int = Field(alias="bloodPressureDiastolic")
-    heart_rate: int = Field(alias="heartRate")
-    spo2: int
-    temperature: float
-    sugar_level: float | None = Field(default=None, alias="sugarLevel")
-    weight: float | None = None
-    recorded_at: datetime | None = Field(default=None, alias="recordedAt")
 
 
 class MedicationScheduleCreate(BaseModel):
@@ -181,17 +139,6 @@ class DailyVitalOut(BaseModel):
     created_at: datetime
 
 
-class VitalTrendOut(BaseModel):
-    recorded_at: datetime
-    blood_pressure_systolic: int
-    blood_pressure_diastolic: int
-    heart_rate: int
-    spo2: int
-    temperature: float
-    sugar_level: float | None
-    weight: float | None
-
-
 class PatientReportOut(BaseModel):
     id: int
     patient_id: int
@@ -255,102 +202,6 @@ class PatientReportUpdateRequest(BaseModel):
     extracted_text: str | None = None
     formatted_text: str | None = None
     structured_data_json: dict[str, Any] | None = None
-
-
-class MedicineHistoryBase(BaseModel):
-    medicine_name: str = Field(min_length=1, max_length=160)
-    dosage: str = Field(min_length=1, max_length=120)
-    frequency: str = Field(min_length=1, max_length=120)
-    start_date: date
-    end_date: date | None = None
-    reason: str = Field(min_length=1)
-    prescribed_by: str | None = Field(default=None, max_length=160)
-    side_effects: str | None = None
-
-
-class MedicineHistoryCreate(MedicineHistoryBase):
-    pass
-
-
-class MedicineHistoryUpdate(BaseModel):
-    medicine_name: str | None = Field(default=None, min_length=1, max_length=160)
-    dosage: str | None = Field(default=None, min_length=1, max_length=120)
-    frequency: str | None = Field(default=None, min_length=1, max_length=120)
-    start_date: date | None = None
-    end_date: date | None = None
-    reason: str | None = Field(default=None, min_length=1)
-    prescribed_by: str | None = Field(default=None, max_length=160)
-    side_effects: str | None = None
-
-
-class MedicineHistoryOut(MedicineHistoryBase):
-    id: int
-    patient_id: int
-    created_at: datetime
-    updated_at: datetime
-
-
-class HealthRiskPredictionOut(BaseModel):
-    id: int
-    patient_id: int
-    risk_title: str
-    risk_level: Literal["Low", "Medium", "High"] | str
-    reason: str
-    recommendation: str
-    created_at: datetime
-
-
-class HealthTipOut(BaseModel):
-    id: int
-    patient_id: int
-    category: Literal["Food to prefer", "Food to avoid", "Lifestyle advice", "When to consult a doctor"] | str
-    tip_text: str
-    based_on_data: str
-    created_at: datetime
-
-
-class DoctorSummaryOut(BaseModel):
-    id: int
-    patient_id: int
-    summary_text: str
-    generated_at: datetime
-
-
-class MedicineSafetyCheckRequest(BaseModel):
-    medicine_name: str = Field(min_length=1, max_length=160)
-    dosage: str | None = Field(default=None, max_length=120)
-    known_allergies: str | None = None
-
-
-class MedicineSafetyCheckResponse(BaseModel):
-    # Set by deterministic rules only. "No data" means no rule matched, never "safe".
-    status: Literal["No data", "Caution", "High Risk"]
-    reason: str
-    warnings: list[str]
-
-
-class DashboardCategory(BaseModel):
-    category: str
-    document_count: int
-    last_updated: datetime | None
-
-
-class PatientDashboardOut(BaseModel):
-    patient: UserOut
-    total_reports: int
-    categories_used: int
-    latest_upload: PatientReportOut | None
-    ocr_processed_reports: int
-    ai_summaries_generated: int
-    categories: list[DashboardCategory]
-    recent_documents: list[PatientReportOut]
-    medicine_count: int = 0
-    latest_risk_prediction: HealthRiskPredictionOut | None = None
-    latest_doctor_summary: DoctorSummaryOut | None = None
-
-
-class OcrTextUpdateRequest(BaseModel):
-    cleaned_text: str = Field(min_length=1)
 
 
 class SummarizeRequest(BaseModel):
@@ -462,60 +313,6 @@ class ConsultationFeeIn(BaseModel):
 
 class ConsultationFeeOut(BaseModel):
     consultation_fee: int | None
-
-
-class ReminderCreate(BaseModel):
-    title: str = Field(min_length=1, max_length=180)
-    due_at: datetime
-    fcm_token: str | None = Field(default=None, max_length=500)
-
-
-class ReminderUpdate(BaseModel):
-    title: str | None = Field(default=None, min_length=1, max_length=180)
-    due_at: datetime | None = None
-    status: str | None = Field(default=None, max_length=40)
-    fcm_token: str | None = Field(default=None, max_length=500)
-
-
-class ReminderOut(BaseModel):
-    id: int
-    user_id: int
-    title: str
-    due_at: datetime
-    status: str
-    fcm_token: str | None
-    created_at: datetime
-    updated_at: datetime
-
-
-class NotificationTokenUpsert(BaseModel):
-    token: str = Field(min_length=1, max_length=500)
-    platform: str = Field(default="web", max_length=40)
-
-
-class NotificationTokenOut(BaseModel):
-    id: int
-    user_id: int
-    token: str
-    platform: str
-    last_seen_at: datetime
-    created_at: datetime
-    updated_at: datetime
-
-
-class MedicalAiAnalysisOut(BaseModel):
-    id: int
-    user_id: int
-    medical_record_id: int | None
-    patient_report_id: int | None = None
-    source: str
-    extracted_entities: list
-    confidence_score: float | None
-    rule_warnings: list
-    validation_results: dict
-    doctor_summary: str | None
-    created_at: datetime
-    updated_at: datetime
 
 
 # --- Clinical summary for doctors (ICSE) -------------------------------------------------------

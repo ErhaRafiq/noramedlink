@@ -1,7 +1,7 @@
 """Removes patient identifiers from text before it is sent to an external AI provider.
 
 Reports start with a header (patient name, MR number, CNIC, phone, address). A summary needs
-none of it, and every prompt leaves the server (OpenAI, Groq, Gemini). Labelled values are
+none of it, and every prompt leaves the server (OpenAI, Gemini). Labelled values are
 replaced with "[removed]"; CNIC and Pakistani phone numbers are removed wherever they appear.
 Medical values, ages, dates and the referring doctor are kept.
 """

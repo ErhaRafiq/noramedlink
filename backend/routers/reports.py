@@ -16,12 +16,6 @@ from pagination import Page, PageParams, page_params, paginate
 from rate_limit import AI_LIMIT, UPLOAD_LIMIT, limiter
 from schemas import DepartmentTileOut, PatientReportOut, PatientReportUpdateRequest
 from services.file_service import save_upload_file, stored_path_to_disk_path
-from services.ocr_space_service import (
-    DEPARTMENTS,
-    OcrError,
-    build_ocr_result,
-    department_slug,
-)
 from services.report_ocr import extract_report_text
 from services.report_service import (
     analyze_report_result,
@@ -36,6 +30,12 @@ from services.report_service import (
     report_to_out,
     requested_department,
     risk_level_for_status,
+)
+from services.report_text import (
+    DEPARTMENTS,
+    OcrError,
+    build_ocr_result,
+    department_slug,
 )
 
 router = APIRouter(prefix="/patient/reports", tags=["patient reports"])
@@ -132,22 +132,6 @@ def list_reports(
     return paginate(query, params, report_to_out)
 
 
-@router.get("/department/{department}", response_model=Page[PatientReportOut])
-def reports_by_department(
-    department: str,
-    params: PageParams = Depends(page_params),
-    current_user: User = Depends(require_patient),
-    db: Session = Depends(get_db),
-):
-    department_row = get_department(db, department)
-    query = (
-        report_query(db, current_user)
-        .filter(PatientReport.department_id == department_row.id)
-        .order_by(PatientReport.upload_date.desc(), PatientReport.id.desc())
-    )
-    return paginate(query, params, report_to_out)
-
-
 @router.get("/{report_id}", response_model=PatientReportOut)
 def get_report(report_id: int, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     report = report_query(db, current_user).filter(PatientReport.id == report_id).first()
@@ -168,9 +152,8 @@ async def upload_report(
     current_user: User = Depends(require_patient),
     db: Session = Depends(get_db),
 ):
-    """Store a report file and process its text. If the browser already read the text
-    locally (extracted_text, e.g. tesseract.js on /dashboard), that text is processed
-    instead of sending the file to OCR.space."""
+    """Store a report file and process its text. If the browser sends the text already
+    (extracted_text), that text is processed instead of reading the file with local OCR."""
     manual_department = requested_department(department or category)
     storage_department = department_slug(manual_department or "general")
     stored_path, file_type = await save_upload_file(file, storage_department, patient_id=current_user.id)
@@ -219,7 +202,7 @@ async def upload_report(
             "department": final_department,
             "department_slug": department_slug(final_department),
             "detected_keywords": [],
-            "source": "ocr_space",
+            "source": "local_ocr",
             "error": str(exc),
         }
 

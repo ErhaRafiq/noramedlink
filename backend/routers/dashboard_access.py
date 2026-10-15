@@ -8,15 +8,13 @@ A doctor sees a patient's medical data (vitals, records, medications) only while
 active grant exists; appointments assigned to the doctor show the patient's name.
 """
 
-from datetime import UTC, datetime
-
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from database import get_db
 from dependencies import require_doctor, require_patient
-from models import Appointment, EmergencyBooking, Medication, PatientReport, Reminder, User, Vitals
+from models import Appointment, EmergencyBooking, Medication, PatientReport, User, Vitals
 from rate_limit import ACCESS_CODE_LIMIT, limiter
 from services.dashboard_access import (
     active_grants,
@@ -26,7 +24,6 @@ from services.dashboard_access import (
     grant_access_by_otp,
     record_otp_attempt,
 )
-from services.file_access import file_access_url
 
 router = APIRouter(tags=["dashboard-access"])
 
@@ -41,61 +38,6 @@ class EndAccessRequest(BaseModel):
 
 def _vitals(v: Vitals) -> dict:
     return {"id": v.id, "bloodPressure": v.blood_pressure, "sugarLevel": v.sugar_level, "createdAt": v.created_at}
-
-
-@router.get("/patient/overview")
-def patient_overview(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
-    """Data for the /dashboard page (former /api/dashboard)."""
-    user_id = current_user.id
-    now = datetime.now(UTC)
-    vitals = db.query(Vitals).filter(Vitals.user_id == user_id).order_by(Vitals.created_at.desc()).limit(5).all()
-    upcoming = (
-        db.query(Appointment)
-        .filter(Appointment.user_id == user_id, Appointment.date >= now)
-        .order_by(Appointment.date.asc())
-        .first()
-    )
-    medications = (
-        db.query(Medication).filter(Medication.user_id == user_id).order_by(Medication.created_at.desc()).all()
-    )
-    reminders = (
-        db.query(Reminder)
-        .filter(Reminder.user_id == user_id, Reminder.due_at >= now)
-        .order_by(Reminder.due_at.asc())
-        .limit(5)
-        .all()
-    )
-    records = (
-        db.query(PatientReport)
-        .filter(PatientReport.patient_id == user_id)
-        .order_by(PatientReport.upload_date.desc())
-        .all()
-    )
-    return {
-        "latestVitals": _vitals(vitals[0]) if vitals else None,
-        "vitalsHistory": [_vitals(v) for v in vitals],
-        "upcomingAppointment": (
-            {"id": upcoming.id, "doctorName": upcoming.doctor_name, "date": upcoming.date} if upcoming else None
-        ),
-        "medications": [
-            {"id": m.id, "name": m.name, "dosage": m.dosage, "status": m.status, "createdAt": m.created_at}
-            for m in medications
-        ],
-        "reminders": [{"id": r.id, "title": r.title, "dueAt": r.due_at, "status": r.status} for r in reminders],
-        "medicalRecords": [
-            {
-                "id": d.id,
-                "title": d.title,
-                "fileName": d.original_file_name,
-                # Signed short-lived link (or the legacy embedded data: image).
-                "imageUrl": file_access_url(d.file_url, user_id),
-                "extractedText": d.formatted_text or d.extracted_text,
-                "scanStatus": d.ocr_status,
-                "createdAt": d.upload_date,
-            }
-            for d in records
-        ],
-    }
 
 
 @router.post("/patient/dashboard-otp")

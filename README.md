@@ -58,10 +58,10 @@ Next.js and FastAPI read it; never commit it. Variables already set in the envir
 | `ADMIN_INVITE_CODE` | Creating an admin account |
 | `FRONTEND_ORIGIN`, `SERVER_API_URL` | Where the website runs, and where Next.js reaches FastAPI (defaults suit local development) |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Online payment of consultation fees (see [Payments](#payments)) |
-| `OCR_SPACE_API_KEY` | Optional: send reports to OCR.space instead of reading them locally |
-| `GEMINI_API_KEY`, `OPENAI_API_KEY` or `GROQ_API_KEY` | AI summaries and explanations in plain language (rule-based text otherwise). Patient identifiers are removed before text is sent; on Google's free Gemini tier, content may be used to improve Google's products |
+| `GEMINI_API_KEY` or `OPENAI_API_KEY` | AI summaries and explanations in plain language (rule-based text otherwise). Patient identifiers are removed before text is sent; on Google's free Gemini tier, content may be used to improve Google's products |
 | `BIOBERT_ENABLED` | `0` skips BioBERT (needs about 1 GB of memory); entity extraction then uses the fixed rules |
-| `RATE_LIMIT_*`, `LOG_LEVEL`, `MAX_UPLOAD_MB` | Optional; defaults are listed in `.env.example` |
+
+Everything else (rate limits, upload size, model names) is a default in `backend/config.py`.
 
 ### 3. Install
 
@@ -100,7 +100,7 @@ Open **http://localhost:3000**.
 3. The text is read on the server. A PDF's own text layer is used when it has one; scanned pages and
    photos are read with local OCR (RapidOCR 3 with the PP-OCRv5 models), and the text boxes are put
    back into table rows so each value stays next to its test. Nothing is sent to an outside service
-   unless `OCR_SPACE_API_KEY` is set, in which case OCR.space is used instead. The first upload
+   The first upload
    downloads the two OCR models once (about 13 MB, checksum-verified) into `backend/models/`; to fetch
    them ahead of time, run `.\venv\Scripts\python.exe -m services.local_ocr --download` from
    `backend/`. A scanned page takes about 5-6 seconds on a laptop CPU. Numbers OCR was unsure of

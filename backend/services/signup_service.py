@@ -27,12 +27,6 @@ def utc_now() -> datetime:
     return datetime.now(UTC)
 
 
-def as_utc(value: datetime) -> datetime:
-    if value.tzinfo is None:
-        return value.replace(tzinfo=UTC)
-    return value.astimezone(UTC)
-
-
 def admin_invite_code() -> str:
     return settings.admin_invite_code
 
@@ -64,15 +58,6 @@ def build_token_response(user: User) -> TokenResponse:
         access_token=create_access_token(str(user.id), {"email": user.email, "role": user.role.lower()}),
         user=user_to_out(user),
     )
-
-
-def ensure_unique_email(db: Session, email: str) -> None:
-    existing = db.query(User).filter(User.email == email).first()
-    if existing:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered",
-        )
 
 
 def normalize_pmdc(value: str) -> str:

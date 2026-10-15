@@ -27,7 +27,7 @@ class OpenAIResult:
     text: str | None = None
     data: Any = None
     error: str | None = None
-    provider: str | None = None  # "gemini", "openai" or "groq": which model wrote the text
+    provider: str | None = None  # "gemini" or "openai": which model wrote the text
 
     @property
     def ok(self) -> bool:
@@ -43,16 +43,8 @@ def configured_openai_models() -> list[str]:
     return list(dict.fromkeys([primary, *settings.openai_fallback_models]))
 
 
-def configured_groq_models() -> list[str]:
-    return list(settings.groq_chat_models)
-
-
 def _has_openai_provider() -> bool:
     return bool(settings.openai_api_key)
-
-
-def _has_groq_provider() -> bool:
-    return bool(settings.groq_api_key)
 
 
 def _has_gemini_provider() -> bool:
@@ -64,9 +56,9 @@ def openai_unavailable_message() -> str | None:
         return None  # Gemini is called over HTTPS; it does not need the OpenAI SDK
     if OpenAI is None:
         return "OpenAI Python SDK is not installed. Run backend dependency installation."
-    if _has_openai_provider() or _has_groq_provider():
+    if _has_openai_provider():
         return None
-    return "No LLM API key configured. Add GEMINI_API_KEY, OPENAI_API_KEY or GROQ_API_KEY to the backend environment."
+    return "No LLM API key configured. Add GEMINI_API_KEY or OPENAI_API_KEY to .env."
 
 
 def safe_openai_error(error: Exception) -> str:
@@ -107,37 +99,7 @@ def _provider_attempts() -> list[tuple[str, str, str]]:
     if _has_openai_provider():
         for model in configured_openai_models():
             attempts.append(("openai", model, OPENAI_BASE_URL))
-    if _has_groq_provider():
-        for model in configured_groq_models():
-            attempts.append(("groq", model, settings.groq_base_url))
     return attempts
-
-
-def extract_response_text(response: Any) -> str:
-    output_text = getattr(response, "output_text", None)
-    if isinstance(output_text, str) and output_text.strip():
-        return output_text.strip()
-
-    payload: dict[str, Any]
-    if hasattr(response, "model_dump"):
-        payload = response.model_dump()
-    elif isinstance(response, dict):
-        payload = response
-    else:
-        payload = {}
-
-    parts: list[str] = []
-    for item in payload.get("output", []):
-        if not isinstance(item, dict):
-            continue
-        for content in item.get("content", []):
-            if not isinstance(content, dict):
-                continue
-            text = content.get("text")
-            if isinstance(text, str) and text.strip():
-                parts.append(text.strip())
-
-    return "\n".join(parts).strip()
 
 
 def extract_chat_completion_text(response: Any) -> str:
@@ -185,7 +147,7 @@ async def generate_openai_text(instructions: str, prompt: str) -> OpenAIResult:
 
     attempts = _provider_attempts()
     if not attempts:
-        return OpenAIResult(error="No LLM provider configured. Add OPENAI_API_KEY or GROQ_API_KEY.")
+        return OpenAIResult(error="No LLM provider configured. Add GEMINI_API_KEY or OPENAI_API_KEY.")
 
     # Every prompt leaves the server: patient identifiers are removed first (services/privacy.py).
     prompt = redact_identifiers(prompt)
@@ -202,7 +164,7 @@ async def generate_openai_text(instructions: str, prompt: str) -> OpenAIResult:
                 errors.append(f"gemini:{model} {safe_openai_error(error)}")
             continue
 
-        api_key = settings.openai_api_key if provider == "openai" else settings.groq_api_key
+        api_key = settings.openai_api_key
 
         # Bind this attempt's values now, so the closure never sees a later iteration's.
         def create_response(api_key=api_key, base_url=base_url, model=model):

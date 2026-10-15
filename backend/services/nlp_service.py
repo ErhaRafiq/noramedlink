@@ -1,11 +1,15 @@
 from services.ai_guard import numbers_not_in_source
-from services.ocr_service import detect_report_type
-from services.ocr_space_service import detect_keywords
 from services.openai_service import fallback_notice, generate_openai_text
 from services.plain_language import rewrite_sections
 from services.privacy import redact_identifiers
+from services.report_text import detect_department, detect_keywords
 
 DISCLAIMER = "This is not a medical diagnosis. Please consult a doctor."
+
+
+def detect_report_type(text: str, file_name: str = "") -> str:
+    department = detect_department(f"{file_name}\n{text}")
+    return f"{department} report"
 
 
 def build_rule_based_summary(text: str, category: str | None = None) -> str:

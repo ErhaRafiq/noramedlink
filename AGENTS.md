@@ -44,8 +44,8 @@ It is **not** a certified medical device. Every medical feature is advisory only
 | Payments | Stripe Checkout (hosted page) at the doctor's consultation fee; only Stripe's signed webhook marks a payment paid (`services/payments.py`). No JazzCash, Easypaisa or manual confirmation |
 | Config | **One `.env` in the repo root** for Next.js and FastAPI (template: root `.env.example`); real environment variables win (Render) |
 | Hosting | Render monorepo, `render.yaml`: nora-web (Next.js), nora-api (FastAPI, `backend/`), nora-db (PostgreSQL), free plan |
-| OCR | **Local OCR** by default (`services/local_ocr.py`): PDF text layers are read directly; scans and photos go through RapidOCR 3 (ONNX, CPU) with the PP-OCRv5 detector and English recogniser, downloaded once to `backend/models/` (checksum-verified); boxes are rebuilt into table rows (`services/ocr_layout.py`), and numbers read with a score under 0.90 are listed as "check against the original report", never changed. No key, nothing leaves the server. OCR.space is used instead only when `OCR_SPACE_API_KEY` is set. There is no Tesseract |
-| AI | Gemini, OpenAI or Groq when a key is set (Gemini first), rule-based fallback otherwise; BioBERT NER. Patient identifiers are removed before any prompt leaves the server (`services/privacy.py`), and an AI summary with a number that is not in the report is rejected (`services/ai_guard.py`). Every patient-facing summary and alert is in everyday words: medical terms get everyday wording with the term once in brackets (`services/plain_language.py`, dictionary `services/knowledge/data/plain_terms.csv`, a demo knowledge base); without an AI key the summary is built by fixed rules (`services/patient_summary.py`) |
+| OCR | **Local OCR** by default (`services/local_ocr.py`): PDF text layers are read directly; scans and photos go through RapidOCR 3 (ONNX, CPU) with the PP-OCRv5 detector and English recogniser, downloaded once to `backend/models/` (checksum-verified); boxes are rebuilt into table rows (`services/ocr_layout.py`), and numbers read with a score under 0.90 are listed as "check against the original report", never changed. No key, nothing leaves the server. There is no Tesseract |
+| AI | Gemini or OpenAI when a key is set (Gemini first), rule-based fallback otherwise; BioBERT NER. Patient identifiers are removed before any prompt leaves the server (`services/privacy.py`), and an AI summary with a number that is not in the report is rejected (`services/ai_guard.py`). Every patient-facing summary and alert is in everyday words: medical terms get everyday wording with the term once in brackets (`services/plain_language.py`, dictionary `services/knowledge/data/plain_terms.csv`, a demo knowledge base); without an AI key the summary is built by fixed rules (`services/patient_summary.py`) |
 
 There is **no** Flutter app, **no** Node gateway and **no** Prisma. Do not create them.
 The SRS/SDS documents describe some of these; the code is the source of truth.
@@ -207,16 +207,16 @@ Test data belongs in tests, never in UI fallbacks.
   - refuse to run unless every database URL points to localhost (check the hostname only);
   - create users only with the `phase0-test-` email prefix;
   - delete only those users and their rows (and upload folders) in a `finally` block.
-- **Never call paid or external services in tests** (Gemini, OpenAI, Groq, OCR.space, openFDA, Stripe). Tests that would
+- **Never call paid or external services in tests** (Gemini, OpenAI, openFDA, Stripe). Tests that would
   must skip when a key is configured. `DISABLE_PAID_SERVICES=1` (backend and test process) makes the
-  backend ignore every AI, OCR.space and Stripe key, so the whole suite runs with no paid or external call.
+  backend ignore every AI and Stripe key, so the whole suite runs with no paid or external call.
 - Safety logic (red-flag rules, interaction rules, state transitions) needs unit tests with
   explicit cases, including the cases listed in the brief. Unit tests live in `backend/tests/`
   (pytest): no database, no network, and `conftest.py` blanks every AI and OCR key.
 - Browser tests live in `tests/e2e/` (Playwright, installed Edge, desktop and 390px projects).
   `tests/e2e/fixtures.py` creates and removes their `phase0-test-` users with the acceptance
   suite's guard and cleanup. Select elements by role and label, as a user would. Pages and flows
-  that change get a test; tests that would reach OCR.space or an LLM skip when a key is set.
+  that change get a test; tests that would reach an LLM skip when a key is set.
   Never run the e2e and acceptance suites at the same time (each cleans up the other's users).
 
 ---
@@ -355,10 +355,10 @@ spacing and states, not the palette.
 - **Routers stay thin:** parse the request, check identity and ownership, call a service, build
   the response. Rules, AI calls and data shaping go in `services/` (for example
   `services/medicine_safety.py`, `services/patient_insights.py`, `services/report_service.py`).
-  Aim for files under ~400 lines (`services/ocr_space_service.py` is still over).
+  Aim for files under ~400 lines.
 - **Rate limits:** endpoints that cost money or protect accounts (login, signup, uploads, OCR, AI,
   access codes) use `@limiter.limit(...)` from `rate_limit.py` and take `request: Request`.
-  Everything else gets the default limit. Limits are configurable with `RATE_LIMIT_*` variables.
+  Everything else gets the default limit. Limits are defaults in `backend/config.py`.
 - **Pagination:** list endpoints that can grow use `page_params` and `paginate()` from
   `pagination.py` and return `Page[T]`. Validate filter values and return 422 for unknown ones.
 - **Response models:** use plain `str` for emails in output models; `EmailStr` belongs on inputs only.

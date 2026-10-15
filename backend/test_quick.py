@@ -12,7 +12,7 @@ print("=" * 50)
 
 # 1. OCR Space text processing
 print("\n[1] OCR Space text processing...")
-from services.ocr_space_service import build_ocr_result
+from services.report_text import build_ocr_result
 
 sample = "Patient Name: Ahmed\nHemoglobin: 10.2\nGlucose: 250\nCreatinine: 2.1"
 result = build_ocr_result(sample, "lab.jpg")

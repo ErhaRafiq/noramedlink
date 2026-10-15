@@ -20,17 +20,12 @@ from routers import (
     doctor,
     emergency,
     files,
-    medical_ai,
     medications,
     medicine_reminders,
     mscie,
     nlp,
-    ocr,
-    patient,
     patient_insights,
-    patient_medicines,
     payments,
-    reminders,
     reports,
     vitals,
 )
@@ -77,19 +72,14 @@ app.add_middleware(SlowAPIMiddleware)
 app.include_router(auth.router)
 app.include_router(auth.router, prefix="/api")
 app.include_router(admin.router)
-app.include_router(patient.router)
-app.include_router(patient_medicines.router)
 app.include_router(patient_insights.router)
 app.include_router(reports.router)
 app.include_router(doctor.router)
 app.include_router(clinical_summary.router)
 app.include_router(mscie.router)
-app.include_router(ocr.router)
 app.include_router(nlp.router)
 app.include_router(appointments.router)
 app.include_router(payments.router)
-app.include_router(reminders.router)
-app.include_router(medical_ai.router)
 app.include_router(vitals.router)
 app.include_router(medications.router)
 app.include_router(medicine_reminders.router)

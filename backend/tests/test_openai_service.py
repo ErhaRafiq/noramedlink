@@ -28,18 +28,18 @@ def test_fallback_notice():
 def test_provider_order_and_model_dedupe(monkeypatch: pytest.MonkeyPatch):
     configured = replace(
         openai_service.settings,
+        gemini_api_key="test-gemini",
+        gemini_model="gemini-a",
         openai_api_key="test-openai",
-        groq_api_key="test-groq",
         openai_scan_model="model-a",
         openai_fallback_models=["model-b", "model-a"],
-        groq_chat_models=["groq-1"],
     )
     monkeypatch.setattr(openai_service, "settings", configured)
     attempts = openai_service._provider_attempts()
     assert [(provider, model) for provider, model, _ in attempts] == [
+        ("gemini", "gemini-a"),
         ("openai", "model-a"),
         ("openai", "model-b"),
-        ("groq", "groq-1"),
     ]
 
 

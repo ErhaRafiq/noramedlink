@@ -128,10 +128,6 @@ def _normalize_label(label: str) -> str:
     return LABEL_MAP.get(cleaned, cleaned.replace("_", " ").title() or "Medical Entity")
 
 
-def _entity_key(entity: dict[str, Any]) -> tuple[str, str]:
-    return (str(entity.get("text") or "").strip().lower(), str(entity.get("label") or "").lower())
-
-
 def _merge_entities(entities: list[dict[str, Any]]) -> list[dict[str, Any]]:
     merged: dict[tuple[str, str], dict[str, Any]] = {}
     for entity in entities:

@@ -2,7 +2,7 @@
 
 import pytest
 
-from config import Settings, env_bool, env_float, env_int, env_list, env_str, load_settings
+from config import Settings, env_bool, env_str, load_settings
 
 NAME = "NORA_UNIT_TEST_VALUE"
 
@@ -16,8 +16,6 @@ def test_unset_and_blank_values_use_the_default(monkeypatch):
     assert env_str(NAME, "fallback") == "fallback"
     monkeypatch.setenv(NAME, "   ")
     assert env_str(NAME, "fallback") == "fallback"
-    assert env_int(NAME, 7) == 7
-    assert env_float(NAME, 1.5) == 1.5
 
 
 def test_values_are_trimmed(monkeypatch):
@@ -50,29 +48,14 @@ def test_booleans(monkeypatch, raw, default, expected):
     assert env_bool(NAME, default) is expected
 
 
-def test_lists_split_on_commas_and_drop_blanks(monkeypatch):
-    monkeypatch.setenv(NAME, " a, b ,,c ")
-    assert env_list(NAME) == ["a", "b", "c"]
-    monkeypatch.setenv(NAME, " , ")
-    assert env_list(NAME, ["x"]) == ["x"]
-
-
-def test_invalid_number_fails_loudly(monkeypatch):
-    monkeypatch.setenv(NAME, "ten")
-    with pytest.raises(ValueError):
-        env_int(NAME, 10)
-
-
-def test_load_settings_reads_the_environment(monkeypatch):
-    monkeypatch.setenv("RATE_LIMIT_AI", "3/minute")
-    monkeypatch.setenv("TRUSTED_PROXY_IPS", "10.0.0.1, 10.0.0.2")
-    monkeypatch.setenv("LOG_LEVEL", "debug")
+def test_load_settings_reads_only_what_differs_between_machines(monkeypatch):
     monkeypatch.setenv("DATABASE_URL", "'sqlite:///x.db'")
+    monkeypatch.setenv("BIOBERT_ENABLED", "0")
+    monkeypatch.setenv("RATE_LIMIT_AI", "3/minute")  # no longer an environment variable: ignored
     loaded = load_settings()
-    assert loaded.rate_limit_ai == "3/minute"
-    assert loaded.trusted_proxy_ips == ["10.0.0.1", "10.0.0.2"]
-    assert loaded.log_level == "DEBUG"
     assert loaded.database_url == "sqlite:///x.db"
+    assert loaded.biobert_enabled is False
+    assert loaded.rate_limit_ai == Settings().rate_limit_ai
 
 
 def test_render_style_postgres_urls_are_accepted(monkeypatch):
@@ -90,15 +73,15 @@ def test_defaults():
 
 
 @pytest.mark.parametrize("switch", ["1", "true"])
-def test_disable_paid_services_ignores_every_ai_and_ocr_key(monkeypatch, switch):
+def test_disable_paid_services_ignores_every_ai_and_stripe_key(monkeypatch, switch):
     from config import _without_paid_services
 
-    for name in ("OPENAI_API_KEY", "GROQ_API_KEY", "GEMINI_API_KEY", "OCR_SPACE_API_KEY"):
+    for name in ("OPENAI_API_KEY", "GEMINI_API_KEY", "STRIPE_SECRET_KEY"):
         monkeypatch.setenv(name, "test-placeholder-key")
     monkeypatch.setenv("DISABLE_PAID_SERVICES", switch)
     loaded = _without_paid_services(load_settings())
     assert loaded.paid_services_disabled
-    assert not (loaded.openai_api_key or loaded.groq_api_key or loaded.gemini_api_key or loaded.ocr_space_api_key)
+    assert not (loaded.openai_api_key or loaded.gemini_api_key or loaded.stripe_secret_key)
 
 
 def test_keys_are_kept_without_the_switch(monkeypatch):

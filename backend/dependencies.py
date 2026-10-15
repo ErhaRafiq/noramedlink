@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from auth import decode_access_token
 from database import get_db
-from models import PatientProfile, User
+from models import User
 
 
 def get_current_user(
@@ -52,10 +52,3 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role.lower() != "admin":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required.")
     return current_user
-
-
-def get_patient_profile(db: Session, user: User) -> PatientProfile:
-    profile = db.query(PatientProfile).filter(PatientProfile.user_id == user.id).first()
-    if not profile:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Patient profile not found.")
-    return profile

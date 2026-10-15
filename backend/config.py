@@ -1,7 +1,8 @@
 """Backend settings, read once from the environment.
 
-Every environment variable the backend uses is read here, so the names, defaults and
-types live in one place (see the project-root .env.example for what each one means).
+Only what differs between machines comes from the environment (the project-root .env.example
+lists it all): the database, secrets and keys, the website's address and two switches. Everything
+else is a fixed default below, changed in code, not in .env.
 
 One .env file for the whole project: the project-root .env. Variables already set in the
 environment win over it (on Render they come from the dashboard; there is no .env there).
@@ -30,14 +31,6 @@ def env_str(name: str, default: str = "", *, strip_quotes: bool = False) -> str:
     return value or default
 
 
-def env_int(name: str, default: int) -> int:
-    return int(env_str(name, str(default)))
-
-
-def env_float(name: str, default: float) -> float:
-    return float(env_str(name, str(default)))
-
-
 def env_bool(name: str, default: bool) -> bool:
     value = env_str(name).lower()
     if value in _TRUE_VALUES:
@@ -45,11 +38,6 @@ def env_bool(name: str, default: bool) -> bool:
     if value in _FALSE_VALUES:
         return False
     return default
-
-
-def env_list(name: str, default: list[str] | None = None) -> list[str]:
-    items = [item.strip() for item in env_str(name).split(",") if item.strip()]
-    return items or list(default or [])
 
 
 @dataclass(frozen=True)
@@ -72,15 +60,12 @@ class Settings:
     admin_invite_code: str = ""
     frontend_origin: str = "http://localhost:3000"
 
-    # AI providers. DISABLE_PAID_SERVICES=1 ignores every AI and OCR.space key (test runs: tests never
-    # call a paid service, even when .env has keys). It also turns Stripe Checkout off.
+    # AI providers: Gemini first, then OpenAI. DISABLE_PAID_SERVICES=1 (test runs) ignores every AI
+    # and Stripe key, so tests never call an outside service even when .env has keys.
     paid_services_disabled: bool = False
     openai_api_key: str = ""
     openai_scan_model: str = "gpt-4.1-mini"
     openai_fallback_models: list[str] = field(default_factory=list)
-    groq_api_key: str = ""
-    groq_base_url: str = "https://api.groq.com/openai/v1"
-    groq_chat_models: list[str] = field(default_factory=lambda: ["llama-3.3-70b-versatile", "llama-3.1-8b-instant"])
     gemini_api_key: str = ""
     gemini_model: str = "gemini-2.5-flash"
     gemini_fallback_models: list[str] = field(default_factory=list)
@@ -88,12 +73,8 @@ class Settings:
     biobert_enabled: bool = True  # off on small hosts: BioBERT needs about 1 GB of memory
     biobert_model: str = "d4data/biomedical-ner-all"
 
-    # OCR.space
-    ocr_space_api_key: str = ""
-    ocr_space_timeout_seconds: float = 60
-    ocr_space_language: str = "eng"
-    ocr_space_engine: str = "2"
-    ocr_model_dir: str = "models"  # local OCR model cache, relative to backend/
+    # Local OCR (services/local_ocr.py)
+    ocr_model_dir: str = "models"  # model cache, relative to backend/
 
     # Rate limits ("<count>/<second|minute|hour|day>"); see rate_limit.py
     rate_limit_enabled: bool = True
@@ -123,62 +104,24 @@ def database_url(url: str) -> str:
 
 
 def load_settings() -> Settings:
-    d = Settings()
     return Settings(
         database_url=database_url(env_str("DATABASE_URL", strip_quotes=True)),
-        db_pool_recycle_seconds=env_int("DB_POOL_RECYCLE_SECONDS", d.db_pool_recycle_seconds),
-        db_pool_size=env_int("DB_POOL_SIZE", d.db_pool_size),
-        db_max_overflow=env_int("DB_MAX_OVERFLOW", d.db_max_overflow),
-        db_pool_timeout_seconds=env_int("DB_POOL_TIMEOUT_SECONDS", d.db_pool_timeout_seconds),
-        upload_dir=env_str("UPLOAD_DIR", d.upload_dir),
-        max_upload_mb=env_int("MAX_UPLOAD_MB", d.max_upload_mb),
         jwt_secret=env_str("JWT_SECRET_KEY"),
-        jwt_algorithm=env_str("JWT_ALGORITHM", d.jwt_algorithm),
-        access_token_expire_minutes=env_int("ACCESS_TOKEN_EXPIRE_MINUTES", d.access_token_expire_minutes),
         admin_invite_code=env_str("ADMIN_INVITE_CODE"),
-        frontend_origin=env_str("FRONTEND_ORIGIN", d.frontend_origin),
-        paid_services_disabled=env_bool("DISABLE_PAID_SERVICES", d.paid_services_disabled),
+        frontend_origin=env_str("FRONTEND_ORIGIN", Settings.frontend_origin),
+        paid_services_disabled=env_bool("DISABLE_PAID_SERVICES", False),
         openai_api_key=env_str("OPENAI_API_KEY"),
-        openai_scan_model=env_str("OPENAI_SCAN_MODEL", d.openai_scan_model),
-        openai_fallback_models=env_list("OPENAI_FALLBACK_MODELS"),
-        groq_api_key=env_str("GROQ_API_KEY"),
-        groq_base_url=env_str("GROQ_BASE_URL", d.groq_base_url),
-        groq_chat_models=env_list("GROQ_CHAT_MODELS", d.groq_chat_models),
         gemini_api_key=env_str("GEMINI_API_KEY"),
-        gemini_model=env_str("GEMINI_MODEL", d.gemini_model),
-        gemini_fallback_models=env_list("GEMINI_FALLBACK_MODELS"),
-        gemini_base_url=env_str("GEMINI_BASE_URL", d.gemini_base_url),
-        biobert_enabled=env_bool("BIOBERT_ENABLED", d.biobert_enabled),
-        biobert_model=env_str("BIOBERT_MODEL", d.biobert_model),
-        ocr_space_api_key=env_str("OCR_SPACE_API_KEY", strip_quotes=True),
-        ocr_space_timeout_seconds=env_float("OCR_SPACE_TIMEOUT_SECONDS", d.ocr_space_timeout_seconds),
-        ocr_space_language=env_str("OCR_SPACE_LANGUAGE", d.ocr_space_language),
-        ocr_space_engine=env_str("OCR_SPACE_ENGINE", d.ocr_space_engine),
-        ocr_model_dir=env_str("OCR_MODEL_DIR", d.ocr_model_dir),
-        rate_limit_enabled=env_bool("RATE_LIMIT_ENABLED", d.rate_limit_enabled),
-        rate_limit_storage_uri=env_str("RATE_LIMIT_STORAGE_URI", d.rate_limit_storage_uri),
-        rate_limit_default=env_str("RATE_LIMIT_DEFAULT", d.rate_limit_default),
-        rate_limit_login=env_str("RATE_LIMIT_LOGIN", d.rate_limit_login),
-        rate_limit_login_account=env_str("RATE_LIMIT_LOGIN_ACCOUNT", d.rate_limit_login_account),
-        rate_limit_signup=env_str("RATE_LIMIT_SIGNUP", d.rate_limit_signup),
-        rate_limit_upload=env_str("RATE_LIMIT_UPLOAD", d.rate_limit_upload),
-        rate_limit_ai=env_str("RATE_LIMIT_AI", d.rate_limit_ai),
-        rate_limit_access_code=env_str("RATE_LIMIT_ACCESS_CODE", d.rate_limit_access_code),
-        rate_limit_payment=env_str("RATE_LIMIT_PAYMENT", d.rate_limit_payment),
-        trusted_proxy_ips=env_list("TRUSTED_PROXY_IPS", d.trusted_proxy_ips),
+        biobert_enabled=env_bool("BIOBERT_ENABLED", True),
         stripe_secret_key=env_str("STRIPE_SECRET_KEY", strip_quotes=True),
         stripe_webhook_secret=env_str("STRIPE_WEBHOOK_SECRET", strip_quotes=True),
-        payment_currency=env_str("PAYMENT_CURRENCY", d.payment_currency).lower(),
-        log_level=env_str("LOG_LEVEL", d.log_level).upper(),
     )
 
 
 def _without_paid_services(loaded: Settings) -> Settings:
     if not loaded.paid_services_disabled:
         return loaded
-    return replace(
-        loaded, openai_api_key="", groq_api_key="", gemini_api_key="", ocr_space_api_key="", stripe_secret_key=""
-    )
+    return replace(loaded, openai_api_key="", gemini_api_key="", stripe_secret_key="")
 
 
 settings = _without_paid_services(load_settings())
