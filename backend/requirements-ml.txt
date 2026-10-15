@@ -1,0 +1,5 @@
+# Optional: BioBERT entity extraction (services/biobert_service.py). About 1 GB of memory when loaded.
+# Installed for local development (requirements-dev.txt includes it). Hosts without it, or with
+# BIOBERT_ENABLED=0, use the fixed-rule entity extraction instead; nothing else changes.
+transformers>=4.44.0,<5
+torch>=2.3.0

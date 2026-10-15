@@ -67,7 +67,6 @@ def test_load_settings_reads_the_environment(monkeypatch):
     monkeypatch.setenv("RATE_LIMIT_AI", "3/minute")
     monkeypatch.setenv("TRUSTED_PROXY_IPS", "10.0.0.1, 10.0.0.2")
     monkeypatch.setenv("LOG_LEVEL", "debug")
-    monkeypatch.setenv("FASTAPI_DATABASE_URL", "")
     monkeypatch.setenv("DATABASE_URL", "'sqlite:///x.db'")
     loaded = load_settings()
     assert loaded.rate_limit_ai == "3/minute"
@@ -76,11 +75,9 @@ def test_load_settings_reads_the_environment(monkeypatch):
     assert loaded.database_url == "sqlite:///x.db"
 
 
-def test_jwt_secret_falls_back_through_the_old_names(monkeypatch):
-    monkeypatch.setenv("JWT_SECRET_KEY", "")
-    monkeypatch.setenv("SECRET_KEY", "")
-    monkeypatch.setenv("NORA_JWT_SECRET", "third-name")
-    assert load_settings().jwt_secret == "third-name"
+def test_render_style_postgres_urls_are_accepted(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgres://user:pw@db.internal:5432/nora")
+    assert load_settings().database_url == "postgresql://user:pw@db.internal:5432/nora"
 
 
 def test_defaults():

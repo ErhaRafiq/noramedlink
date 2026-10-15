@@ -1,5 +1,6 @@
 # Development and test tools (not needed to run the API).
 -r requirements.txt
+-r requirements-ml.txt  # BioBERT (optional in production)
 ruff==0.14.0
 pytest==8.3.4
 # Schema validation of the CSV knowledge bases (tests/test_knowledge_data.py).

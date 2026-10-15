@@ -222,7 +222,7 @@ def _load_pipeline():
     try:
         from transformers import pipeline
     except Exception as exc:  # pragma: no cover - depends on optional runtime deps.
-        raise RuntimeError("BioBERT dependencies are not installed. Install transformers and torch.") from exc
+        raise RuntimeError("BioBERT dependencies are not installed (pip install -r requirements-ml.txt).") from exc
 
     return pipeline(
         "ner",
@@ -234,6 +234,8 @@ def _load_pipeline():
 
 
 def _run_biobert(text: str) -> list[dict[str, Any]]:
+    if not settings.biobert_enabled:
+        raise RuntimeError("BioBERT is turned off (BIOBERT_ENABLED=0); entities come from the fixed rules.")
     ner = _load_pipeline()
     model_results = ner(text[:8000])
     entities: list[dict[str, Any]] = []

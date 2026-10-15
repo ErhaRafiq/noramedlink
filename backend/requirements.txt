@@ -14,11 +14,11 @@ numpy==2.1.3
 pandas==2.2.3
 rapidfuzz==3.10.1
 httpx==0.28.1
+# Payments: Stripe Checkout (hosted page) and signed webhooks (services/payments.py).
+stripe==16.0.0
 python-dotenv==1.0.1
 slowapi==0.1.9
 openai>=1.59.0,<3
-transformers>=4.44.0,<5
-torch>=2.3.0
 # Local OCR (services/local_ocr.py): RapidOCR 3 with the PP-OCRv5 models (downloaded once, checksum
 # verified). It installs opencv-python-headless (no GUI parts); onnxruntime is its engine.
 rapidocr==3.10.0

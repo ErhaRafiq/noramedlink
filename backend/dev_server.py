@@ -33,16 +33,12 @@ def main() -> None:
     try:
         from dotenv import load_dotenv
 
-        load_dotenv(BACKEND_DIR.parent / ".env")
-        load_dotenv(BACKEND_DIR / ".env", override=True)
+        load_dotenv(BACKEND_DIR.parent / ".env")  # the project's one .env file
     except ImportError:
         pass
 
-    configured_database_url = os.environ.get("FASTAPI_DATABASE_URL") or os.environ.get("DATABASE_URL")
-    if configured_database_url:
-        os.environ["FASTAPI_DATABASE_URL"] = configured_database_url
-    else:
-        os.environ.setdefault("FASTAPI_DATABASE_URL", sqlite_url(DEV_DATABASE_PATH))
+    if not os.environ.get("DATABASE_URL"):
+        os.environ["DATABASE_URL"] = sqlite_url(DEV_DATABASE_PATH)
 
     import uvicorn
 
