@@ -24,7 +24,7 @@ import type {
   MedicationSchedule,
   MedicineReminder,
   PatientVitals,
-  SignupOtpPayload,
+  SignupPayload,
   SummaryResponse,
   AdminActivity,
   AdminDashboardStats,
@@ -150,7 +150,7 @@ async function apiRequest<T>(path: string, options: RequestOptions = {}): Promis
 }
 
 export const api = {
-  signupAccount(payload: SignupOtpPayload) {
+  signupAccount(payload: SignupPayload) {
     return apiRequest<AuthResponse>("/api/auth/signup", {
       method: "POST",
       body: JSON.stringify(payload),

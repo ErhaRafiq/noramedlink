@@ -26,7 +26,7 @@ export type AdminSignupPayload = {
   admin_invite_code: string;
 };
 
-export type SignupOtpPayload = {
+export type SignupPayload = {
   role: UserRole;
   full_name: string;
   email: string;
@@ -40,15 +40,6 @@ export type SignupOtpPayload = {
   specialization?: string;
   hospital_name?: string;
   admin_invite_code?: string;
-};
-
-export type VerifySignupOtpPayload = SignupOtpPayload & {
-  otp: string;
-};
-
-export type SignupOtpResponse = {
-  message: string;
-  expires_in_seconds: number;
 };
 
 /** A page of a paginated list endpoint (backend/pagination.py). */

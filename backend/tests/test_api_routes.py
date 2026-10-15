@@ -20,7 +20,7 @@ PUBLIC = {
     "/appointments/doctors": "the public list of verified, active doctors",
     "/files/{file_path:path}": "signed, short-lived links; the signature is checked in the handler",
     **{f"{prefix}/{path}": "signing in and signing up" for prefix in ("/auth", "/api/auth")
-       for path in ("login", "signup", "signup/doctor", "signup/patient", "request-otp", "verify-otp-signup")},
+       for path in ("login", "signup")},
 }  # fmt: skip
 
 # Older routes that return plain dicts; known, and not to grow. New routes need a response model.
@@ -29,7 +29,7 @@ WITHOUT_RESPONSE_MODEL = {
     "/reminders/{reminder_id}", "/api/admin/dashboard-stats", "/api/admin/doctors/pending",
     "/api/admin/recent-activity", "/doctor/dashboard", "/doctor/overview", "/files/{file_path:path}", "/health",
     "/health/database", "/patient/overview", "/api/admin/doctors/{doctor_id}/approve",
-    "/api/admin/doctors/{doctor_id}/reject", "/api/auth/request-otp", "/auth/request-otp", "/doctor/access/end",
+    "/api/admin/doctors/{doctor_id}/reject", "/doctor/access/end",
     "/doctor/access/unlock", "/emergency/requests", "/patient/dashboard-otp",
 }  # fmt: skip
 

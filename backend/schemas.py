@@ -1,4 +1,3 @@
-import re
 from datetime import date, datetime
 from typing import Any, Literal
 
@@ -20,51 +19,7 @@ class UserOut(BaseModel):
     verification_status: str
 
 
-class PatientSignupRequest(BaseModel):
-    full_name: str = Field(min_length=2, max_length=160)
-    email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
-    confirm_password: str
-    cnic: str
-    phone: str = Field(min_length=7, max_length=40)
-    date_of_birth: date
-    gender: str = Field(min_length=1, max_length=30)
-
-    @field_validator("confirm_password")
-    @classmethod
-    def passwords_match(cls, confirm_password: str, info):
-        if info.data.get("password") != confirm_password:
-            raise ValueError("Password and confirm password must match.")
-        return confirm_password
-
-    @field_validator("cnic")
-    @classmethod
-    def validate_cnic(cls, cnic: str) -> str:
-        normalized = cnic.strip()
-        if not re.fullmatch(r"(?:\d{5}-\d{7}-\d|\d{13})", normalized):
-            raise ValueError("CNIC must be 13 digits or formatted like 12345-1234567-1.")
-        return normalized
-
-
-class DoctorSignupRequest(BaseModel):
-    full_name: str = Field(min_length=2, max_length=160)
-    email: EmailStr
-    password: str = Field(min_length=8, max_length=128)
-    confirm_password: str
-    pmdc_number: str = Field(min_length=2, max_length=80)
-    specialization: str = Field(min_length=2, max_length=120)
-    phone: str = Field(min_length=7, max_length=40)
-    hospital_name: str = Field(min_length=2, max_length=180)
-
-    @field_validator("confirm_password")
-    @classmethod
-    def passwords_match(cls, confirm_password: str, info):
-        if info.data.get("password") != confirm_password:
-            raise ValueError("Password and confirm password must match.")
-        return confirm_password
-
-
-class SignupOtpRequest(BaseModel):
+class SignupRequest(BaseModel):
     role: Role
     full_name: str = Field(min_length=2, max_length=160)
     email: EmailStr
@@ -92,18 +47,6 @@ class SignupOtpRequest(BaseModel):
         if info.data.get("password") != confirm_password:
             raise ValueError("Password and confirm password must match.")
         return confirm_password
-
-
-class VerifySignupOtpRequest(SignupOtpRequest):
-    otp: str = Field(min_length=6, max_length=6)
-
-    @field_validator("otp")
-    @classmethod
-    def otp_must_be_six_digits(cls, otp: str) -> str:
-        normalized = otp.strip()
-        if not re.fullmatch(r"\d{6}", normalized):
-            raise ValueError("OTP must be a 6-digit code.")
-        return normalized
 
 
 class LoginRequest(BaseModel):

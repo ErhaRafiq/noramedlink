@@ -54,7 +54,7 @@ The SRS/SDS documents describe some of these; the code is the source of truth.
 ```
 app/                      Next.js pages (App Router)
   api/backend/[...path]/  Same-origin proxy: the browser reaches FastAPI only through this
-  api/auth/*              Login/signup proxies; request-otp and verify-otp-signup return 410 (disabled)
+  api/auth/*              Login and signup proxies (signup is direct; there is no email or SMS code)
   api/drug-check/         Old OpenFDA lookup, used by no page; superseded by services/mscie/openfda.py (ask before deleting)
   dashboard/patient/      Patient dashboard (renders components/patient/PatientWorkspace.tsx)
   dashboard/doctor/       Doctor dashboard (renders components/dashboard/DoctorDashboard.tsx)

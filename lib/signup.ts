@@ -1,4 +1,4 @@
-import type { SignupOtpPayload, UserRole } from "@/lib/types";
+import type { SignupPayload, UserRole } from "@/lib/types";
 
 export type SignupValues = {
   role: UserRole;
@@ -65,8 +65,8 @@ export function validateSignup(values: SignupValues): Partial<Record<keyof Signu
 }
 
 /** The request body for POST /auth/signup: common fields plus only the chosen role's fields. */
-export function buildSignupPayload(values: SignupValues): SignupOtpPayload {
-  const common: SignupOtpPayload = {
+export function buildSignupPayload(values: SignupValues): SignupPayload {
+  const common: SignupPayload = {
     role: values.role,
     full_name: values.full_name.trim(),
     email: values.email.trim().toLowerCase(),

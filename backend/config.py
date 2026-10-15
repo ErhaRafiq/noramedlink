@@ -73,18 +73,6 @@ class Settings:
     admin_invite_code: str = ""
     frontend_origin: str = "http://localhost:3000"
 
-    # Signup OTP delivery
-    otp_expiry_minutes: int = 5
-    smtp_host: str = ""
-    smtp_port: int = 587
-    smtp_username: str = ""
-    smtp_password: str = ""
-    smtp_from_email: str = ""
-    smtp_from_name: str = "Nora MedLink"
-    smtp_use_tls: bool = True
-    sms_provider: str = ""
-    sms_api_key: str = ""
-
     # AI providers. DISABLE_PAID_SERVICES=1 ignores every AI and OCR.space key (test runs: tests never
     # call a paid service, even when backend/.env has keys).
     paid_services_disabled: bool = False
@@ -138,16 +126,6 @@ def load_settings() -> Settings:
         access_token_expire_minutes=env_int("ACCESS_TOKEN_EXPIRE_MINUTES", d.access_token_expire_minutes),
         admin_invite_code=env_str("ADMIN_INVITE_CODE") or env_str("ADMIN_SIGNUP_CODE"),
         frontend_origin=env_str("FRONTEND_ORIGIN", d.frontend_origin),
-        otp_expiry_minutes=env_int("OTP_EXPIRY_MINUTES", d.otp_expiry_minutes),
-        smtp_host=env_str("SMTP_HOST"),
-        smtp_port=env_int("SMTP_PORT", d.smtp_port),
-        smtp_username=env_str("SMTP_USERNAME"),
-        smtp_password=env_str("SMTP_PASSWORD"),
-        smtp_from_email=env_str("SMTP_FROM_EMAIL"),
-        smtp_from_name=env_str("SMTP_FROM_NAME", d.smtp_from_name),
-        smtp_use_tls=env_bool("SMTP_USE_TLS", d.smtp_use_tls),
-        sms_provider=env_str("SMS_PROVIDER"),
-        sms_api_key=env_str("SMS_API_KEY"),
         paid_services_disabled=env_bool("DISABLE_PAID_SERVICES", d.paid_services_disabled),
         openai_api_key=env_str("OPENAI_API_KEY"),
         openai_scan_model=env_str("OPENAI_SCAN_MODEL", d.openai_scan_model),

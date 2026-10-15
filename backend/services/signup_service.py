@@ -1,36 +1,18 @@
-"""Account helpers for signup and login: normalisation, uniqueness checks, signup
-OTP limits, creating the user and profile, and building auth responses.
+"""Account helpers for signup and login: normalisation, uniqueness checks, creating the
+user and profile, and building auth responses.
 """
 
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy import func, or_
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from auth import create_access_token, hash_password
 from config import settings
-from models import DoctorProfile, PatientProfile, SignupOtp, User
-from schemas import (
-    SignupOtpRequest,
-    TokenResponse,
-    UserOut,
-)
-
-OTP_EXPIRY_MINUTES = settings.otp_expiry_minutes
-
-
-OTP_RATE_LIMIT_WINDOW_MINUTES = 15
-
-
-OTP_MAX_REQUESTS_PER_WINDOW = 3
-
-
-OTP_RESEND_COOLDOWN_SECONDS = 60
-
-
-OTP_MAX_VERIFY_ATTEMPTS = 5
+from models import DoctorProfile, PatientProfile, User
+from schemas import SignupRequest, TokenResponse, UserOut
 
 
 def normalize_email(email: str) -> str:
@@ -131,11 +113,11 @@ def ensure_unique_identity(db: Session, email: str, phone: str, pmdc_number: str
         ensure_unique_pmdc(db, pmdc_number)
 
 
-def doctor_pmdc(payload: SignupOtpRequest) -> str | None:
+def doctor_pmdc(payload: SignupRequest) -> str | None:
     return payload.pmdc_number if payload.role == "doctor" else None
 
 
-def validate_role_specific_fields(payload: SignupOtpRequest) -> None:
+def validate_role_specific_fields(payload: SignupRequest) -> None:
     role = payload.role
     if role == "patient":
         cnic = (payload.cnic or "").strip()
@@ -177,33 +159,7 @@ def validate_role_specific_fields(payload: SignupOtpRequest) -> None:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid admin invite code")
 
 
-def enforce_otp_rate_limit(db: Session, email: str, phone: str) -> None:
-    now = utc_now()
-    window_start = now - timedelta(minutes=OTP_RATE_LIMIT_WINDOW_MINUTES)
-    recent_requests = (
-        db.query(SignupOtp)
-        .filter(
-            or_(SignupOtp.email == email, SignupOtp.phone == phone),
-            SignupOtp.created_at >= window_start,
-        )
-        .order_by(SignupOtp.created_at.desc())
-        .all()
-    )
-
-    if len(recent_requests) >= OTP_MAX_REQUESTS_PER_WINDOW:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Too many OTP requests. Please wait before requesting another code.",
-        )
-
-    if recent_requests and as_utc(recent_requests[0].created_at) > now - timedelta(seconds=OTP_RESEND_COOLDOWN_SECONDS):
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail="Please wait before requesting another OTP.",
-        )
-
-
-def create_user_from_verified_signup(payload: SignupOtpRequest, email: str, phone: str, db: Session) -> User:
+def create_user(payload: SignupRequest, email: str, phone: str, db: Session) -> User:
     role = payload.role.upper()
     is_admin = role == "ADMIN"
     user = User(
@@ -242,20 +198,5 @@ def create_user_from_verified_signup(payload: SignupOtpRequest, email: str, phon
     return user
 
 
-def normalize_signup_payload(payload: SignupOtpRequest) -> tuple[str, str]:
+def normalize_signup_payload(payload: SignupRequest) -> tuple[str, str]:
     return normalize_email(str(payload.email)), normalize_phone(payload.phone)
-
-
-def signup_payload_json(payload: SignupOtpRequest) -> dict:
-    return {
-        "role": payload.role,
-        "full_name": payload.full_name.strip(),
-        "email": normalize_email(str(payload.email)),
-        "phone": normalize_phone(payload.phone),
-        "cnic": (payload.cnic or "").strip() or None,
-        "date_of_birth": payload.date_of_birth.isoformat() if payload.date_of_birth else None,
-        "gender": (payload.gender or "").strip() or None,
-        "pmdc_number": (payload.pmdc_number or "").strip() or None,
-        "specialization": (payload.specialization or "").strip() or None,
-        "hospital_name": (payload.hospital_name or "").strip() or None,
-    }

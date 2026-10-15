@@ -39,7 +39,7 @@ There is **no** Flutter app and **no** Node gateway, despite what the design doc
 ### Module status
 | # | Module | Status | Notes |
 |---|---|---|---|
-| 1 | Auth & profiles | Mostly done | JWT, patient/doctor/admin roles, admin invite code, doctor approve/reject in `backend/routers/admin.py`, inactive accounts get 403. Signup is direct: the OTP signup routes (`request-otp`, `verify-otp-signup`) return 410 |
+| 1 | Auth & profiles | Mostly done | JWT, patient/doctor/admin roles, admin invite code, doctor approve/reject in `backend/routers/admin.py`, inactive accounts get 403. Signup is direct; the email/SMS OTP signup code was removed (its `signup_otps` table is kept). The only one-time code is the patient's doctor access code |
 | 2 | Unified health records | Partial | Reports in `patient_reports` (upload, OCR, department categorisation, file access only for the owner or a granted doctor), BP/sugar log, detailed vitals, medicine schedules with reminders. **Missing:** audit log, versioning, structured allergies / diagnoses / chronic conditions |
 | 3 | Clinical summary (ICSE) | Done (prototype) | Rule-based entity extraction (medicines, conditions, allergies, labs with negation and family history), flags with sources from shared lab rules (`services/lab_rules.py`), versioned clinical summaries with fingerprints (migration 0009) that regenerate when reports change, AI wording of key findings only behind a number guard. Patients see health flags in everyday words; doctors see the clinical summary with a version picker. Demo knowledge base, not clinically reviewed |
 | 4 | Medication safety (MSCIE) | Done (prototype) | Deterministic engine (`services/mscie/`) over CSV rules: allergy and cross-reactivity, interactions, duplicate classes, contraindications by condition and lab (eGFR, potassium), dose limits, previous reactions. Ranked alternatives (weighted score, each re-checked for the patient), openFDA label text as evidence only. Doctor prescribing panel with a live check; high-risk alerts need a written reason (logged in `safety_overrides`); the patient sees confirmed prescriptions read-only. The patient's own medicine check runs on the same engine; the LLM no longer changes a status. Evaluated in `notebooks/03_mscie_evaluation.ipynb` (synthetic scenarios). Demo knowledge base, not clinically reviewed |
@@ -120,7 +120,7 @@ These are project requirements (scope limitations LI-1 and LI-5), not suggestion
   - `ocr/extract`, `ai/analyze-report`: any signed-in user
   - `dashboard/access-otp`: patient only
   - `doctor/access/unlock`, `doctor/access/end`: doctor only
-- Signup/login OTP routes (`request-otp`, `verify-otp-signup`) stay public: users have no token before signing up.
+- Signup and login routes stay public: users have no token before signing up.
 - `eng.traineddata` stays where it is. *(Phase 1: removed once `tesseract.js` was dropped. Correction: OCR runs in FastAPI through OCR.space only; the backend has no Tesseract code.)*
 - Tests may create temporary `phase0-test-` users in the dev database, on these conditions:
   - Before creating anything, confirm `DATABASE_URL` points to localhost (parse and check the hostname only; never print the value).

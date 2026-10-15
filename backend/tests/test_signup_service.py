@@ -6,7 +6,7 @@ import pytest
 from fastapi import HTTPException
 from pydantic import ValidationError
 
-from schemas import PatientSignupRequest, SignupOtpRequest, VerifySignupOtpRequest
+from schemas import SignupRequest
 from services import signup_service
 from services.signup_service import as_utc, normalize_email, normalize_phone, validate_role_specific_fields
 
@@ -19,11 +19,11 @@ BASE = {
 }
 
 
-def payload(**fields) -> SignupOtpRequest:
-    return SignupOtpRequest(**{**BASE, **fields})
+def payload(**fields) -> SignupRequest:
+    return SignupRequest(**{**BASE, **fields})
 
 
-def rejected(request: SignupOtpRequest) -> HTTPException:
+def rejected(request: SignupRequest) -> HTTPException:
     with pytest.raises(HTTPException) as caught:
         validate_role_specific_fields(request)
     return caught.value
@@ -93,18 +93,7 @@ def test_admin_signup_is_closed_when_no_code_is_configured(monkeypatch):
 )
 def test_schema_rejects_bad_signups(fields):
     with pytest.raises(ValidationError):
-        SignupOtpRequest(**{**BASE, "role": "patient", **fields})
-
-
-@pytest.mark.parametrize("otp", ["12345", "abcdef", "12 345"])
-def test_otp_must_be_six_digits(otp):
-    with pytest.raises(ValidationError):
-        VerifySignupOtpRequest(**BASE, role="patient", otp=otp)
-
-
-def test_patient_signup_schema_normalises_cnic():
-    request = PatientSignupRequest(**BASE, cnic=" 12345-1234567-1 ", date_of_birth=date(1990, 1, 1), gender="female")
-    assert request.cnic == "12345-1234567-1"
+        SignupRequest(**{**BASE, "role": "patient", **fields})
 
 
 @pytest.mark.parametrize(
