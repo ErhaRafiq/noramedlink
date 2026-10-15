@@ -71,7 +71,8 @@ def test_previous_reaction_to_the_medicine_is_high_risk():
         # Two NSAIDs: a major duplicate in the shared MSCIE rules (it was "Caution" in the old, smaller list).
         ("Aspirin", "Ibuprofen", "High Risk"),
         ("Insulin", "Glimepiride", "Caution"),
-        ("Clopidogrel", "Omeprazole", "Caution"),
+        # Curated rule: moderate; DDInter rates it major (as the FDA label advises avoiding it): the higher wins.
+        ("Clopidogrel", "Omeprazole", "High Risk"),
         ("Lisinopril", "Spironolactone", "High Risk"),
     ],
 )
@@ -82,10 +83,11 @@ def test_listed_interactions(requested, saved_name, expected):
 
 def test_high_risk_is_not_lowered_by_a_later_caution():
     # Aspirin with warfarin (two high-risk rules: NSAID and antiplatelet), with ibuprofen (a major NSAID
-    # duplicate), and a moderate antiplatelet + NSAID caution, listed last.
+    # duplicate), DDInter's major rating of aspirin with ibuprofen (higher than the curated rule), and
+    # the moderate antiplatelet + NSAID caution, listed last.
     status, _, warnings = check("Aspirin", saved=history("Warfarin", "Ibuprofen"))
     assert status == "High Risk"
-    assert len(warnings) == 4
+    assert len(warnings) == 5
     assert "time the doses apart" in warnings[-1]
 
 

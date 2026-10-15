@@ -24,7 +24,9 @@ with pandera.
 | `duplicate_classes.csv` | 10 | a class where two medicines together is a duplicate | MSCIE |
 | `alternatives.csv` | 24 | a safer candidate for the same use | MSCIE |
 | `ranking_weights.csv` | 4 | a ranking factor and its weight (sums to 1) | MSCIE |
-| `sources.csv` | 14 | a source cited by the rows above | all tables |
+| `ddinter_interactions.csv.gz` | 160,235 | a drug pair and DDInter's level (CC BY-NC-SA 4.0) | MSCIE, behind `interactions.csv` |
+| `ddinter_names.csv` | 57 | a curated medicine → its DDInter name(s) | MSCIE |
+| `sources.csv` | 15 | a source cited by the rows above | all tables |
 
 ## medicines.csv
 
@@ -95,3 +97,26 @@ medicines has); the schema tests reject any reference that does not exist. Sever
   is shown; a contraindicated candidate is never suggested. Choosing among them is clinical.
 - **ranking_weights.csv**: the transparent scoring weights (safety 0.5, kidney fit 0.2, previous
   response 0.2, simplicity 0.1); the evaluation notebook shows how the ranking changes with them.
+
+## DDInter tables (Module 4, second interaction source)
+
+- **What:** `ddinter_interactions.csv.gz` holds 160,235 drug pairs among 1,939 drugs from DDInter 2.0
+  (ddinter.scbdd.com; Xiong G. et al., *Nucleic Acids Research* 2022 and 2025), each with DDInter's level:
+  major 26,914, moderate 96,675, minor 6,833, unknown 29,813. `ddinter_names.csv` maps a curated
+  medicine to DDInter's name for it (aspirin → acetylsalicylic acid, paracetamol → acetaminophen,
+  co-amoxiclav → amoxicillin and clavulanic acid, ...).
+- **Licence:** CC BY-NC-SA 4.0. Academic, non-commercial use with attribution; these derived tables
+  are shared under the same licence. Do not use them in a commercial product.
+- **How it is built:** `scripts/ddinter_import/build.py` from DDInter's eight published downloads
+  (names lower-cased, each pair once with a < b, no pair with two levels). Re-run it to update.
+- **How the engine uses it** (`services/mscie/ddinter.py`): the curated `interactions.csv` comes first
+  (it says what happens and what to do). A DDInter alert is added when no curated rule covers the
+  pair, or when DDInter rates the pair higher (the more severe rating is never hidden). "Unknown" is
+  shown as moderate. A medicine known only to DDInter can be prescribed and checked for interactions,
+  with an extra note that its allergy class, dose, duplicates and conditions were not checked.
+- **Gaps:** DDInter publishes downloads for eight ATC groups (A, B, D, H, L, P, R, V) only. A pair of
+  two cardiovascular (C), nervous-system (N), anti-infective (J) or musculoskeletal (M) drugs appears
+  only when it is also listed under one of those groups (lisinopril + spironolactone does not, so the
+  curated rule covers it). DDInter's download has no mechanism or management text: its alerts say
+  only that the pair interacts and how severely. Carbimazole, domperidone and gliclazide are not in DDInter.
+- **Not clinically reviewed** for this project, like the rest of the knowledge base.

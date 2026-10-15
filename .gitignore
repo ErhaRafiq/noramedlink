@@ -82,3 +82,8 @@ backend/models/
 /ocr_samples/
 /.venv-ocr-bench*/
 /icse_samples/
+
+# DDInter downloads (re-downloaded by scripts/ddinter_import/build.py instructions; CC BY-NC-SA 4.0)
+/scripts/ddinter_import/raw/
+# Local backup of the old root .env made when the env files were merged
+.env.before-cleanup

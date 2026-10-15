@@ -1,5 +1,6 @@
-"""Medicine search for prescribing: generic names, aliases and Pakistani brands, with fuzzy matching
-(rapidfuzz) so a misspelling ("glucophag", "amoxicilin") still finds the medicine."""
+"""Medicine search for prescribing: generic names, aliases and Pakistani brands, then the drugs known
+only to DDInter, with fuzzy matching (rapidfuzz) so a misspelling ("glucophag", "amoxicilin") still
+finds the medicine."""
 
 from __future__ import annotations
 
@@ -8,6 +9,7 @@ from functools import cache
 from rapidfuzz import fuzz, process
 
 from services.knowledge.tables import records
+from services.mscie import ddinter
 
 MIN_SCORE = 75
 
@@ -30,6 +32,9 @@ def _choices() -> list[dict]:
                 "classes": classes,
             }
         )
+    covered = {c["name"].lower() for c in out} | set(ddinter.names_for(tuple(medicines)))
+    for name in sorted(ddinter.drug_names() - covered):  # known only to DDInter: interaction checks only
+        out.append({"name": name, "generic": name, "brand": None, "classes": []})
     return out
 
 

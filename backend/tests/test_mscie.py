@@ -69,7 +69,7 @@ def test_allergy_classes_and_cross_reactivity(allergy, medicine, severity):
         ("Warfarin", "Brufen", "major"),
         ("Warfarin", "Flagyl", "major"),
         ("Lisinopril", "Spironolactone", "major"),
-        ("Clopidogrel", "Omeprazole", "moderate"),
+        ("Clopidogrel", "Omeprazole", "major"),  # DDInter rates it above the curated moderate rule
         ("Levothyroxine", "Calcium carbonate", "moderate"),
     ],
 )

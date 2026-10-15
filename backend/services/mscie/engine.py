@@ -1,7 +1,7 @@
 """MSCIE FE-1, FE-2, FE-5: check proposed medicines against the patient's history.
 
 Checks, all from the CSV knowledge base: allergies (and class cross-reactivity), drug-drug
-interactions, duplicate therapy, drug-disease and drug-lab contraindications, doses, and
+interactions (curated rules first, then DDInter's rated pairs: ddinter.py), duplicate therapy, drug-disease and drug-lab contraindications, doses, and
 high-alert medicines. Each alert says what it is, why (the rule, its source, and the exact item in
 the patient's record that triggered it) and what to do. A medicine the knowledge base does not know
 gets "no data", never "safe". Pure functions: the patient context is built elsewhere (context.py).
@@ -15,6 +15,7 @@ from typing import Any
 
 from services import knowledge
 from services.knowledge.tables import records
+from services.mscie import ddinter
 from services.mscie.doses import dose_mg, times_per_day
 
 LEVEL = {"contraindicated": "HIGH_RISK", "major": "HIGH_RISK", "moderate": "CAUTION", "minor": "INFO", "info": "INFO"}
@@ -30,6 +31,8 @@ class Med:
     generics: tuple[str, ...] = ()
     classes: tuple[str, ...] = ()
     high_alert: bool = False
+    # Known only to DDInter: interactions can be checked, but no class, dose or condition rules exist.
+    interactions_only: bool = False
     source: str = ""  # where it comes from in the record ("latest report list", "medication schedule", ...)
     ref: dict = field(default_factory=dict, compare=False, hash=False)  # report id, date
 
@@ -63,6 +66,11 @@ class Proposed:
 def resolve(name: str, source: str = "", ref: dict | None = None) -> Med:
     info = knowledge.resolve_medication(name)
     if info is None:
+        ddinter_name = ddinter.known_name(name)
+        if ddinter_name:
+            return Med(
+                name=ddinter_name, generics=(ddinter_name,), interactions_only=True, source=source, ref=ref or {}
+            )
         return Med(name=" ".join(name.split()), source=source, ref=ref or {})
     return Med(
         name=info.display_name, generics=info.generics, classes=info.classes, high_alert=info.high_alert,
@@ -141,13 +149,27 @@ def _interaction_alerts(item: Med, others: list[Med]) -> list[dict]:
     for other in others:
         if not other.known or other.generics == item.generics:
             continue
+        curated = []  # severities of the curated rules that matched this pair
         for row in records("interactions"):
             if (matches(row["a"], item) and matches(row["b"], other)) or (
                 matches(row["b"], item) and matches(row["a"], other)
             ):
+                curated.append(row["severity"])
                 alerts.append(_alert(row["id"], "interaction", row["severity"], item,
                                      f"{item.label} with {other.label}", row["effect"], row["management"],
                                      [f"Also taking: {_where(other)}"], row["source"], other.label))  # fmt: skip
+        found = ddinter.interaction(item.generics, other.generics)
+        # DDInter fills gaps, and is also shown when it rates a pair higher than the curated rule:
+        # the more severe rating is never hidden.
+        if found and (not curated or RANK[ddinter.SEVERITY[found[0]]] > max(RANK[s] for s in curated)):
+            level, a, b = found
+            effect = ddinter.effect(level, a, b) + (
+                " It rates this pair higher than the app's own rule." if curated else ""
+            )
+            alerts.append(_alert("DDINTER", "interaction", ddinter.SEVERITY[level], item,
+                                 f"{item.label} with {other.label}", effect,
+                                 ddinter.MANAGEMENT[level], [f"Also taking: {_where(other)}"], ddinter.SOURCE,
+                                 other.label))  # fmt: skip
     return alerts
 
 
@@ -270,6 +292,11 @@ def check_item(item: Med, proposed: Proposed, others: list[Med], context: Patien
         *_dose_alerts(item, proposed),
         *_previous_alerts(item, context),
     ]
+    if item.interactions_only:
+        alerts.append(_alert("PARTIAL-DATA", "no_data", "info", item, f"Only interaction data for {item.label}",
+                             "This medicine is known only from DDInter, so allergy classes, duplicates, doses and "
+                             "conditions could not be checked.",
+                             "Check those in a full drug reference. No alert does not mean safe.", [], ddinter.SOURCE))  # fmt: skip
     if item.high_alert:
         alerts.append(_alert("HIGH-ALERT", "high_alert", "info", item, f"{item.label} is a high-alert medicine",
                              "Errors with this medicine can cause serious harm.", "Double-check the dose, route and monitoring.",
