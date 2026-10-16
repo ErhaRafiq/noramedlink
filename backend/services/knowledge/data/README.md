@@ -120,3 +120,21 @@ medicines has); the schema tests reject any reference that does not exist. Sever
   curated rule covers it). DDInter's download has no mechanism or management text: its alerts say
   only that the pair interacts and how severely. Carbimazole, domperidone and gliclazide are not in DDInter.
 - **Not clinically reviewed** for this project, like the rest of the knowledge base.
+
+## Symptom checker tables (Module 7)
+
+- **red_flags.csv** (`id`, `label`, `patterns`, `also`, `source`): 12 warning signs. `patterns` are
+  alternative phrases (any one matches); `also`, when set, needs one of its phrases as well (a fever
+  counts only with a baby word; "allergic" only with swelling or breathing words). Source: NHS
+  "when to get urgent help" guidance, as the project's own wording of each sign.
+- **specialties.csv** (`name`, `plain`, `doctor_aliases`, `source`): the fixed list of 16 specialties,
+  what each looks after in everyday words, and the words that match a doctor's listed specialty.
+  "General Physician" is the fallback.
+- **symptom_specialties.csv** (`terms`, `specialty`, `weight`, `source`): everyday symptom words to a
+  specialty, weight 1 to 3. A phrase belongs to one specialty only (tested), the longest phrase wins
+  ("high blood pressure" beats "blood pressure") and a word is never counted twice.
+- **Limitations:** English only; a word list, not understanding. It can miss a warning written in other
+  words, so the page always shows the 1122 notice first. Negation is a simple look-back over the three
+  words before a phrase ("no", "never", "without", "denies"...), cut at a comma or full stop.
+  The mapping is the authors' demo mapping (`DEMO-MAP`), **not clinically reviewed**.
+

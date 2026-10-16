@@ -54,7 +54,16 @@ Not in this pass. Home-visit requests are recorded honestly (no invented doctor 
 
 ## Module 7: Intelligent Symptom Analysis and Doctor Recommendation
 
-Not in this pass.
+Rules only, no AI: deterministic rules decide, which is also what AGENTS.md section 6 requires.
+
+| ID | Feature | Status | Where |
+|---|---|---|---|
+| FE-1 | Describe symptoms in free text and get the kind of specialist to see | Done | `POST /symptoms/check` (open to visitors, rate limited per IP), `services/symptom_checker.py`, tables `symptom_specialties.csv` and `specialties.csv`; `/symptoms` page. English only. Up to three specialties, each with the words that pointed to it; no match falls back to a general physician and says so |
+| FE-2 | Red-flag symptoms get a hard emergency redirect | Done | `red_flags.csv` (chest pain, breathing, stroke signs, severe bleeding, loss of consciousness, seizure, self-harm, severe allergy, fever in a baby, sudden severe headache, overdose). A hit returns "Call 1122 or go to the nearest emergency department." with no specialist and no booking. A sign the patient says they do not have ("no chest pain", "never had a seizure") does not count; anything unclear is treated as a warning sign |
+| FE-3 | Recommend verified doctors and link to booking | Done | Verified, active doctors of the suggested specialty, ranked by next opening, rating, then fee (`rank_doctors`); the same booking dialog as the doctor search, with the times that clash with the patient's own visits closed |
+| FE-4 | Keep sessions for the admin | Done | `symptom_sessions` (migration 0016: text, red-flag ids, top specialty, user if signed in); `GET /api/admin/symptom-stats` returns counts only, shown on the admin dashboard. The text stays in the database and is never logged or shown to the admin |
+
+Not built: an LLM classifier (not needed; the rules decide), languages other than English, Roman Urdu or Urdu. The tables are a demo knowledge base and have not been clinically reviewed.
 
 ## Module 8: Payment and Billing Management
 
