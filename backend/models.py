@@ -257,6 +257,9 @@ class Payment(Base):
     currency: Mapped[str] = mapped_column(String(3), default="pkr", server_default="pkr", nullable=False)
     stripe_session_id: Mapped[str | None] = mapped_column(String(255), unique=True, nullable=True)
     paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Refund of a cancelled appointment: requested by us, confirmed only by Stripe's webhook.
+    stripe_refund_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    refunded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

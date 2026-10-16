@@ -38,6 +38,15 @@ def list_payments(
     return paginate(query, params, payments.to_out)
 
 
+@router.get("/{payment_id}", response_model=PaymentOut)
+def get_payment(payment_id: int, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+    """One of the patient's own payments, for its receipt."""
+    payment = db.query(Payment).filter(Payment.id == payment_id, Payment.user_id == current_user.id).first()
+    if payment is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Payment not found.")
+    return payments.to_out(payment)
+
+
 @router.post("/checkout", response_model=CheckoutOut, status_code=status.HTTP_201_CREATED)
 @limiter.limit(PAYMENT_LIMIT)
 def start_checkout(

@@ -123,8 +123,105 @@ def test_expired_and_failed_sessions_never_undo_a_paid_payment():
 
 
 def test_events_we_do_not_handle_are_ignored():
-    assert payments.apply_event(FakeDb(), {"id": "evt_2", "type": "charge.refunded"}) == "ignored"
+    assert payments.apply_event(FakeDb(), {"id": "evt_2", "type": "customer.created"}) == "ignored"
 
 
 def test_pkr_is_sent_to_stripe_in_paisa():
     assert payments.minor_units(1500) == 150_000
+
+
+# --- refunds -------------------------------------------------------------------------------------------
+
+
+class RefundQuery:
+    def __init__(self, row):
+        self.row = row
+
+    def filter(self, *_):
+        return self
+
+    def first(self):
+        return self.row
+
+
+class RefundDb:
+    def __init__(self, payment=None, appointment=None):
+        self.payment, self.appointment, self.added = payment, appointment, []
+
+    def query(self, *_):
+        return RefundQuery(self.payment)
+
+    def get(self, *_):
+        return self.appointment
+
+    def add(self, row):
+        self.added.append(row)
+
+
+def paid_payment(**fields):
+    base = {
+        "id": 7,
+        "user_id": 3,
+        "appointment_id": 11,
+        "amount": 1500,
+        "currency": "pkr",
+        "status": "PAID",
+        "reference": "NML-ABC",
+        "transaction_id": "pi_test",
+        "stripe_refund_id": None,
+        "refunded_at": None,
+    }
+    return SimpleNamespace(**{**base, **fields})
+
+
+def test_a_cancelled_unpaid_appointment_refunds_nothing(monkeypatch):
+    appointment = SimpleNamespace(id=11, payment_status="PENDING")
+    assert payments.refund_for_cancellation(RefundDb(payment=None), appointment) is None
+    assert appointment.payment_status == "PENDING"
+
+
+def test_a_paid_cancellation_asks_stripe_and_waits_for_the_webhook(monkeypatch):
+    payment, appointment = paid_payment(), SimpleNamespace(id=11, payment_status="PAID")
+    created = {}
+
+    class Refunds:
+        def create(self, params, options):
+            created.update(params=params, options=options)
+            return SimpleNamespace(id="re_1")
+
+    monkeypatch.setattr(payments, "settings", replace(settings, stripe_secret_key="sk_test_x"))
+    monkeypatch.setattr(payments, "_client", lambda: SimpleNamespace(v1=SimpleNamespace(refunds=Refunds())))
+    db = RefundDb(payment=payment)
+    payments.refund_for_cancellation(db, appointment)
+    assert created["params"]["payment_intent"] == "pi_test"
+    assert created["options"] == {"idempotency_key": "refund-NML-ABC"}
+    # Requested, not refunded: only Stripe's webhook says the money moved.
+    assert payment.status == "REFUND_PENDING" and appointment.payment_status == "REFUND_PENDING"
+    assert payment.refunded_at is None and payment.stripe_refund_id == "re_1"
+    assert db.added and db.added[0].kind == "payment_refund"
+
+
+def test_without_stripe_the_cancellation_stands_and_the_failed_refund_is_visible(monkeypatch):
+    payment, appointment = paid_payment(), SimpleNamespace(id=11, payment_status="PAID")
+    monkeypatch.setattr(payments, "settings", replace(settings, stripe_secret_key=""))
+    payments.refund_for_cancellation(RefundDb(payment=payment), appointment)
+    assert payment.status == "REFUND_FAILED" and appointment.payment_status == "REFUND_FAILED"
+
+
+def test_only_a_full_charge_refunded_event_marks_a_payment_refunded():
+    payment, appointment = paid_payment(status="REFUND_PENDING"), SimpleNamespace(payment_status="REFUND_PENDING")
+    db = RefundDb(payment, appointment)
+    assert payments._apply_refund(db, payment, "charge.refunded", {"amount_refunded": 100}) == "partial refund ignored"
+    assert payment.status == "REFUND_PENDING"
+    assert payments._apply_refund(db, payment, "charge.refunded", {"amount_refunded": 150_000}) == "refunded"
+    assert payment.status == "REFUNDED" and payment.refunded_at is not None
+    assert appointment.payment_status == "REFUNDED"
+    # A later failure notice never undoes a completed refund.
+    assert payments._apply_refund(db, payment, "refund.failed", {}) == "already refunded"
+    assert payment.status == "REFUNDED"
+
+
+def test_a_failed_refund_is_recorded():
+    payment, appointment = paid_payment(status="REFUND_PENDING"), SimpleNamespace(payment_status="REFUND_PENDING")
+    assert payments._apply_refund(RefundDb(payment, appointment), payment, "refund.failed", {}) == "refund failed"
+    assert payment.status == "REFUND_FAILED" and appointment.payment_status == "REFUND_FAILED"

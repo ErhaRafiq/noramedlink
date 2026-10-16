@@ -304,10 +304,11 @@ class PaymentOut(BaseModel):
     currency: str
     method: str
     purpose: str
-    status: str  # PENDING, PAID, FAILED or EXPIRED (older manual records may show other values)
+    status: str  # PENDING, PAID, FAILED, EXPIRED, REFUND_PENDING, REFUNDED or REFUND_FAILED (older manual records may show other values)
     reference: str
     invoice_number: str | None
     paid_at: datetime | None
+    refunded_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 

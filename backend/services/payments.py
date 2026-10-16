@@ -3,6 +3,8 @@
 - The amount always comes from the doctor's consultation fee on the server, never from the browser.
 - A payment becomes PAID only when Stripe's signed webhook says its Checkout session was paid, for
   the amount and currency we asked for. Each Stripe event is applied once (stripe_events).
+- Cancelling a paid appointment asks Stripe for a full refund (REFUND_PENDING). The payment becomes
+  REFUNDED only when Stripe's signed webhook confirms it (charge.refunded), or REFUND_FAILED on refund.failed.
 - Stripe sees only the doctor's name and the amount: no diagnosis, reason or patient details.
 """
 
@@ -18,6 +20,7 @@ from sqlalchemy.orm import Session
 from config import settings
 from models import Appointment, Payment, StripeEvent, User
 from schemas import PaymentOut
+from services import notifications
 
 log = logging.getLogger("nora.payments")
 
@@ -26,8 +29,10 @@ MAX_FEE = 100_000
 CHECKOUT_MINUTES = 30  # how long the hosted page stays open (Stripe allows 30 minutes to 24 hours)
 METHOD = "STRIPE_CARD"
 PENDING, PAID, FAILED, EXPIRED = "PENDING", "PAID", "FAILED", "EXPIRED"
+REFUND_PENDING, REFUNDED, REFUND_FAILED = "REFUND_PENDING", "REFUNDED", "REFUND_FAILED"
 PAID_EVENTS = {"checkout.session.completed", "checkout.session.async_payment_succeeded"}
-HANDLED_EVENTS = PAID_EVENTS | {"checkout.session.async_payment_failed", "checkout.session.expired"}
+REFUND_EVENTS = {"charge.refunded", "refund.failed"}
+HANDLED_EVENTS = PAID_EVENTS | REFUND_EVENTS | {"checkout.session.async_payment_failed", "checkout.session.expired"}
 
 
 class PaymentError(Exception):
@@ -59,6 +64,7 @@ def to_out(payment: Payment) -> PaymentOut:
         reference=payment.reference,
         invoice_number=payment.invoice_number,
         paid_at=payment.paid_at,
+        refunded_at=payment.refunded_at,
         created_at=payment.created_at,
         updated_at=payment.updated_at,
     )
@@ -209,6 +215,67 @@ def _apply(db: Session, payment: Payment, kind: str, session: dict) -> str:
     return payment.status.lower()
 
 
+def _apply_refund(db: Session, payment: Payment, kind: str, obj: dict) -> str:
+    appointment = db.get(Appointment, payment.appointment_id) if payment.appointment_id else None
+    if payment.status == REFUNDED:
+        return "already refunded"
+    if kind == "charge.refunded":
+        if (obj.get("amount_refunded") or 0) < minor_units(payment.amount):
+            return "partial refund ignored"
+        payment.status = REFUNDED
+        payment.refunded_at = datetime.now(UTC)
+        outcome = "refunded"
+    else:  # refund.failed
+        payment.status = REFUND_FAILED
+        outcome = "refund failed"
+    if appointment is not None:
+        appointment.payment_status = payment.status
+    return outcome
+
+
+def refund_for_cancellation(db: Session, appointment: Appointment) -> Payment | None:
+    """A cancelled appointment that was paid gets its money back in full (the fee was never earned).
+
+    Stripe is asked for the refund here; the payment only becomes REFUNDED when Stripe's webhook says so.
+    If Stripe cannot be reached the cancellation still stands and the payment is marked REFUND_FAILED,
+    so it is visible and nobody is told the money is on its way when it is not."""
+    payment = db.query(Payment).filter(Payment.appointment_id == appointment.id, Payment.status == PAID).first()
+    if payment is None:
+        return None
+    try:
+        if not online_payment_enabled() or not payment.transaction_id:
+            raise PaymentError(503, "Online refunds are not set up on this server.")
+        refund = _client().v1.refunds.create(
+            {
+                "payment_intent": payment.transaction_id,
+                "metadata": {"payment_id": str(payment.id), "appointment_id": str(appointment.id)},
+            },
+            {"idempotency_key": f"refund-{payment.reference}"},
+        )
+        payment.stripe_refund_id = refund.id
+        payment.status = REFUND_PENDING
+        title, body = (
+            "Refund requested",
+            (
+                f"Your appointment was cancelled, so {payment.amount:,} {payment.currency.upper()} is being refunded to "
+                "your card. Your bank may take several days to show it."
+            ),
+        )
+    except (stripe.StripeError, PaymentError) as exc:
+        log.warning("Refund for payment %s could not be requested (%s)", payment.id, type(exc).__name__)
+        payment.status = REFUND_FAILED
+        title, body = (
+            "Refund needs attention",
+            (
+                "Your appointment was cancelled, but the refund could not be requested automatically. "
+                "Please contact support with your payment reference " + payment.reference + "."
+            ),
+        )
+    appointment.payment_status = payment.status
+    notifications.add(db, payment.user_id, "payment_refund", title, body, appointment.id)
+    return payment
+
+
 def apply_event(db: Session, event: dict) -> str:
     """Apply one verified Stripe event; returns what happened (for the log and the response)."""
     event_id, kind = event.get("id"), event.get("type")
@@ -217,8 +284,13 @@ def apply_event(db: Session, event: dict) -> str:
     if db.get(StripeEvent, event_id) is not None:
         return "duplicate"
     session = (event.get("data") or {}).get("object") or {}
-    payment = db.query(Payment).filter(Payment.stripe_session_id == session.get("id")).first()
-    outcome = _apply(db, payment, kind, session) if payment is not None else "unknown session"
+    if kind in REFUND_EVENTS:
+        intent = session.get("payment_intent")
+        payment = db.query(Payment).filter(Payment.transaction_id == intent).first() if intent else None
+        outcome = _apply_refund(db, payment, kind, session) if payment is not None else "unknown payment"
+    else:
+        payment = db.query(Payment).filter(Payment.stripe_session_id == session.get("id")).first()
+        outcome = _apply(db, payment, kind, session) if payment is not None else "unknown session"
     db.add(StripeEvent(id=event_id, type=kind))
     try:
         db.commit()

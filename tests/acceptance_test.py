@@ -666,6 +666,32 @@ def run_tests() -> None:
         check("B reading A's payment -> 404", response.status_code == 404, f"got {response.status_code}")
         response = call("POST", "/api/backend/payments/checkout", tok_a, {"appointment_id": to_pay.get("id")})
         check("checkout for a paid appointment -> 409", response.status_code == 409, f"got {response.status_code}")
+
+        payment_id = scalar("select id from payments where stripe_session_id = :s", s=session_id)
+        check("a receipt without a token -> 401", call("GET", f"/api/backend/payments/{payment_id}").status_code == 401)
+        response = call("GET", f"/api/backend/payments/{payment_id}", tok_a)
+        check("A reads their own receipt", response.status_code == 200 and response.json().get("id") == payment_id,
+              f"got {response.status_code}")
+        check("B reading A's receipt -> 404", call("GET", f"/api/backend/payments/{payment_id}", tok_b).status_code == 404)
+        response = call("PUT", f"/api/backend/appointments/{to_pay.get('id')}", tok_a, {"status": "CANCELLED"})
+        check("A cancels the paid appointment -> 200", response.status_code == 200, f"got {response.status_code}")
+        # No Stripe key in tests: the refund cannot be requested, and that must be visible, never 'refunded'.
+        check("without Stripe the refund shows as needing attention, not refunded",
+              paid_status() == "REFUND_FAILED"
+              and scalar("select payment_status from appointments where id = :id", id=to_pay.get("id", 0)) == "REFUND_FAILED")
+        check("A is told about the refund", scalar(
+            "select count(*) from notifications where user_id = :u and kind = 'payment_refund'", u=patient_a) == 1)
+        body, headers = stripe_event("part-refund", "charge.refunded", amount_refunded=100)
+        response = backend.post("/payments/stripe/webhook", content=body, headers=headers)
+        check("a partial refund event does not mark it refunded",
+              response.json().get("outcome") == "partial refund ignored" and paid_status() == "REFUND_FAILED")
+        body, headers = stripe_event("refund", "charge.refunded", amount_refunded=150_000)
+        response = backend.post("/payments/stripe/webhook", content=body, headers=headers)
+        check("a signed charge.refunded for the full amount marks it REFUNDED",
+              response.json().get("outcome") == "refunded" and paid_status() == "REFUNDED"
+              and scalar("select refunded_at is not null from payments where stripe_session_id = :s", s=session_id) is True)
+        check("and the appointment REFUNDED",
+              scalar("select payment_status from appointments where id = :id", id=to_pay.get("id", 0)) == "REFUNDED")
         backend.close()
     check("B sees no payments", call("GET", "/api/backend/payments", tok_b).json()["items"] == [])
 

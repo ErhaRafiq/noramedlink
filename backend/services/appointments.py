@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from models import Appointment, AppointmentReview, User
-from services import notifications
+from services import notifications, payments
 from services.scheduling import SlotUnavailable, as_utc, find_open_slot
 
 FINAL_STATUSES = {"COMPLETED", "NO_SHOW", "CANCELLED"}
@@ -110,6 +110,7 @@ def cancel(db: Session, appointment: Appointment, patient: User, by_doctor: bool
         raise _conflict("This appointment has already started and can no longer be cancelled.")
     appointment.status = "CANCELLED"
     notifications.cancelled(db, appointment, patient.full_name, appointment.doctor_name, by_doctor)
+    payments.refund_for_cancellation(db, appointment)
     return appointment
 
 
