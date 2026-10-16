@@ -126,6 +126,7 @@ ALL_ROUTES = (ADMIN_ROUTES + DOCTOR_ROUTES + PATIENT_ROUTES + ANY_USER_ROUTES
 # Tables holding rows that belong to a user, children before parents.
 # (table, column) pairs; only rows whose column is a phase0-test- user id are deleted.
 USER_OWNED_ROWS = [
+    ("symptom_sessions", "user_id"),
     ("medical_ai_analyses", "user_id"),
     ("notifications", "user_id"),
     ("notification_tokens", "user_id"),
@@ -313,6 +314,9 @@ def scalar(sql: str, **params):
 def cleanup_test_users() -> None:
     """Delete phase0-test- users and rows tied to them. Nothing else is touched."""
     with engine.begin() as conn:
+        # Symptom checks sent by visitors who were not signed in carry the test marker in their text.
+        if conn.execute(text("select to_regclass('public.symptom_sessions')")).scalar():
+            conn.execute(text("delete from symptom_sessions where symptom_text like :p"), {"p": f"{TEST_PREFIX}%"})
         ids = list(
             conn.execute(
                 text("select id from users where email like :p and full_name like :p"),
@@ -719,6 +723,47 @@ def run_tests() -> None:
     check("AI chat route removed (rebuilt in Phase 2a) -> 404", response.status_code == 404, f"got {response.status_code}")
     response = call("GET", "/api/backend/patient/documents", tok_a)
     check("removed /patient/documents endpoint -> 404", response.status_code == 404, f"got {response.status_code}")
+
+    print("\n[5i] Symptom checker: open to visitors, red flags block everything else")
+    probe = f"{TEST_PREFIX}{run_id} "
+    check_path = "/api/backend/symptoms/check"
+    response = call("POST", check_path, None, {"text": probe + "Chest pain, dizziness, shortness of breath"})
+    emergency = response.json() if response.status_code == 200 else {}
+    check("a visitor with chest pain and breathlessness gets the emergency notice (no login needed)",
+          response.status_code == 200 and emergency.get("emergency") is True and "1122" in (emergency.get("emergency_notice") or ""),
+          f"got {response.status_code}")
+    check("an emergency offers no specialist and no doctor to book",
+          emergency.get("suggestions") == [] and len(emergency.get("warning_signs", [])) >= 2)
+    response = call("POST", check_path, None, {"text": probe + "itchy rash on arm for a week"})
+    rash = response.json() if response.status_code == 200 else {}
+    check("an itchy rash -> not an emergency, Dermatologist first",
+          response.status_code == 200 and rash.get("emergency") is False and rash.get("emergency_notice") is None
+          and rash["suggestions"][0]["specialty"] == "Dermatologist", f"got {response.status_code}")
+    check("the advice is marked advisory", "not a diagnosis" in rash.get("advisory", ""))
+    response = call("POST", check_path, tok_a, {"text": probe + "fever and sore throat for 2 days"})
+    check("fever and a sore throat -> General Physician", response.status_code == 200
+          and response.json()["suggestions"][0]["specialty"] == "General Physician", f"got {response.status_code}")
+    check("the suggested doctors never include an unverified doctor", all(
+        d["id"] != doctor_pending for s_ in response.json()["suggestions"] for d in s_["doctors"]))
+    check("a signed-in check is saved under that patient",
+          scalar("select count(*) from symptom_sessions where user_id = :a", a=patient_a) == 1)
+    check("a visitor's checks are saved without a user",
+          scalar("select count(*) from symptom_sessions where symptom_text like :p and user_id is null", p=probe + "%") == 2)
+    check("a red-flag run is stored as an emergency with no specialty",
+          scalar("select red_flag and specialty is null from symptom_sessions where symptom_text like :p", p=probe + "Chest%") is True)
+    check("a one-word text -> 422", call("POST", check_path, None, {"text": "a"}).status_code == 422)
+    check("a text over 1,000 characters -> 422", call("POST", check_path, None, {"text": "x" * 1001}).status_code == 422)
+    check("a user id in the body is ignored (identity comes from the token)",
+          call("POST", check_path, tok_a, {"text": probe + "back pain", "user_id": patient_b}).status_code == 200
+          and scalar("select count(*) from symptom_sessions where user_id = :b", b=patient_b) == 0)
+    check("admin symptom stats without a token -> 401",
+          call("GET", "/api/backend/api/admin/symptom-stats").status_code == 401)
+    check("a patient on admin symptom stats -> 403",
+          call("GET", "/api/backend/api/admin/symptom-stats", tok_a).status_code == 403)
+    stats = call("GET", "/api/backend/api/admin/symptom-stats", tok_admin)
+    stats_body = stats.json() if stats.status_code == 200 else {}
+    check("admin reads counts, never the text", stats.status_code == 200 and stats_body.get("emergencies", 0) >= 1
+          and stats_body.get("total", 0) >= 4 and probe not in stats.text, f"got {stats.status_code}")
 
     print("\n[5h] Report upload (browser-extracted text, no OCR.space)")
     paid_keys = configured_paid_keys()

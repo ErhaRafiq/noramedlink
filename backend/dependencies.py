@@ -36,6 +36,19 @@ def get_current_user(
     return user
 
 
+def get_optional_user(
+    authorization: str | None = Header(default=None),
+    db: Session = Depends(get_db),
+) -> User | None:
+    """The signed-in user, or None for a visitor (or a bad token) on a page that works without signing in."""
+    if not authorization:
+        return None
+    try:
+        return get_current_user(authorization, db)
+    except HTTPException:
+        return None
+
+
 def require_patient(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role.lower() != "patient":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Patient access required.")

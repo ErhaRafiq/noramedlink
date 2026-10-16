@@ -180,6 +180,16 @@ def filter_doctors(
     return sorted(results, key=keys[sort])
 
 
+def verified_directory(db: Session) -> list[AppointmentDoctorOut]:
+    """Every verified, active doctor with their real rating, fee and next open slot (also used by the symptom checker)."""
+    doctors = verified_doctors_query(db).order_by(User.full_name.asc()).limit(DOCTOR_LIMIT).all()
+    ids = [doctor.id for doctor in doctors]
+    ratings = booking.ratings_for(db, ids)
+    availability = scheduling.directory_availability(db, ids)
+    scheduled = {doctor_id for doctor_id, rows in scheduling.windows_of(db, ids).items() if rows}
+    return [doctor_to_out(d, ratings.get(d.id), availability.get(d.id), d.id in scheduled) for d in doctors]
+
+
 def aware(value: datetime) -> datetime:
     """A date without a time zone is taken as clinic time (the browser sends ISO with a zone)."""
     return value.replace(tzinfo=scheduling.CLINIC_TZ) if value.tzinfo is None else value
@@ -217,13 +227,9 @@ def list_doctors(
     db: Session = Depends(get_db),
 ):
     """Verified, active doctors only, with their real rating, fee and next open slot."""
-    doctors = verified_doctors_query(db).order_by(User.full_name.asc()).limit(DOCTOR_LIMIT).all()
-    ids = [doctor.id for doctor in doctors]
-    ratings = booking.ratings_for(db, ids)
-    availability = scheduling.directory_availability(db, ids)
-    scheduled = {doctor_id for doctor_id, rows in scheduling.windows_of(db, ids).items() if rows}
-    out = [doctor_to_out(d, ratings.get(d.id), availability.get(d.id), d.id in scheduled) for d in doctors]
-    return filter_doctors(out, query, specialty, available_today, city, mode, max_fee, min_rating, sort)
+    return filter_doctors(
+        verified_directory(db), query, specialty, available_today, city, mode, max_fee, min_rating, sort
+    )
 
 
 @router.get("/doctors/{doctor_id}/slots", response_model=SlotsOut)

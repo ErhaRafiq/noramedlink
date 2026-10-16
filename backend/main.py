@@ -29,6 +29,7 @@ from routers import (
     payments,
     profile,
     reports,
+    symptoms,
     vitals,
 )
 
@@ -83,6 +84,7 @@ app.include_router(nlp.router)
 app.include_router(appointments.router)
 app.include_router(payments.router)
 app.include_router(profile.router)
+app.include_router(symptoms.router)
 app.include_router(notifications.router)
 app.include_router(vitals.router)
 app.include_router(medications.router)

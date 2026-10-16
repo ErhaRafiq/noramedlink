@@ -7,8 +7,9 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from dependencies import require_admin
-from models import Appointment, DoctorProfile, PatientReport, User
+from models import Appointment, DoctorProfile, PatientReport, SymptomSession, User
 from pagination import Page, PageParams, page_params, paginate
+from schemas import SymptomStatsOut
 from services.signup_service import pmdc_matches
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -80,6 +81,25 @@ def dashboard_stats(
             db.query(DoctorProfile.id).filter(func.lower(DoctorProfile.verification_status) == "pending").count()
         ),
     }
+
+
+@router.get("/symptom-stats", response_model=SymptomStatsOut)
+def symptom_stats(_: User = Depends(require_admin), db: Session = Depends(get_db)):
+    """How the symptom checker is used: counts only, never what people typed."""
+    week_ago = datetime.now(UTC) - timedelta(days=7)
+    by_specialty = (
+        db.query(SymptomSession.specialty, func.count(SymptomSession.id))
+        .filter(SymptomSession.specialty.is_not(None))
+        .group_by(SymptomSession.specialty)
+        .order_by(func.count(SymptomSession.id).desc(), SymptomSession.specialty)
+        .all()
+    )
+    return SymptomStatsOut(
+        total=db.query(SymptomSession.id).count(),
+        emergencies=db.query(SymptomSession.id).filter(SymptomSession.red_flag.is_(True)).count(),
+        last_7_days=db.query(SymptomSession.id).filter(SymptomSession.created_at >= week_ago).count(),
+        by_specialty=[{"specialty": name, "count": count} for name, count in by_specialty],
+    )
 
 
 @router.get("/users", response_model=Page[dict[str, Any]])

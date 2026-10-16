@@ -1,0 +1,13 @@
+id,label,patterns,also,source
+RF-001,Chest pain or pressure,chest pain;chest pains;pain in my chest;pain in the chest;chest tightness;tightness in my chest;tightness in the chest;chest pressure;pressure in my chest;pressure in the chest;crushing chest;heart attack,,NHS
+RF-002,Difficulty breathing,shortness of breath;short of breath;difficulty breathing;difficulty in breathing;trouble breathing;hard to breathe;cannot breathe;can't breathe;cant breathe;unable to breathe;not able to breathe;struggling to breathe;gasping for air;choking;turning blue;lips are blue,,NHS
+RF-003,Signs of a stroke,face drooping;drooping face;facial droop;face is drooping;slurred speech;speech is slurred;slurring my words;weakness on one side;one sided weakness;one side of my body;cannot lift my arm;can't lift my arm;sudden numbness;sudden weakness;sudden confusion;sudden loss of vision;stroke,,NHS
+RF-004,Severe bleeding,severe bleeding;heavy bleeding;bleeding heavily;bleeding a lot;bleeding will not stop;bleeding won't stop;bleeding wont stop;cannot stop the bleeding;can't stop the bleeding;vomiting blood;vomited blood;vomiting of blood;coughing up blood;coughing blood;blood in my vomit,,NHS
+RF-005,Loss of consciousness,lost consciousness;loss of consciousness;unconscious;passed out;fainted;blacked out;collapsed;unresponsive;not responding;cannot wake;can't wake;won't wake up;wont wake up,,NHS
+RF-006,Seizure or fit,seizure;seizures;convulsion;convulsions;convulsing;had a fit;having a fit;epileptic fit;shaking uncontrollably,,NHS
+RF-007,Thoughts of harming yourself,suicide;suicidal;kill myself;end my life;want to die;wish i was dead;wish i were dead;better off dead;hurt myself;harm myself;self harm;take my own life,,NHS
+RF-008,Severe allergic reaction,anaphylaxis;anaphylactic;severe allergic reaction;serious allergic reaction;throat closing;throat is closing;throat swelling;swollen throat;swollen tongue;tongue is swelling,,NHS
+RF-009,Allergic reaction with swelling or breathing trouble,allergic reaction;allergic,swelling;swollen;breathe;breathing;throat;tongue;faint,NHS
+RF-010,Fever in a baby,fever;high temperature;feverish;temperature,newborn;infant;baby;months old;month old;weeks old;week old;days old;day old,NHS
+RF-011,Sudden severe headache,worst headache of my life;thunderclap headache;sudden severe headache;sudden terrible headache,,NHS
+RF-012,Poisoning or overdose,overdose;took too many;swallowed poison;poisoning;drank poison,,NHS

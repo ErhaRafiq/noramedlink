@@ -1,0 +1,29 @@
+terms,specialty,weight,source
+rash;itchy rash;itchy skin;itching;itchy;acne;pimples;eczema;psoriasis;hives;ringworm;dandruff;hair loss;warts;sunburn;fungal infection;skin infection;blisters;dry skin;skin allergy;skin,Dermatologist,3,DEMO-MAP
+mole,Dermatologist,1,DEMO-MAP
+palpitations;heart racing;racing heart;irregular heartbeat;high blood pressure;chest discomfort;heart,Cardiologist,3,DEMO-MAP
+blood pressure;swollen ankles,Cardiologist,2,DEMO-MAP
+migraine;numbness;tingling;tremor;memory loss;vertigo;pins and needles;shaking hands,Neurologist,3,DEMO-MAP
+headache;headaches;dizziness;dizzy,Neurologist,2,DEMO-MAP
+stomach pain;abdominal pain;belly pain;acidity;heartburn;indigestion;bloating;constipation;acid reflux;loose motions;jaundice;blood in stool;gastric,Gastroenterologist,3,DEMO-MAP
+diarrhea;diarrhoea;nausea;vomiting;gas;stomach,Gastroenterologist,2,DEMO-MAP
+wheezing;asthma;phlegm;chronic cough;cough with phlegm;persistent cough,Pulmonologist,3,DEMO-MAP
+cough;coughing,Pulmonologist,2,DEMO-MAP
+joint pain;knee pain;back pain;neck pain;shoulder pain;fracture;sprain;swollen joint;arthritis;bone pain;hip pain;muscle pain;lower back,Orthopedic Specialist,3,DEMO-MAP
+joints;knee,Orthopedic Specialist,2,DEMO-MAP
+ear pain;earache;hearing loss;ringing in my ears;tinnitus;sinus;sinusitis;blocked nose;tonsils;hoarse voice;nose bleeding;nosebleed,ENT Specialist,3,DEMO-MAP
+runny nose;ear,ENT Specialist,2,DEMO-MAP
+eye pain;red eye;red eyes;blurred vision;blurry vision;watery eyes;itchy eyes;eye infection;double vision;eye,Eye Specialist,3,DEMO-MAP
+vision,Eye Specialist,1,DEMO-MAP
+period;periods;irregular periods;missed period;pregnancy;pregnant;pelvic pain;vaginal;menstrual;white discharge;heavy periods;painful periods;pcos,Gynecologist,3,DEMO-MAP
+my child;my son;my daughter;my baby;toddler;infant;newborn;kid;my kid,Pediatrician,3,DEMO-MAP
+anxiety;depression;depressed;panic attacks;panic attack;low mood;mood swings;feeling sad;overthinking,Psychiatrist,3,DEMO-MAP
+stress;stressed;insomnia;cannot sleep;can't sleep,Psychiatrist,2,DEMO-MAP
+burning urination;burning when i urinate;painful urination;frequent urination;blood in urine;kidney stone;urine infection;uti;difficulty urinating;prostate,Urologist,3,DEMO-MAP
+diabetes;high sugar;blood sugar;thyroid;excessive thirst;hormone;hormones,Endocrinologist,3,DEMO-MAP
+weight gain;sugar,Endocrinologist,2,DEMO-MAP
+kidney disease;kidney problem;kidney failure;high creatinine,Nephrologist,3,DEMO-MAP
+kidney,Nephrologist,2,DEMO-MAP
+toothache;tooth pain;bleeding gums;swollen gums;cavity;wisdom tooth;dental;gums,Dentist,3,DEMO-MAP
+tooth;teeth,Dentist,2,DEMO-MAP
+fever;cold;flu;sore throat;body ache;body aches;fatigue;loss of appetite;weight loss;tired;weakness;mild fever;viral;infection,General Physician,3,DEMO-MAP

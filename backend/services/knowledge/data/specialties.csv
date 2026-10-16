@@ -1,0 +1,17 @@
+name,plain,doctor_aliases,source
+General Physician,"first visit for general illness such as fever, cold, tiredness or when you are not sure",general physician;general practitioner;family medicine;family physician;internal medicine;physician;gp,DEMO-MAP
+Cardiologist,"heart and blood pressure",cardio;heart,DEMO-MAP
+Dermatologist,"skin, hair and nails",dermat;skin,DEMO-MAP
+Neurologist,"brain, nerves, headaches and dizziness",neuro,DEMO-MAP
+Gastroenterologist,"stomach, gut and liver",gastro;hepat;liver,DEMO-MAP
+Pulmonologist,"lungs, cough and breathing",pulmon;chest;respiratory,DEMO-MAP
+Orthopedic Specialist,"bones, joints and muscles",orthop;bone;joint,DEMO-MAP
+ENT Specialist,"ear, nose and throat",ent;otolaryng;ear nose,DEMO-MAP
+Eye Specialist,"eyes and vision",ophthalm;eye,DEMO-MAP
+Gynecologist,"women's health, periods and pregnancy",gyn;obstet,DEMO-MAP
+Pediatrician,"children and babies",pediat;paediat;child,DEMO-MAP
+Psychiatrist,"mood, anxiety, stress and sleep",psychiat;mental,DEMO-MAP
+Urologist,"urine, bladder and the male reproductive system",urolog,DEMO-MAP
+Endocrinologist,"diabetes, thyroid and hormones",endocrin;diabet;thyroid,DEMO-MAP
+Nephrologist,"kidneys",nephro;kidney;renal,DEMO-MAP
+Dentist,"teeth and gums",dent;oral,DEMO-MAP

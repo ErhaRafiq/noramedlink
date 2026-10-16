@@ -20,6 +20,9 @@ LIST_COLUMNS = {
     "conditions": ["synonyms", "abbreviations"],
     "lab_tests": ["aliases", "row_abbreviations"],
     "plain_terms": ["aliases", "abbreviations"],
+    "red_flags": ["patterns", "also"],
+    "specialties": ["doctor_aliases"],
+    "symptom_specialties": ["terms"],
 }
 
 

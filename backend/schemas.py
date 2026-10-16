@@ -690,3 +690,38 @@ class NotificationPage(BaseModel):
     limit: int
     offset: int
     unread: int
+
+
+class SymptomCheckIn(BaseModel):
+    text: str = Field(min_length=3, max_length=1000)
+
+    @field_validator("text")
+    @classmethod
+    def not_blank(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if len(value) < 3:
+            raise ValueError("Please describe your symptoms in a few words.")
+        return value
+
+
+class SpecialtySuggestionOut(BaseModel):
+    specialty: str
+    plain: str  # what this kind of doctor looks after, in everyday words
+    matched: list[str]  # the words that pointed here; empty for the general fallback
+    fallback: bool = False
+    doctors: list[AppointmentDoctorOut]  # verified doctors only, best first
+
+
+class SymptomCheckOut(BaseModel):
+    emergency: bool
+    emergency_notice: str | None = None  # set exactly when `emergency` is true
+    warning_signs: list[str] = Field(default_factory=list)
+    suggestions: list[SpecialtySuggestionOut] = Field(default_factory=list)  # always empty on an emergency
+    advisory: str
+
+
+class SymptomStatsOut(BaseModel):
+    total: int
+    emergencies: int
+    last_7_days: int
+    by_specialty: list[dict[str, int | str]]

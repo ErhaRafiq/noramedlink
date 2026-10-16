@@ -81,6 +81,7 @@ class Settings:
     rate_limit_ai: str = "10/minute"
     rate_limit_access_code: str = "10/minute"
     rate_limit_payment: str = "10/minute"
+    rate_limit_symptoms: str = "20/minute"  # per IP: the public symptom checker
     trusted_proxy_ips: list[str] = field(default_factory=lambda: ["127.0.0.1", "::1"])
 
     # Payments (Stripe Checkout, the hosted payment page). Test keys (sk_test_...) take no real money.

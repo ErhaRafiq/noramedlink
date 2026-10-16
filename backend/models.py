@@ -830,6 +830,21 @@ class SignupOtp(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
 
 
+class SymptomSession(Base):
+    """One run of the symptom checker, kept for the admin counts. The text is what the visitor typed;
+    user_id is empty for visitors who were not signed in."""
+
+    __tablename__ = "symptom_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    symptom_text: Mapped[str] = mapped_column(Text, nullable=False)
+    red_flag: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    red_flags: Mapped[str] = mapped_column(String(200), default="", server_default="", nullable=False)  # RF ids, ";"
+    specialty: Mapped[str | None] = mapped_column(String(80), nullable=True)  # the top suggestion; none on a red flag
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
 class NotificationToken(Base):
     __tablename__ = "notification_tokens"
 

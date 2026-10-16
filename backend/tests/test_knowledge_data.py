@@ -98,6 +98,55 @@ def test_every_table_matches_its_schema(name):
     RAW_SCHEMAS[name].validate(pd.read_csv(DATA / f"{name}.csv", dtype=str, keep_default_na=False), lazy=True)
 
 
+SYMPTOM_SCHEMAS = {
+    "red_flags": pa.DataFrameSchema(
+        {
+            "id": pa.Column(str, pa.Check.str_matches(r"^RF-\d{3}$"), unique=True),
+            "label": pa.Column(str, NON_EMPTY, unique=True),
+            "patterns": pa.Column(str, NON_EMPTY),
+            "also": pa.Column(str),
+            "source": pa.Column(str, pa.Check.isin(sorted(SOURCES))),
+        },
+        strict=True,
+    ),
+    "specialties": pa.DataFrameSchema(
+        {
+            "name": pa.Column(str, NON_EMPTY, unique=True),
+            "plain": pa.Column(str, NON_EMPTY),
+            "doctor_aliases": pa.Column(str, NON_EMPTY),
+            "source": pa.Column(str, pa.Check.isin(sorted(SOURCES))),
+        },
+        strict=True,
+    ),
+    "symptom_specialties": pa.DataFrameSchema(
+        {
+            "terms": pa.Column(str, NON_EMPTY),
+            "specialty": pa.Column(str, pa.Check(lambda s: s.isin(set(table("specialties")["name"])))),
+            "weight": pa.Column(str, pa.Check.isin(["1", "2", "3"])),
+            "source": pa.Column(str, pa.Check.isin(sorted(SOURCES))),
+        },
+        strict=True,
+    ),
+}
+
+
+@pytest.mark.parametrize("name", sorted(SYMPTOM_SCHEMAS))
+def test_every_symptom_table_matches_its_schema(name):
+    SYMPTOM_SCHEMAS[name].validate(pd.read_csv(DATA / f"{name}.csv", dtype=str, keep_default_na=False), lazy=True)
+
+
+def test_a_symptom_phrase_points_to_one_specialty_per_weight():
+    """The same phrase in two rows would be counted twice; a phrase belongs to one specialty."""
+    seen: dict[str, str] = {}
+    for row in table("symptom_specialties").to_dict("records"):
+        for term in row["terms"]:
+            assert seen.setdefault(term, row["specialty"]) == row["specialty"], term
+
+
+def test_the_general_physician_exists_as_the_fallback():
+    assert "General Physician" in set(table("specialties")["name"])
+
+
 def test_every_brand_maps_to_known_generics():
     generics = set(table("medicines")["generic"])
     unknown = {g for row in table("brands")["generics"] for g in row} - generics
