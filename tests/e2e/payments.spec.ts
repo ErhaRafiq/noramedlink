@@ -37,4 +37,25 @@ test.describe("consultation payments", () => {
     await expect(page.getByText("This link has no payment session.")).toBeVisible();
     await expectNoHorizontalScroll(page);
   });
+
+  test("the receipt page explains a missing or unknown payment", async ({ page }) => {
+    await signInAs(page, fixtures().users.patientEmpty);
+    await page.goto("/payments/receipt");
+    await expect(page.getByText("This link has no payment.")).toBeVisible();
+    await page.goto("/payments/receipt?id=999999999");
+    await expect(alertWithText(page, "Payment not found")).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
+  });
+
+  test("the receipt page asks signed-out visitors to sign in", async ({ page }) => {
+    await page.goto("/payments/receipt?id=1");
+    await expect(page.getByText("Sign in to see this receipt.")).toBeVisible();
+  });
+
+  test("the receipt page fits a phone screen @mobile", async ({ page }) => {
+    await signInAs(page, fixtures().users.patientEmpty);
+    await page.goto("/payments/receipt?id=999999999");
+    await expect(alertWithText(page, "Payment not found")).toBeVisible({ timeout: 20_000 });
+    await expectNoHorizontalScroll(page);
+  });
 });

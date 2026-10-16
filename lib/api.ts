@@ -314,6 +314,9 @@ export const api = {
       body: JSON.stringify({ appointment_id: appointmentId }),
     });
   },
+  payment(id: number) {
+    return apiRequest<Payment>(`/payments/${id}`);
+  },
   paymentForSession(sessionId: string) {
     return apiRequest<Payment>(`/payments/session/${encodeURIComponent(sessionId)}`);
   },

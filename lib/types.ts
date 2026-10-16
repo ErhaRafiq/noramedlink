@@ -321,10 +321,12 @@ export type Payment = {
   currency: string;
   method: string;
   purpose: string;
-  status: "PENDING" | "PAID" | "FAILED" | "EXPIRED" | string;
+  /** REFUND_PENDING: asked Stripe; REFUNDED: Stripe confirmed; REFUND_FAILED: needs the patient to contact support. */
+  status: "PENDING" | "PAID" | "FAILED" | "EXPIRED" | "REFUND_PENDING" | "REFUNDED" | "REFUND_FAILED" | string;
   reference: string;
   invoice_number: string | null;
   paid_at: string | null;
+  refunded_at: string | null;
   created_at: string;
   updated_at: string;
 };

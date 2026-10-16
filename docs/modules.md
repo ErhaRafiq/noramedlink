@@ -60,10 +60,10 @@ Not in this pass.
 
 | ID | Feature | Status | Where |
 |---|---|---|---|
-| FE-1 | Secure online payments for consultations, appointments and home visits | | |
-| FE-2 | Third-party payment gateway | | |
-| FE-3 | Invoices, receipts and transaction history | | |
-| FE-4 | Refunds, cancellations and payment status tracking | | |
+| FE-1 | Secure online payments for consultations, appointments and home visits | Partial | Consultations and appointments: Stripe Checkout at the doctor's fee (`services/payments.py`, `/payments`); the server sets the amount and only Stripe's signed webhook marks a payment paid. Home visits cannot be paid: the home-visit engine (Module 6) is not built |
+| FE-2 | Third-party payment gateway | Done (test mode) | Stripe, hosted payment page, signed webhook, each event applied once. No live keys; no other gateway |
+| FE-3 | Invoices, receipts and transaction history | Done | Payment history on `/payments`; printable receipt on `/payments/receipt?id=` (`GET /payments/{id}`, owner only) with invoice number and reference. A prototype receipt, not a tax invoice; no PDF export |
+| FE-4 | Refunds, cancellations and payment status tracking | Done | Cancelling a paid appointment (patient or doctor) asks Stripe for a full refund: `REFUND_PENDING`, then `REFUNDED` only on Stripe's `charge.refunded` webhook. If the refund cannot be requested the cancellation stands and the payment shows `REFUND_FAILED` with the reference to quote to support. No partial refunds and no admin refund screen yet |
 
 ## Module 9: Unified Dashboard and Admin Panel
 

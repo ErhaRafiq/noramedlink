@@ -22,7 +22,12 @@ const STATUS: Record<string, { label: string; tone: BadgeTone }> = {
   PENDING: { label: "Not completed", tone: "warning" },
   EXPIRED: { label: "Expired", tone: "neutral" },
   FAILED: { label: "Failed", tone: "danger" },
+  REFUND_PENDING: { label: "Refund on its way", tone: "info" },
+  REFUNDED: { label: "Refunded", tone: "neutral" },
+  REFUND_FAILED: { label: "Refund needs attention", tone: "danger" },
 };
+
+const RECEIPT_STATUSES = new Set(["PAID", "REFUND_PENDING", "REFUNDED", "REFUND_FAILED"]);
 
 function statusBadge(status: string) {
   const known = STATUS[status.toUpperCase()] ?? { label: status.replaceAll("_", " ").toLowerCase(), tone: "neutral" as const };
@@ -169,10 +174,20 @@ function HistoryItem({ payment }: { payment: Payment }) {
           {formatDateTime(payment.paid_at ?? payment.created_at)} · Ref {payment.reference}
         </p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="text-sm font-semibold text-ink">{formatMoney(payment.amount, payment.currency)}</span>
         {statusBadge(payment.status)}
+        {RECEIPT_STATUSES.has(payment.status.toUpperCase()) ? (
+          <Link href={`/payments/receipt?id=${payment.id}`} className="text-xs font-semibold text-brand-blue underline">
+            Receipt
+          </Link>
+        ) : null}
       </div>
+      {payment.status === "REFUND_FAILED" ? (
+        <p className="basis-full text-xs text-ink-muted">
+          We could not request the refund automatically. Please contact support and quote reference {payment.reference}.
+        </p>
+      ) : null}
     </li>
   );
 }
