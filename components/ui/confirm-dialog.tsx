@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 
@@ -33,6 +33,7 @@ export function ConfirmDialog({
   onCancel: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId(); // several dialogs can be mounted on one page
 
   useEffect(() => {
     const dialog = ref.current;
@@ -51,11 +52,11 @@ export function ConfirmDialog({
       onClick={(event) => {
         if (event.target === ref.current && !pending) onCancel(); // click on the backdrop
       }}
-      aria-labelledby="confirm-dialog-title"
+      aria-labelledby={titleId}
       className="w-[calc(100%-2rem)] max-w-md rounded-card border border-line bg-white p-0 shadow-calm backdrop:bg-slate-950/40 backdrop:backdrop-blur-sm"
     >
       <div className="p-6">
-        <h2 id="confirm-dialog-title" className="text-lg font-semibold text-ink">
+        <h2 id={titleId}className="text-lg font-semibold text-ink">
           {title}
         </h2>
         <div className="mt-2 text-sm leading-6 text-ink-muted">{description}</div>
