@@ -17,7 +17,16 @@ Not a medical device: every medical feature is advisory (AGENTS.md section 6).
 
 ## Module 2: Unified Patient Health Record Repository (UPHRR)
 
-Not in the requested scope of this pass; reports, vitals, medicines and clinical notes exist (see `docs/claude-code-brief.md`).
+Reports, vitals, medicines and clinical notes were built earlier (see `docs/claude-code-brief.md`). This pass
+added the structured record and the audit trail.
+
+| ID | Feature | Status | Where |
+|---|---|---|---|
+| Structured allergies, diagnoses and long-term conditions | Tables, not free text, editable by the patient and by a doctor with an active grant | Done | `patient_health_entries` (migration 0017), `services/health_record.py`, `routers/health_record.py`; `HealthRecordPanel` on the patient dashboard ("My health record") and in the doctor's patient file. A doctor can add and change entries but not remove them; the patient sees who added each. Nothing is hard-deleted ("removed" hides, "resolved" keeps history) |
+| The medication check uses the record | Active entries the knowledge base recognises reach MSCIE (`services/mscie/context.py`), labelled "health record (added by you / a doctor)". A word the check does not know is kept but marked "Not used by the check", never guessed at | Done | `services/health_record.recognised` |
+| Audit log | Who viewed or changed whose record, and when | Done | `audit_logs` (migration 0017), `services/audit.py`. Logged: a doctor's view of a record area or a file (once per 10 minutes), one-time codes, access grants and endings, health entry add/change/remove, prescription confirm and cancel, safety overrides, admin approve/reject of doctors. A row holds no medical text. Not logged yet: the patient's own report uploads and deletes, logins |
+| Patient access history | The patient sees who else opened or changed their record | Done | `GET /patient/access-history`, "Who has seen my record" on the patient dashboard |
+| Versioning of record entries | Earlier values of an entry | Not built | Changes are in the audit log (that something changed, not the old value); clinical summaries are versioned (Module 3) |
 
 ## Module 3: Intelligent Clinical Summary Engine (ICSE)
 
@@ -76,4 +85,11 @@ Not built: an LLM classifier (not needed; the rules decide), languages other tha
 
 ## Module 9: Unified Dashboard and Admin Panel
 
-Not in this pass (dashboards exist; see the brief).
+Dashboards exist for the patient, doctor and admin (see the brief).
+
+| Item | Status | Where |
+|---|---|---|
+| Admin: doctor verification, account overview, recent activity | Done | `components/admin/` |
+| Admin: audit log view with filters | Done | "Who accessed or changed records" on `/admin`: filter by action, role and patient number, 15 rows at a time (`GET /api/admin/audit-log`). Rows cannot be edited or deleted |
+| Admin: symptom checker usage | Done | counts only (Module 7) |
+| Admin: payment confirmation | Removed on purpose | Only Stripe's signed webhook marks a payment paid (Module 8) |

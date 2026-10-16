@@ -20,14 +20,14 @@ The project is roughly 30% implemented. Your job is to take it further in **phas
 
 ---
 
-## 2. Current state (after Phase 0, Phase 1, Module 3 and Module 4)
+## 2. Current state (after Phase 0, Phase 1, Modules 1 to 5, 7 and 8, and the structured record and audit log; Module 6 is next)
 
 ### Real stack
 | Layer | Technology |
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, Tailwind |
 | Backend | **FastAPI** in `backend/` using **SQLAlchemy**: the only backend. Next.js keeps a same-origin proxy (`app/api/backend/[...path]`), thin auth proxies (`app/api/auth/login`, `signup`) and `app/api/drug-check` (old OpenFDA lookup, used by no page; superseded by `services/mscie/openfda.py`, kept until the team approves deleting it) |
-| Database | PostgreSQL. Schema = SQLAlchemy models + **Alembic** migrations (`backend/migrations/`, head `0011`: consultation fees and Stripe payment fields), applied by `alembic upgrade head` at startup. Migrations are additive. **No Prisma** (removed in Phase 1) |
+| Database | PostgreSQL. Schema = SQLAlchemy models + **Alembic** migrations (`backend/migrations/`, head `0017`; see `alembic current`), applied by `alembic upgrade head` at startup. Migrations are additive. **No Prisma** (removed in Phase 1) |
 | OCR | Local OCR in FastAPI by default: PDF text layers, then RapidOCR 3 with PP-OCRv5 (ONNX, CPU, models cached in `backend/models/`) for scans and photos, rebuilt into table rows; numbers scored under 0.90 are listed to check against the original. OCR.space was removed. No Tesseract anywhere |
 | AI | One AI_API_KEY (Gemini, OpenAI or Claude), rule-based fallback when no key, BioBERT NER (`d4data/biomedical-ner-all`). Identifiers removed before prompts leave the server; AI summaries with numbers not in the report are rejected. Patient-facing summaries and alerts use everyday words (`services/plain_language.py`, demo dictionary awaiting clinician review) |
 | Data | Knowledge bases are CSV tables (`backend/services/knowledge/data/`, data card and sources), loaded with pandas, validated with pandera in tests; rapidfuzz medicine search; DDInter 2.0 interaction pairs (160,235, CC BY-NC-SA 4.0) behind the curated rules; evaluation notebooks (`notebooks/`, scikit-learn, matplotlib) on synthetic data |
@@ -40,15 +40,15 @@ There is **no** Flutter app and **no** Node gateway, despite what the design doc
 ### Module status
 | # | Module | Status | Notes |
 |---|---|---|---|
-| 1 | Auth & profiles | Mostly done | JWT, patient/doctor/admin roles, admin invite code, doctor approve/reject in `backend/routers/admin.py`, inactive accounts get 403. Signup is direct; the email/SMS OTP signup code was removed (its `signup_otps` table is kept). The only one-time code is the patient's doctor access code |
-| 2 | Unified health records | Partial | Reports in `patient_reports` (upload, OCR, department categorisation, file access only for the owner or a granted doctor), BP/sugar log, detailed vitals, medicine schedules with reminders. **Missing:** audit log, versioning, structured allergies / diagnoses / chronic conditions |
+| 1 | Auth & profiles | Done | Cookie sessions with rotating refresh tokens, profile management for every role, doctor profile with weekly availability and fee, admin approve/reject of doctors. Details in `docs/modules.md` |
+| 2 | Unified health records | Mostly done | Reports, vitals and medicine schedules as before, plus structured allergies, diagnoses and long-term conditions (`patient_health_entries`, patient and granted doctor can edit, read by the medication check) and the audit log (`audit_logs`; admin filter view, patient access history). **Missing:** versioning of entries, logging of the patient's own uploads and logins |
 | 3 | Clinical summary (ICSE) | Done (prototype) | Rule-based entity extraction (medicines, conditions, allergies, labs with negation and family history), flags with sources from shared lab rules (`services/lab_rules.py`), versioned clinical summaries with fingerprints (migration 0009) that regenerate when reports change, AI wording of key findings only behind a number guard. Patients see health flags in everyday words; doctors see the clinical summary with a version picker. Demo knowledge base, not clinically reviewed |
 | 4 | Medication safety (MSCIE) | Done (prototype) | Deterministic engine (`services/mscie/`) over CSV rules: allergy and cross-reactivity, interactions, duplicate classes, contraindications by condition and lab (eGFR, potassium), dose limits, previous reactions. Ranked alternatives (weighted score, each re-checked for the patient), openFDA label text as evidence only. Doctor prescribing panel with a live check; high-risk alerts need a written reason (logged in `safety_overrides`); the patient sees confirmed prescriptions read-only. The patient's own medicine check runs on the same engine; the LLM no longer changes a status. Evaluated in `notebooks/03_mscie_evaluation.ipynb` (synthetic scenarios). Demo knowledge base, not clinically reviewed |
-| 5 | Doctor search & booking | Partial | `app/doctors/page.tsx` and booking on the patient dashboard; only verified doctors are bookable. **Missing:** filters, availability slots, double-booking prevention |
+| 5 | Doctor search & booking | Done | Filters, weekly availability and bookable slots, no double booking (unique index plus checks), reschedule and cancel, ratings, in-app confirmations and 24 h / 1 h reminders. Email and SMS are not configured |
 | 6 | Home visit | Not started | `EmergencyBooking` requests are recorded honestly (status `REQUESTED`, no doctor, no ETA), but nothing assigns a doctor (conflicts with scope limitation LI-5; replaced in 2d) |
-| 7 | Symptom → specialist | Not started | The generic AI chat was removed in Phase 1 |
-| 8 | Payments | Done (prototype, Stripe test mode) | Doctors set a consultation fee; patients pay on Stripe Checkout; only Stripe's signed webhook marks a payment and its appointment PAID (each event once, amount and currency checked). JazzCash/Easypaisa, manual recording and admin confirmation were removed |
-| 9 | Admin panel | Partial | Overview stats, doctor verification, payment confirmation, all admin-only in FastAPI. **Missing:** audit log view |
+| 7 | Symptom → specialist | Done (prototype) | `/symptoms`, `POST /symptoms/check` open to visitors: rule-based red-flag detector (emergency notice, no booking), fixed specialty mapping from CSV tables, verified doctors ranked by next opening, rating and fee; sessions saved for admin counts. English only, demo knowledge base, no LLM |
+| 8 | Payments | Done (prototype, Stripe test mode) | Doctors set a consultation fee; patients pay on Stripe Checkout; only Stripe's signed webhook marks a payment PAID or REFUNDED. Cancelling a paid appointment requests a full refund (REFUND_PENDING, REFUND_FAILED visible); printable receipt; no partial refunds, no admin refund screen, home visits cannot be paid yet |
+| 9 | Admin panel | Done | Overview stats, doctor verification, symptom checker counts and the audit log view (filter by action, role and patient). Payment confirmation was removed on purpose |
 
 ### Dashboards
 - **Patient:** `/dashboard/patient` (`components/patient/PatientWorkspace.tsx`): reports and upload, BP/sugar log, today's detailed vitals, medicines and reminders with browser pop-ups, appointments, health flags in everyday words, prescriptions from doctors (read-only), and the one-time doctor access code. `/dashboard` redirects here.
