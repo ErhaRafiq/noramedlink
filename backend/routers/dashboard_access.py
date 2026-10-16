@@ -16,12 +16,14 @@ from database import get_db
 from dependencies import require_doctor, require_patient
 from models import Appointment, EmergencyBooking, Medication, PatientReport, User, Vitals
 from rate_limit import ACCESS_CODE_LIMIT, limiter
+from services import audit
 from services.dashboard_access import (
     active_grants,
     create_dashboard_otp,
     end_access,
     ensure_otp_attempts_allowed,
     grant_access_by_otp,
+    has_active_grant,
     record_otp_attempt,
 )
 
@@ -44,6 +46,7 @@ def _vitals(v: Vitals) -> dict:
 @limiter.limit(ACCESS_CODE_LIMIT)
 def issue_dashboard_otp(request: Request, current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
     otp = create_dashboard_otp(db, current_user)
+    audit.record(db, current_user, "access.code_issued", patient_id=current_user.id)
     return {"message": "One-time dashboard OTP generated.", "otp": {"code": otp.code, "expiresAt": otp.expires_at}}
 
 
@@ -59,6 +62,7 @@ def unlock_patient_dashboard(
     if not grant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid or expired patient dashboard OTP.")
     patient = grant.patient
+    audit.record(db, current_user, "access.grant", patient_id=patient.id)
     return {
         "message": f"Temporary dashboard access unlocked for {patient.full_name}.",
         "patient": {"id": patient.id, "name": patient.full_name, "email": patient.email},
@@ -72,7 +76,10 @@ def end_patient_dashboard_access(
     current_user: User = Depends(require_doctor),
     db: Session = Depends(get_db),
 ):
+    had_access = has_active_grant(db, current_user.id, payload.patient_id)
     end_access(db, current_user.id, payload.patient_id)
+    if had_access:
+        audit.record(db, current_user, "access.end", patient_id=payload.patient_id)
     return {"message": "Consultation session ended. Patient dashboard access is closed."}
 
 
@@ -99,6 +106,10 @@ def doctor_overview(current_user: User = Depends(require_doctor), db: Session = 
     for grant in grants:
         access_expiry.setdefault(grant.patient_id, grant.expires_at)
     access_ids = list(access_expiry)
+    for patient_id in access_ids:  # the overview shows these patients' files: that is a view of each record
+        audit.record(
+            db, current_user, "record.view", patient_id=patient_id, detail="patient file", once_per=audit.VIEW_WINDOW
+        )
 
     visible_ids = {a.user_id for a in appointments} | {b.user_id for b in emergency_bookings} | set(access_ids)
     people = {u.id: u for u in db.query(User).filter(User.id.in_(visible_ids)).all()} if visible_ids else {}

@@ -22,6 +22,7 @@ from schemas import (
     PrescriptionCreate,
     PrescriptionOut,
 )
+from services import audit
 from services.dashboard_access import patient_with_active_grant
 from services.mscie import names, openfda, prescribing
 from services.mscie.engine import Proposed
@@ -89,6 +90,15 @@ def create_prescription(
                 "alerts": [{"id": a["id"], "title": a["title"], "severity": a["severity"]} for a in missing.alerts],
             },
         ) from missing
+    audit.record(
+        db, doctor, "prescription.confirm", patient_id=patient.id, target_type="prescription",
+        target_id=prescription.id, detail=f"{len(prescription.items)} item(s), {len(prescription.overrides)} override(s)",
+    )  # fmt: skip
+    for override in prescription.overrides:
+        audit.record(
+            db, doctor, "safety.override", patient_id=patient.id, target_type="prescription",
+            target_id=prescription.id, detail=f"{override.alert_severity} alert, written reason given",
+        )  # fmt: skip
     return prescribing.to_out(prescription)
 
 
@@ -99,7 +109,7 @@ def list_prescriptions(
     doctor: User = Depends(require_doctor),
     db: Session = Depends(get_db),
 ):
-    patient = patient_with_active_grant(db, doctor, patient_id)
+    patient = patient_with_active_grant(db, doctor, patient_id, area="prescriptions")
     query = (
         db.query(Prescription)
         .filter(Prescription.patient_id == patient.id)
@@ -122,7 +132,11 @@ def cancel_prescription(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the prescribing doctor can cancel it.")
     if prescription.status != "confirmed":
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This prescription is already cancelled.")
-    return prescribing.to_out(prescribing.cancel(db, prescription))
+    cancelled = prescribing.cancel(db, prescription)
+    audit.record(
+        db, doctor, "prescription.cancel", patient_id=patient.id, target_type="prescription", target_id=cancelled.id
+    )
+    return prescribing.to_out(cancelled)
 
 
 @router.get("/patient/prescriptions", response_model=Page[PatientPrescriptionOut])

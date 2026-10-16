@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 from database import get_db, get_upload_root_path
 from dependencies import get_current_user
 from models import PatientReport, User
+from services import audit
 from services.dashboard_access import has_active_grant
 from services.file_access import UPLOADS_PREFIX, verify_signed_link
 
@@ -64,5 +65,10 @@ def get_file(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found.")
     if not _can_view(db, viewer, report.patient_id):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="You do not have access to this file.")
+    if viewer.role.lower() == "doctor":
+        audit.record(
+            db, viewer, "file.view", patient_id=report.patient_id, target_type="report", target_id=report.id,
+            once_per=audit.VIEW_WINDOW,
+        )  # fmt: skip
 
     return FileResponse(disk_path, headers={"Cache-Control": "private, no-store"})

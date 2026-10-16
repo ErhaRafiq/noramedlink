@@ -14,12 +14,14 @@ from rate_limit import limiter, rate_limit_exceeded_handler
 from routers import (
     admin,
     appointments,
+    audit,
     auth,
     clinical_summary,
     dashboard_access,
     doctor,
     emergency,
     files,
+    health_record,
     medications,
     medicine_reminders,
     mscie,
@@ -84,6 +86,8 @@ app.include_router(nlp.router)
 app.include_router(appointments.router)
 app.include_router(payments.router)
 app.include_router(profile.router)
+app.include_router(health_record.router)
+app.include_router(audit.router)
 app.include_router(symptoms.router)
 app.include_router(notifications.router)
 app.include_router(vitals.router)

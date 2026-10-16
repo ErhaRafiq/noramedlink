@@ -4,7 +4,9 @@
   schedule and medicine history entered in the app (not ended), and confirmed prescriptions.
 - Previous responses: medicines stopped in reports, and medicine history with an end date or a side
   effect recorded.
-- Conditions and allergies as mentioned in reports (not negated, not family history).
+- Conditions and allergies as mentioned in reports (not negated, not family history), and the active
+  allergies, diagnoses and long-term conditions on the structured health record (entered by the patient
+  or a doctor; the check uses those it recognises).
 - The latest usable eGFR, potassium and creatinine, with their date and report.
 
 Built from identity-free text (Module 3's reader); nothing here is written to the record.
@@ -18,7 +20,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from models import MedicineHistory, Prescription, User
-from services import knowledge
+from services import health_record, knowledge
 from services.icse.versions import gather
 from services.lab_rules import assess
 from services.mscie.engine import Med, PatientContext, resolve
@@ -120,9 +122,41 @@ def build_context(db: Session, patient: User, today: date | None = None) -> Pati
                         "date": source.get("date"),
                         "source": _report_label(source),
                     }
+    _add_structured_entries(db, patient, context)
     if context.allergies:
         context.allergy_status = "listed"
     return context
+
+
+def _entry_source(entry) -> str:
+    who = "you" if entry.added_by_role == "patient" else "a doctor"
+    return f"health record (added by {who})"
+
+
+def _add_structured_entries(db: Session, patient: User, context: PatientContext) -> None:
+    """The patient's own list of allergies and conditions. An entry the knowledge base cannot read is not
+    guessed at: it stays on the record but the check cannot use it (the record page says so)."""
+    for entry in health_record.active_entries(db, patient.id):
+        if entry.kind == "allergy":
+            key = " ".join(entry.name.lower().split())
+            info = knowledge.resolve_medication(key)
+            classes = list(knowledge.allergy_classes().get(key) or (info.classes if info else ()))
+            if info is None and not classes:
+                continue
+            if any(a["name"].lower() == key for a in context.allergies):
+                continue
+            context.allergies.append(
+                {
+                    "name": entry.name,
+                    "generics": list(info.generics) if info else [],
+                    "classes": classes,
+                    "source": _entry_source(entry),
+                }
+            )
+        else:
+            name = health_record.canonical_condition(entry.name)
+            if health_record.recognised(entry.kind, entry.name) and all(c["name"] != name for c in context.conditions):
+                context.conditions.append({"name": name, "source": _entry_source(entry)})
 
 
 def context_summary(context: PatientContext) -> dict[str, Any]:

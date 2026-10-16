@@ -10,6 +10,7 @@ from dependencies import require_admin
 from models import Appointment, DoctorProfile, PatientReport, SymptomSession, User
 from pagination import Page, PageParams, page_params, paginate
 from schemas import SymptomStatsOut
+from services import audit
 from services.signup_service import pmdc_matches
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -126,7 +127,7 @@ def pending_doctors(
     return [pending_doctor_out(profile) for profile in doctors]
 
 
-def update_doctor_status(doctor_profile_id: int, next_status: str, db: Session) -> dict:
+def update_doctor_status(doctor_profile_id: int, next_status: str, db: Session, actor: User) -> dict:
     # Profile id only: falling back to a user id could approve a different doctor
     # whose profile id happens to equal that number.
     profile = db.get(DoctorProfile, doctor_profile_id)
@@ -154,25 +155,29 @@ def update_doctor_status(doctor_profile_id: int, next_status: str, db: Session) 
         profile.user.is_identity_verified = next_status == "approved"
     db.commit()
     db.refresh(profile)
+    audit.record(
+        db, actor, "admin.doctor_approve" if next_status == "approved" else "admin.doctor_reject",
+        target_type="doctor_profile", target_id=profile.id,
+    )  # fmt: skip
     return pending_doctor_out(profile)
 
 
 @router.patch("/doctors/{doctor_id}/approve")
 def approve_doctor(
     doctor_id: int,
-    _: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    return update_doctor_status(doctor_id, "approved", db)
+    return update_doctor_status(doctor_id, "approved", db, admin)
 
 
 @router.patch("/doctors/{doctor_id}/reject")
 def reject_doctor(
     doctor_id: int,
-    _: User = Depends(require_admin),
+    admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    return update_doctor_status(doctor_id, "rejected", db)
+    return update_doctor_status(doctor_id, "rejected", db, admin)
 
 
 @router.get("/recent-activity")

@@ -725,3 +725,103 @@ class SymptomStatsOut(BaseModel):
     emergencies: int
     last_7_days: int
     by_specialty: list[dict[str, int | str]]
+
+
+HealthKind = Literal["allergy", "diagnosis", "chronic_condition"]
+
+
+class HealthEntryIn(BaseModel):
+    kind: HealthKind
+    name: str = Field(min_length=2, max_length=160)
+    note: str | None = Field(default=None, max_length=500)
+    severity: Literal["mild", "moderate", "severe"] | None = None  # allergies only
+    since: date | None = None
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if len(value) < 2:
+            raise ValueError("Please enter a name.")
+        return value
+
+    @field_validator("note")
+    @classmethod
+    def clean_note(cls, value: str | None) -> str | None:
+        return (value or "").strip() or None
+
+    @field_validator("since")
+    @classmethod
+    def not_in_future(cls, value: date | None) -> date | None:
+        if value is not None and value > date.today():
+            raise ValueError("The date cannot be in the future.")
+        return value
+
+
+class HealthEntryUpdate(BaseModel):
+    """Only the fields that are sent change."""
+
+    name: str | None = Field(default=None, min_length=2, max_length=160)
+    note: str | None = Field(default=None, max_length=500)
+    severity: Literal["mild", "moderate", "severe"] | None = None
+    since: date | None = None
+    status: Literal["active", "resolved"] | None = None
+
+    @field_validator("name")
+    @classmethod
+    def clean_name(cls, value: str | None) -> str | None:
+        return " ".join(value.split()) if value else value
+
+    @field_validator("since")
+    @classmethod
+    def not_in_future(cls, value: date | None) -> date | None:
+        if value is not None and value > date.today():
+            raise ValueError("The date cannot be in the future.")
+        return value
+
+
+class HealthEntryOut(BaseModel):
+    id: int
+    kind: HealthKind
+    name: str
+    note: str | None
+    severity: str | None
+    since: date | None
+    status: str  # active or resolved
+    added_by_role: str  # patient or doctor
+    added_by_name: str | None  # the doctor's name, when a doctor added it
+    recognised: bool  # false: saved, but the medication check does not know this word
+    created_at: datetime
+    updated_at: datetime
+
+
+class HealthOptionsOut(BaseModel):
+    allergies: list[str]
+    conditions: list[str]
+
+
+class AuditLogOut(BaseModel):
+    id: int
+    action: str
+    action_label: str
+    actor_id: int | None
+    actor_name: str | None
+    actor_role: str
+    patient_id: int | None
+    patient_name: str | None
+    target_type: str | None
+    target_id: int | None
+    detail: str
+    created_at: datetime
+
+
+class AccessHistoryOut(BaseModel):
+    """What a patient sees of their own record's access history (no ids, no other patients)."""
+
+    id: int
+    action: str
+    action_label: str
+    actor_name: str | None
+    actor_role: str
+    detail: str
+    created_at: datetime

@@ -27,7 +27,7 @@ router = APIRouter(prefix="/doctor/patients/{patient_id}/clinical-summary", tags
 
 
 def _patient(patient_id: int, doctor: User, db: Session) -> User:
-    return patient_with_active_grant(db, doctor, patient_id)
+    return patient_with_active_grant(db, doctor, patient_id, area="clinical summary")
 
 
 def _meta(summary: ClinicalSummary) -> dict:

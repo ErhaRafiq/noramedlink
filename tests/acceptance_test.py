@@ -126,6 +126,9 @@ ALL_ROUTES = (ADMIN_ROUTES + DOCTOR_ROUTES + PATIENT_ROUTES + ANY_USER_ROUTES
 # Tables holding rows that belong to a user, children before parents.
 # (table, column) pairs; only rows whose column is a phase0-test- user id are deleted.
 USER_OWNED_ROWS = [
+    ("patient_health_entries", "patient_id"),
+    ("audit_logs", "actor_id"),
+    ("audit_logs", "patient_id"),
     ("symptom_sessions", "user_id"),
     ("medical_ai_analyses", "user_id"),
     ("notifications", "user_id"),
@@ -1246,6 +1249,104 @@ def run_tests() -> None:
     check("the doctor's list keeps the cancelled prescription", response.status_code == 200 and response.json()["total"] == 1)
     create_grant(doctor_c, patient_c, expires_in=timedelta(hours=-1))
     check("after the grant expires -> 403", call("POST", f"{rx_base}/medication-check", tok_doctor_c, body).status_code == 403)
+
+    print("\n[17b] Health record (Module 2) and the audit log")
+    create_grant(doctor_c, patient_c, expires_in=timedelta(hours=1))
+    hr = "/api/backend/patient/health-record"
+    dhr = f"/api/backend/doctor/patients/{patient_c}/health-record"
+    check("health record without a token -> 401", call("GET", hr).status_code == 401)
+    check("a doctor on the patient's health record -> 403", call("GET", hr, tok_doctor_c).status_code == 403)
+    check("a patient on the doctor's health record -> 403", call("GET", dhr, tok_c).status_code == 403)
+    check("the options list needs sign-in", call("GET", "/api/backend/health-record/options").status_code == 401)
+    options = call("GET", "/api/backend/health-record/options", tok_c).json()
+    check("options offer known allergy and condition names", "penicillin" in options["allergies"] and "diabetes mellitus" in options["conditions"])
+
+    response = call("POST", hr, tok_c, {"kind": "allergy", "name": "  penicillin ", "severity": "severe", "note": "rash"})
+    allergy = response.json() if response.status_code == 201 else {}
+    check("C adds an allergy -> 201, trimmed, recognised by the medication check",
+          response.status_code == 201 and allergy.get("name") == "penicillin" and allergy.get("recognised") is True
+          and allergy.get("added_by_role") == "patient", f"got {response.status_code}")
+    check("the same allergy twice -> 409", call("POST", hr, tok_c, {"kind": "allergy", "name": "Penicillin"}).status_code == 409)
+    check("an unknown kind -> 422", call("POST", hr, tok_c, {"kind": "medicine", "name": "aspirin"}).status_code == 422)
+    check("a date in the future -> 422", call("POST", hr, tok_c, {"kind": "diagnosis", "name": "asthma", "since": "2999-01-01"}).status_code == 422)
+    response = call("POST", hr, tok_c, {"kind": "diagnosis", "name": "feeling sad on mondays"})
+    check("a word the check does not know is saved but marked not recognised",
+          response.status_code == 201 and response.json().get("recognised") is False)
+    unknown_id = response.json().get("id")
+
+    entry_path = f"{hr}/{allergy.get('id')}"
+    check("A cannot change C's entry -> 404", call("PATCH", entry_path, tok_a, {"note": "x"}).status_code == 404)
+    check("A cannot remove C's entry -> 404", call("DELETE", entry_path, tok_a).status_code == 404)
+    check("A's list never shows C's entries", all(e["id"] != allergy.get("id") for e in call("GET", hr, tok_a).json()))
+
+    check("a doctor without a grant cannot read the list -> 403", call("GET", dhr, tok_doctor_2).status_code == 403)
+    check("or add to it -> 403", call("POST", dhr, tok_doctor_2, {"kind": "diagnosis", "name": "asthma"}).status_code == 403)
+    check("or change an entry -> 403", call("PATCH", f"{dhr}/{allergy.get('id')}", tok_doctor_2, {"note": "x"}).status_code == 403)
+    listed = call("GET", dhr, tok_doctor_c)
+    check("the granted doctor reads the list", listed.status_code == 200 and any(e["name"] == "penicillin" for e in listed.json()))
+    call("GET", dhr, tok_doctor_c)
+    check("two views inside the window leave one audit row",
+          scalar("select count(*) from audit_logs where actor_id = :d and action = 'record.view' and detail = 'health record'", d=doctor_c) == 1)
+
+    response = call("POST", dhr, tok_doctor_c, {"kind": "chronic_condition", "name": "diabetes"})
+    added = response.json() if response.status_code == 201 else {}
+    check("the granted doctor adds a condition, marked as added by a doctor, with their name",
+          response.status_code == 201 and added.get("added_by_role") == "doctor" and added.get("added_by_name"), f"got {response.status_code}")
+    check("the doctor changes an entry", call("PATCH", f"{dhr}/{added.get('id')}", tok_doctor_c, {"note": "on tablets"}).json().get("note") == "on tablets")
+    check("a doctor cannot remove entries (no such route) -> 405", call("DELETE", f"{dhr}/{added.get('id')}", tok_doctor_c).status_code == 405)
+    check("the patient sees who added it", any(e["id"] == added.get("id") and e["added_by_role"] == "doctor" for e in call("GET", hr, tok_c).json()))
+    check("severity on a condition is refused -> 422", call("PATCH", f"{dhr}/{added.get('id')}", tok_doctor_c, {"severity": "mild"}).status_code == 422)
+
+    rx = call("POST", f"/api/backend/doctor/patients/{patient_c}/medication-check", tok_doctor_c,
+              {"items": [{"medicine": "amoxicillin", "dose": "500 mg", "frequency": "TDS"}]})
+    checked = rx.json() if rx.status_code == 200 else {}
+    alerts = [a for it in checked.get("items", []) for a in it.get("alerts", [])]
+    check("the medication check uses the recorded penicillin allergy", rx.status_code == 200 and any(a["kind"] == "allergy" for a in alerts),
+          f"got {rx.status_code} {[a['title'] for a in alerts]}")
+    check("and shows where it came from", any("health record" in a.get("source", "") for a in checked.get("context", {}).get("allergies", [])),
+          f"got {checked.get('context', {}).get('allergies')}")
+    check("the patient resolves the allergy", call("PATCH", entry_path, tok_c, {"status": "resolved"}).json().get("status") == "resolved")
+    rx = call("POST", f"/api/backend/doctor/patients/{patient_c}/medication-check", tok_doctor_c,
+              {"items": [{"medicine": "amoxicillin", "dose": "500 mg", "frequency": "TDS"}]})
+    check("a resolved allergy is no longer used by the check",
+          not any(a["kind"] == "allergy" for it in rx.json().get("items", []) for a in it.get("alerts", [])))
+    response = call("DELETE", f"{hr}/{unknown_id}", tok_c)
+    check("the patient removes an entry -> 200 and it leaves the list",
+          response.status_code == 200 and all(e["id"] != unknown_id for e in call("GET", hr, tok_c).json()))
+    check("a removed entry cannot be changed -> 404", call("PATCH", f"{hr}/{unknown_id}", tok_c, {"note": "x"}).status_code == 404)
+    check("the row is kept (hidden, not deleted)", scalar("select status from patient_health_entries where id = :i", i=unknown_id) == "removed")
+
+    audit_path = "/api/backend/api/admin/audit-log"
+    check("audit log without a token -> 401", call("GET", audit_path).status_code == 401)
+    check("a patient on the audit log -> 403", call("GET", audit_path, tok_c).status_code == 403)
+    check("a doctor on the audit log -> 403", call("GET", audit_path, tok_doctor_c).status_code == 403)
+    check("an unknown action filter -> 422", call("GET", audit_path + "?action=bogus", tok_admin).status_code == 422)
+    response = call("GET", f"{audit_path}?action=health_entry.add&subject={patient_c}", tok_admin)
+    rows = response.json() if response.status_code == 200 else {}
+    check("admin filters the log by action and patient, with names and a total",
+          response.status_code == 200 and rows.get("total", 0) >= 3 and all(r["action"] == "health_entry.add" and r["patient_id"] == patient_c for r in rows["items"])
+          and all(r["actor_name"] for r in rows["items"]), f"got {response.status_code}")
+    check("the log filters by who acted", all(r["actor_role"] == "doctor" for r in call("GET", f"{audit_path}?actor_role=doctor&subject={patient_c}", tok_admin).json()["items"]))
+    check("the log never holds what was entered (no allergy or condition names)",
+          "penicillin" not in call("GET", f"{audit_path}?subject={patient_c}&limit=100", tok_admin).text.lower())
+    check("an admin can read the action list", "record.view" in call("GET", audit_path + "/actions", tok_admin).json())
+    check("prescribing is on the log (confirm and cancel)",
+          scalar("select count(*) from audit_logs where patient_id = :p and action = 'prescription.confirm'", p=patient_c) >= 1
+          and scalar("select count(*) from audit_logs where patient_id = :p and action = 'prescription.cancel'", p=patient_c) >= 1)
+    check("access grants and one-time codes are on the log",
+          scalar("select count(*) from audit_logs where patient_id = :p and action = 'access.grant'", p=patient_a) >= 1
+          and scalar("select count(*) from audit_logs where patient_id = :p and action = 'access.code_issued'", p=patient_a) >= 1)
+
+    history = call("GET", "/api/backend/patient/access-history", tok_c)
+    check("C sees who accessed their record, never their own actions",
+          history.status_code == 200 and history.json()["total"] >= 2 and all(r["actor_role"] != "patient" for r in history.json()["items"]),
+          f"got {history.status_code}")
+    check("access history needs sign-in and a patient", call("GET", "/api/backend/patient/access-history").status_code == 401
+          and call("GET", "/api/backend/patient/access-history", tok_doctor_c).status_code == 403)
+    check("A's access history counts only rows about A",
+          call("GET", "/api/backend/patient/access-history", tok_a).json()["total"]
+          == scalar("select count(*) from audit_logs where patient_id = :a and actor_role <> 'patient'", a=patient_a))
+    create_grant(doctor_c, patient_c, expires_in=timedelta(hours=-1))
 
     print("\n[18] Sessions: HttpOnly cookies, refresh-token rotation, replay detection, logout")
     from auth import hash_password

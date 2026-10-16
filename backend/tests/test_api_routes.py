@@ -122,6 +122,7 @@ ANY_SIGNED_IN_ROLE = {
     "/notifications/read-all": "the caller's own notifications",
     "/notifications/{notification_id}/read": "the caller's own notification (others look like 404)",
     "/profile/account": "the caller's own name and phone",
+    "/health-record/options": "suggestion words from the knowledge base (allergy and condition names); no patient data",
 }
 
 

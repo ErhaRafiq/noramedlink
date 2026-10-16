@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from models import DashboardOtpAttempt, PatientDashboardAccess, PatientDashboardOtp, User
+from services import audit
 
 logger = logging.getLogger("nora.dashboard_access")
 
@@ -174,12 +175,14 @@ def has_active_grant(db: Session, doctor_id: int, patient_id: int) -> bool:
 NO_ACCESS = "You do not have active access to this patient's records."
 
 
-def patient_with_active_grant(db: Session, doctor: User, patient_id: int) -> User:
+def patient_with_active_grant(db: Session, doctor: User, patient_id: int, area: str | None = None) -> User:
     """The patient, when this doctor holds an active grant from them; otherwise 403 (the same answer
     whether or not the patient exists, so nothing is revealed)."""
     patient = db.get(User, patient_id) if has_active_grant(db, doctor.id, patient_id) else None
     if patient is None or patient.role.lower() != "patient":
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=NO_ACCESS)
+    if area:  # a view of the record: leave a trace (once per window, so a refresh does not flood the log)
+        audit.record(db, doctor, "record.view", patient_id=patient.id, detail=area, once_per=audit.VIEW_WINDOW)
     return patient
 
 
