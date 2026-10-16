@@ -6,9 +6,9 @@ import { cn } from "@/lib/cn";
 
 /** A rating shown as stars with its number; `null` means nobody has rated yet. */
 export function RatingSummary({ rating, count, className }: { rating: number | null; count: number; className?: string }) {
-  if (rating === null) return <span className={cn("text-sm text-ink-muted", className)}>No ratings yet</span>;
+  if (rating === null) return <span className={cn("block text-sm text-ink-muted", className)}>No ratings yet</span>;
   return (
-    <span className={cn("inline-flex items-center gap-1.5 text-sm text-ink-muted", className)}>
+    <span className={cn("flex items-center gap-1.5 text-sm text-ink-muted", className)}>
       <Star className="h-4 w-4 fill-amber-400 text-amber-400" aria-hidden />
       <span className="font-semibold text-ink">{rating.toFixed(1)}</span>
       <span>
