@@ -153,3 +153,16 @@ def test_the_detail_is_cut_to_fit_the_column():
 
 def test_every_action_has_words_a_person_can_read():
     assert all(text and text == text.strip() for text in audit.ACTIONS.values())
+
+
+@pytest.mark.parametrize(
+    ("label", "expected"),
+    [
+        ("viewed the patient's record", "viewed your record"),
+        ("was given access to the record", "was given access to your record"),
+        ("added to the health record", "added to your health record"),
+        ("confirmed a prescription", "confirmed a prescription"),
+    ],
+)
+def test_a_patient_reads_the_log_in_the_second_person(label, expected):
+    assert audit.patient_wording(label) == expected

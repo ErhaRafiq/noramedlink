@@ -31,6 +31,17 @@ ACTIONS = {
 VIEW_WINDOW = timedelta(minutes=10)
 
 
+def patient_wording(label: str) -> str:
+    """The same label as the patient reads it: "viewed the patient's record" becomes "viewed your record"."""
+    for old, new in (
+        ("the health record", "your health record"),
+        ("the patient's record", "your record"),
+        ("the record", "your record"),
+    ):
+        label = label.replace(old, new)
+    return label
+
+
 def record(
     db: Session,
     actor: User,

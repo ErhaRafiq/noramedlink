@@ -23,7 +23,9 @@ import { KpiRow } from "./workspace/KpiRow";
 import { NAV_ITEMS, QuickLinks, SettingsStrip, WorkspaceHeader, WorkspaceSidebar } from "./workspace/layout";
 import { MedicineScheduleCard } from "./workspace/MedicineScheduleCard";
 import { RemindersSection } from "./workspace/RemindersSection";
+import { AccessHistoryCard } from "./workspace/AccessHistoryCard";
 import { HealthFlagsCard } from "./workspace/HealthFlagsCard";
+import { HealthRecordCard } from "./workspace/HealthRecordCard";
 import { PrescriptionsCard } from "./workspace/PrescriptionsCard";
 import { HealthCategoriesCard, RecentReportsCard } from "./workspace/ReportsSection";
 import { ToastBar } from "./workspace/ui";
@@ -191,6 +193,10 @@ export function PatientWorkspace({
           />
 
           <PrescriptionsCard prescriptions={data.prescriptions} onRetry={() => void refresh()} />
+
+          <HealthRecordCard />
+
+          <AccessHistoryCard />
 
           <HealthCategoriesCard tiles={data.departmentTiles} activeDepartment={department} onSelect={selectDepartment} />
 

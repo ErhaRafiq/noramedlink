@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { CalendarDays, ClipboardList, FileSearch, KeyRound, LayoutDashboard, Pill, Siren, Stethoscope, Users } from "lucide-react";
+import { CalendarDays, ClipboardList, FileSearch, HeartPulse, KeyRound, LayoutDashboard, Pill, Siren, Stethoscope, Users } from "lucide-react";
 
 import { DashboardShell, type DashboardNavItem } from "@/components/layout/DashboardShell";
 import { Alert } from "@/components/ui/alert";
@@ -13,6 +13,7 @@ import { signOut as endSession } from "@/lib/auth";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useDoctorDashboard } from "@/hooks/doctor/use-doctor-dashboard";
 import { ClinicalSummaryCard } from "./doctor/clinical-summary/ClinicalSummaryCard";
+import { HealthRecordCard } from "./doctor/HealthRecordCard";
 import { PrescribeCard } from "./doctor/prescribe/PrescribeCard";
 import { DoctorAppointmentsCard } from "./doctor/DoctorAppointmentsCard";
 import { ActivePatientsCard, EmergencyCard, PatientFileCard, UnlockCard } from "./doctor/sections";
@@ -23,6 +24,7 @@ const NAV: DashboardNavItem[] = [
   { id: "appointments", label: "Appointments", icon: CalendarDays },
   { id: "patient-file", label: "Patient file", icon: FileSearch },
   { id: "clinical-summary", label: "Clinical summary", icon: ClipboardList },
+  { id: "health-record", label: "Health record", icon: HeartPulse },
   { id: "prescribe", label: "Prescribe", icon: Pill },
   { id: "emergency", label: "Emergency visits", icon: Siren },
 ];
@@ -126,6 +128,7 @@ export function DoctorDashboard() {
           {activePatient && auth.status === "ready" ? (
             <>
               <ClinicalSummaryCard key={activePatient.id} patientId={activePatient.id} patientName={activePatient.name} />
+              <HealthRecordCard key={`hr-${activePatient.id}`} patientId={activePatient.id} patientName={activePatient.name} />
               <PrescribeCard
                 key={`rx-${activePatient.id}`}
                 patientId={activePatient.id}

@@ -14,7 +14,7 @@ from dependencies import require_admin, require_patient
 from models import AuditLog, User
 from pagination import Page, PageParams, page_params, paginate
 from schemas import AccessHistoryOut, AuditLogOut
-from services.audit import ACTIONS
+from services.audit import ACTIONS, patient_wording
 
 router = APIRouter(tags=["audit"])
 
@@ -86,7 +86,7 @@ def access_history(
         AccessHistoryOut(
             id=r.id,
             action=r.action,
-            action_label=ACTIONS.get(r.action, r.action),
+            action_label=patient_wording(ACTIONS.get(r.action, r.action)),
             actor_name=names.get(r.actor_id),
             actor_role=r.actor_role,
             detail=r.detail,

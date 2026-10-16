@@ -51,6 +51,69 @@ export type AdminDashboardStats = {
   pendingDoctors: number;
 };
 
+/** Structured allergies, diagnoses and long-term conditions (backend/services/health_record.py). */
+export type HealthKind = "allergy" | "diagnosis" | "chronic_condition";
+
+export type HealthEntry = {
+  id: number;
+  kind: HealthKind;
+  name: string;
+  note: string | null;
+  /** Allergies only. */
+  severity: "mild" | "moderate" | "severe" | null;
+  since: string | null;
+  /** Removed entries are not listed. */
+  status: "active" | "resolved";
+  added_by_role: "patient" | "doctor";
+  /** The doctor's name, when a doctor added it. */
+  added_by_name: string | null;
+  /** False: saved, but the medication check does not know this word and cannot use it. */
+  recognised: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type HealthEntryInput = {
+  kind: HealthKind;
+  name: string;
+  note?: string;
+  severity?: "mild" | "moderate" | "severe";
+  since?: string;
+};
+
+export type HealthEntryChanges = Partial<Pick<HealthEntryInput, "name" | "note" | "severity" | "since">> & {
+  status?: "active" | "resolved";
+};
+
+export type HealthOptions = { allergies: string[]; conditions: string[] };
+
+/** One audit log row as an administrator sees it. */
+export type AuditLogRow = {
+  id: number;
+  action: string;
+  action_label: string;
+  actor_id: number | null;
+  actor_name: string | null;
+  actor_role: "patient" | "doctor" | "admin";
+  patient_id: number | null;
+  patient_name: string | null;
+  target_type: string | null;
+  target_id: number | null;
+  detail: string;
+  created_at: string;
+};
+
+/** One row of a patient's own access history (who else viewed or changed their record). */
+export type AccessHistoryRow = {
+  id: number;
+  action: string;
+  action_label: string;
+  actor_name: string | null;
+  actor_role: "doctor" | "admin";
+  detail: string;
+  created_at: string;
+};
+
 /** Symptom checker (backend/services/symptom_checker.py): rules only, advisory. */
 export type SpecialtySuggestion = {
   specialty: string;

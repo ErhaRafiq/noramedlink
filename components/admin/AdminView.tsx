@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Activity, CalendarDays, FileText, LayoutDashboard, Stethoscope, UserRound, Users } from "lucide-react";
+import { Activity, CalendarDays, FileText, LayoutDashboard, ScrollText, Search, Stethoscope, UserRound, Users } from "lucide-react";
 
 import { DashboardShell, type DashboardNavItem } from "@/components/layout/DashboardShell";
 import { Alert } from "@/components/ui/alert";
@@ -15,6 +15,7 @@ import { signOut as endSession } from "@/lib/auth";
 import type { AdminDoctor } from "@/lib/types";
 import { useAdminDashboard } from "@/hooks/admin/use-admin-dashboard";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
+import { AuditLogSection } from "./AuditLogSection";
 import { AccountOverview, DoctorReviewQueue, RecentAccounts, RecentActivity, SymptomUsage } from "./AdminSections";
 
 const NAV: DashboardNavItem[] = [
@@ -23,6 +24,8 @@ const NAV: DashboardNavItem[] = [
   { id: "users", label: "New sign-ups", icon: Users },
   { id: "overview", label: "Accounts", icon: UserRound },
   { id: "activity", label: "Activity", icon: Activity },
+  { id: "symptoms", label: "Symptom checker", icon: Search },
+  { id: "audit-log", label: "Audit log", icon: ScrollText },
 ];
 
 type Notice = { ok: boolean; message: string } | null;
@@ -105,6 +108,8 @@ export function AdminView() {
           </div>
 
           <SymptomUsage stats={dashboard.symptoms} />
+
+          <AuditLogSection />
         </>
       )}
 

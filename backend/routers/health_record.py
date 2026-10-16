@@ -46,7 +46,7 @@ def add_my_entry(payload: HealthEntryIn, current_user: User = Depends(require_pa
     entry = health_record.create(db, current_user.id, current_user, **payload.model_dump())
     audit.record(
         db, current_user, "health_entry.add", patient_id=current_user.id, target_type="health_entry",
-        target_id=entry.id, detail=entry.kind, commit=False,
+        target_id=entry.id, detail=health_record.kind_label(entry.kind), commit=False,
     )  # fmt: skip
     db.commit()
     return health_record.out_for(db, [entry])[0]
@@ -63,7 +63,7 @@ def change_my_entry(
     health_record.update(db, entry, _changes(payload))
     audit.record(
         db, current_user, "health_entry.update", patient_id=current_user.id, target_type="health_entry",
-        target_id=entry.id, detail=entry.kind, commit=False,
+        target_id=entry.id, detail=health_record.kind_label(entry.kind), commit=False,
     )  # fmt: skip
     db.commit()
     return health_record.out_for(db, [entry])[0]
@@ -76,7 +76,7 @@ def remove_my_entry(entry_id: int, current_user: User = Depends(require_patient)
     entry.status = "removed"
     audit.record(
         db, current_user, "health_entry.remove", patient_id=current_user.id, target_type="health_entry",
-        target_id=entry.id, detail=entry.kind, commit=False,
+        target_id=entry.id, detail=health_record.kind_label(entry.kind), commit=False,
     )  # fmt: skip
     db.commit()
     return MessageOut(message="Removed from your health record.")
@@ -101,7 +101,7 @@ def add_patient_entry(
     entry = health_record.create(db, patient.id, doctor, **payload.model_dump())
     audit.record(
         db, doctor, "health_entry.add", patient_id=patient.id, target_type="health_entry",
-        target_id=entry.id, detail=entry.kind, commit=False,
+        target_id=entry.id, detail=health_record.kind_label(entry.kind), commit=False,
     )  # fmt: skip
     db.commit()
     return health_record.out_for(db, [entry])[0]
@@ -120,7 +120,7 @@ def change_patient_entry(
     health_record.update(db, entry, _changes(payload))
     audit.record(
         db, doctor, "health_entry.update", patient_id=patient.id, target_type="health_entry",
-        target_id=entry.id, detail=entry.kind, commit=False,
+        target_id=entry.id, detail=health_record.kind_label(entry.kind), commit=False,
     )  # fmt: skip
     db.commit()
     return health_record.out_for(db, [entry])[0]

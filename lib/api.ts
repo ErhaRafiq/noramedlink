@@ -28,6 +28,12 @@ import type {
   PatientVitals,
   SignupPayload,
   SummaryResponse,
+  AccessHistoryRow,
+  AuditLogRow,
+  HealthEntry,
+  HealthEntryChanges,
+  HealthEntryInput,
+  HealthOptions,
   SymptomCheck,
   SymptomStats,
   AdminActivity,
@@ -173,6 +179,39 @@ export const api = {
   },
   me(init?: { signal?: AbortSignal }) {
     return apiRequest<AuthUser>("/api/auth/me", { signal: init?.signal });
+  },
+  healthOptions() {
+    return apiRequest<HealthOptions>("/health-record/options");
+  },
+  healthRecord() {
+    return apiRequest<HealthEntry[]>("/patient/health-record");
+  },
+  addHealthEntry(entry: HealthEntryInput) {
+    return apiRequest<HealthEntry>("/patient/health-record", { method: "POST", body: JSON.stringify(entry) });
+  },
+  changeHealthEntry(id: number, changes: HealthEntryChanges) {
+    return apiRequest<HealthEntry>(`/patient/health-record/${id}`, { method: "PATCH", body: JSON.stringify(changes) });
+  },
+  removeHealthEntry(id: number) {
+    return apiRequest<{ message: string }>(`/patient/health-record/${id}`, { method: "DELETE" });
+  },
+  patientHealthRecord(patientId: number) {
+    return apiRequest<HealthEntry[]>(`/doctor/patients/${patientId}/health-record`);
+  },
+  addPatientHealthEntry(patientId: number, entry: HealthEntryInput) {
+    return apiRequest<HealthEntry>(`/doctor/patients/${patientId}/health-record`, { method: "POST", body: JSON.stringify(entry) });
+  },
+  changePatientHealthEntry(patientId: number, id: number, changes: HealthEntryChanges) {
+    return apiRequest<HealthEntry>(`/doctor/patients/${patientId}/health-record/${id}`, { method: "PATCH", body: JSON.stringify(changes) });
+  },
+  accessHistory(page?: PageQuery) {
+    return apiRequest<Page<AccessHistoryRow>>(withPage("/patient/access-history", page));
+  },
+  adminAuditLog(filters: { action?: string; actor_role?: string; subject?: number }, page: PageQuery = {}) {
+    return apiRequest<Page<AuditLogRow>>(withQuery("/api/admin/audit-log", { ...filters, limit: page.limit, offset: page.offset }));
+  },
+  adminAuditActions() {
+    return apiRequest<Record<string, string>>("/api/admin/audit-log/actions");
   },
   checkSymptoms(text: string) {
     return apiRequest<SymptomCheck>("/symptoms/check", { method: "POST", body: JSON.stringify({ text }) });

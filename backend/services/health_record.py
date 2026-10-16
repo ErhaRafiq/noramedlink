@@ -15,6 +15,12 @@ from schemas import HealthEntryOut
 from services import knowledge
 
 MAX_ENTRIES = 100
+KIND_WORDS = {"allergy": "allergy", "diagnosis": "diagnosis", "chronic_condition": "long-term condition"}
+
+
+def kind_label(kind: str) -> str:
+    """The words an audit row or a message uses for a kind of entry."""
+    return KIND_WORDS.get(kind, kind)
 
 
 def recognised(kind: str, name: str) -> bool:
