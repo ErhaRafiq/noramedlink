@@ -16,6 +16,9 @@ const eslintConfig = defineConfig([
     "backend/venv/**",
     ".venv-ocr-bench*/**",
     "ocr_samples/**",
+    // Generated Playwright output (minified trace viewer).
+    "test-results/**",
+    "playwright-report/**",
   ]),
 ]);
 
