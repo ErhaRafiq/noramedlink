@@ -51,6 +51,34 @@ export type AdminDashboardStats = {
   pendingDoctors: number;
 };
 
+/** Symptom checker (backend/services/symptom_checker.py): rules only, advisory. */
+export type SpecialtySuggestion = {
+  specialty: string;
+  /** What this kind of doctor looks after, in everyday words. */
+  plain: string;
+  /** The words that pointed here; empty for the general fallback. */
+  matched: string[];
+  fallback: boolean;
+  /** Verified doctors only, best first. */
+  doctors: AppointmentDoctor[];
+};
+
+export type SymptomCheck = {
+  /** True: show the emergency notice and nothing to book. */
+  emergency: boolean;
+  emergency_notice: string | null;
+  warning_signs: string[];
+  suggestions: SpecialtySuggestion[];
+  advisory: string;
+};
+
+export type SymptomStats = {
+  total: number;
+  emergencies: number;
+  last_7_days: number;
+  by_specialty: { specialty: string; count: number }[];
+};
+
 export type AdminUser = {
   id: number;
   fullName: string;

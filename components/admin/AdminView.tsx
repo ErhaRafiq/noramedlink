@@ -15,7 +15,7 @@ import { signOut as endSession } from "@/lib/auth";
 import type { AdminDoctor } from "@/lib/types";
 import { useAdminDashboard } from "@/hooks/admin/use-admin-dashboard";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
-import { AccountOverview, DoctorReviewQueue, RecentAccounts, RecentActivity } from "./AdminSections";
+import { AccountOverview, DoctorReviewQueue, RecentAccounts, RecentActivity, SymptomUsage } from "./AdminSections";
 
 const NAV: DashboardNavItem[] = [
   { id: "summary", label: "Summary", icon: LayoutDashboard },
@@ -103,6 +103,8 @@ export function AdminView() {
             <AccountOverview stats={stats} pendingDoctors={dashboard.pendingDoctors.length} />
             <RecentActivity activity={dashboard.activity} />
           </div>
+
+          <SymptomUsage stats={dashboard.symptoms} />
         </>
       )}
 

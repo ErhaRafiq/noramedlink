@@ -28,6 +28,8 @@ import type {
   PatientVitals,
   SignupPayload,
   SummaryResponse,
+  SymptomCheck,
+  SymptomStats,
   AdminActivity,
   AdminDashboardStats,
   AdminDoctor,
@@ -171,6 +173,12 @@ export const api = {
   },
   me(init?: { signal?: AbortSignal }) {
     return apiRequest<AuthUser>("/api/auth/me", { signal: init?.signal });
+  },
+  checkSymptoms(text: string) {
+    return apiRequest<SymptomCheck>("/symptoms/check", { method: "POST", body: JSON.stringify({ text }) });
+  },
+  adminSymptomStats() {
+    return apiRequest<SymptomStats>("/api/admin/symptom-stats");
   },
   adminDashboardStats() {
     return apiRequest<AdminDashboardStats>("/api/admin/dashboard-stats");

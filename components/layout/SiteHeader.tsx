@@ -17,6 +17,7 @@ export type SiteLink = { href: string; label: string };
 
 const DEFAULT_LINKS: SiteLink[] = [
   { href: "/doctors", label: "Find a doctor" },
+  { href: "/symptoms", label: "Check symptoms" },
   { href: "/summarize", label: "Summarize" },
   { href: "/about", label: "About" },
 ];

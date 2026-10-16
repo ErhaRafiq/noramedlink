@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateTime } from "@/lib/datetime";
-import type { AdminActivity, AdminDashboardStats, AdminDoctor, AdminUser } from "@/lib/types";
+import type { AdminActivity, AdminDashboardStats, AdminDoctor, AdminUser, SymptomStats } from "@/lib/types";
 import type { DoctorDecision } from "@/hooks/admin/use-admin-dashboard";
 
 export function DoctorReviewQueue({
@@ -123,6 +123,45 @@ export function AccountOverview({ stats, pendingDoctors }: { stats: AdminDashboa
           </div>
         ))}
       </dl>
+    </Card>
+  );
+}
+
+/** How the symptom checker is used: counts only, never what people typed. */
+export function SymptomUsage({ stats }: { stats: SymptomStats | null }) {
+  return (
+    <Card id="symptoms">
+      <CardHeader eyebrow="Symptom checker" title="How it is used" />
+      {stats === null ? (
+        <p className="text-sm text-ink-muted">The symptom counts could not be loaded.</p>
+      ) : stats.total === 0 ? (
+        <p className="text-sm text-ink-muted">No one has used the symptom checker yet.</p>
+      ) : (
+        <>
+          <dl className="grid gap-3 sm:grid-cols-3">
+            {[
+              { label: "Checks in total", value: stats.total },
+              { label: "Last 7 days", value: stats.last_7_days },
+              { label: "Sent to emergency advice", value: stats.emergencies },
+            ].map((metric) => (
+              <div key={metric.label} className="rounded-control border border-line bg-surface-soft p-4">
+                <dt className="text-xs font-medium text-ink-muted">{metric.label}</dt>
+                <dd className="mt-1 text-2xl font-semibold text-ink">{metric.value}</dd>
+              </div>
+            ))}
+          </dl>
+          {stats.by_specialty.length > 0 ? (
+            <ul aria-label="Suggestions by specialty" className="mt-4 divide-y divide-line text-sm">
+              {stats.by_specialty.map((row) => (
+                <li key={row.specialty} className="flex items-center justify-between gap-3 py-2">
+                  <span className="min-w-0 break-words text-ink">{row.specialty}</span>
+                  <span className="font-semibold text-ink">{row.count}</span>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </>
+      )}
     </Card>
   );
 }
