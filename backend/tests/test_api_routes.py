@@ -20,6 +20,7 @@ PUBLIC = {
     "/appointments/doctors": "the public list of verified, active doctors",
     "/appointments/doctors/{doctor_id}/slots": "open times of a verified doctor; no patient data",
     "/appointments/doctors/{doctor_id}/reviews": "ratings of a verified doctor, without patient names",
+    "/symptoms/check": "emergency advice must not wait behind a login; rate limited per IP, identity optional",
     "/files/{file_path:path}": "signed, short-lived links; the signature is checked in the handler",
     "/payments/stripe/webhook": "called by Stripe; trusted only with a valid Stripe-Signature (services/payments.py)",
     **{f"{prefix}/{path}": "signing in and signing up" for prefix in ("/auth", "/api/auth")
