@@ -127,43 +127,6 @@ export function ActivePatientsCard({
   );
 }
 
-export function AppointmentsCard({
-  appointments,
-  selectedPatientId,
-  onSelect,
-}: {
-  appointments: DoctorOverview["appointments"];
-  selectedPatientId: number | null;
-  onSelect: (patientId: number) => void;
-}) {
-  return (
-    <Card id="appointments">
-      <SectionHeading eyebrow="Schedule" title="Appointments" />
-      {appointments.length > 0 ? (
-        <div className="space-y-3">
-          {appointments.map((appointment) => (
-            <button
-              key={appointment.id}
-              type="button"
-              onClick={() => onSelect(appointment.userId)}
-              className={selectableClass(appointment.userId === selectedPatientId)}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <p className="text-sm font-semibold text-ink">{appointment.patientName}</p>
-                <AccessBadge hasAccess={appointment.hasDashboardAccess} />
-              </div>
-              <p className="mt-1 text-sm font-semibold text-slate-600">{formatDateTime(appointment.date)}</p>
-              {appointment.patientEmail ? <p className="mt-1 text-xs text-slate-500">{appointment.patientEmail}</p> : null}
-            </button>
-          ))}
-        </div>
-      ) : (
-        <EmptyState title="No appointments yet" text="Appointments that patients book with you will appear here." />
-      )}
-    </Card>
-  );
-}
-
 export function PatientFileCard({
   patient,
   selectedWithoutAccess,

@@ -208,7 +208,7 @@ export function PatientWorkspace({
             />
           </section>
 
-          <AppointmentsSection doctors={data.doctors} appointments={appointments} notify={notify} onSaved={refresh} />
+          <AppointmentsSection appointments={appointments} />
 
           <RemindersSection
             medications={data.medications}

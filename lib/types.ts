@@ -270,8 +270,14 @@ export type AppointmentDoctor = {
   name: string;
   specialty: string;
   location: string;
+  /** Real average of patients' ratings; null until someone has rated. */
   rating: number | null;
-  available_today: boolean | null;
+  rating_count: number;
+  available_today: boolean;
+  /** The first open slot in the next two weeks; null: none. */
+  next_available: string | null;
+  /** The doctor has published weekly availability. */
+  has_schedule: boolean;
   /** Whole PKR, set by the doctor; null: not set, so it cannot be paid online. */
   consultation_fee: number | null;
   qualifications: string | null;
@@ -291,7 +297,12 @@ export type Appointment = {
   specialty?: string | null;
   reason?: string | null;
   date: string;
+  duration_minutes: number;
+  mode: ConsultationMode;
+  /** BOOKED, then COMPLETED, NO_SHOW or CANCELLED. */
   status: string;
+  /** Completed visits can be rated once. */
+  reviewed: boolean;
   /** PENDING until Stripe confirms payment, then PAID. */
   payment_status: string;
   notes: string | null;
@@ -381,6 +392,11 @@ export type DoctorOverview = {
     id: number;
     userId: number;
     date: string;
+    durationMinutes: number;
+    mode: ConsultationMode;
+    /** BOOKED, then COMPLETED, NO_SHOW or CANCELLED. */
+    status: string;
+    paymentStatus: string;
     patientName: string;
     patientEmail: string;
     hasDashboardAccess: boolean;
@@ -669,4 +685,38 @@ export type DoctorProfileInput = {
   languages: string[];
   consultation_modes: ConsultationMode[];
   consultation_fee: number | null;
+};
+
+/** One bookable time: `available` is false when it is taken or too soon. */
+export type Slot = { start: string; end: string; available: boolean };
+export type DaySlots = { day: string; slots: Slot[] };
+export type SlotsResponse = { timezone: string; days: DaySlots[] };
+
+export type AvailabilityWindow = { weekday: number; start_time: string; end_time: string; slot_minutes: number };
+export type Availability = { timezone: string; slot_choices: number[]; windows: AvailabilityWindow[] };
+
+export type Review = { rating: number; comment: string | null; created_at: string };
+
+export type AppNotification = {
+  id: number;
+  kind: string;
+  title: string;
+  body: string;
+  appointment_id: number | null;
+  read: boolean;
+  /** When it became visible: the reminder time, or when it was created. */
+  at: string;
+};
+export type NotificationPage = { items: AppNotification[]; total: number; limit: number; offset: number; unread: number };
+
+export type DoctorSort = "soonest" | "rating" | "fee" | "experience" | "name";
+export type DoctorSearch = {
+  query?: string;
+  specialty?: string;
+  city?: string;
+  mode?: ConsultationMode;
+  availableToday?: boolean;
+  maxFee?: number;
+  minRating?: number;
+  sort?: DoctorSort;
 };

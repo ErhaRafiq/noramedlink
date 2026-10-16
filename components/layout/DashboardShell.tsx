@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { LogOut, UserRound, type LucideIcon } from "lucide-react";
 
+import { NotificationLink } from "@/components/notifications/NotificationLink";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { NoraLogo } from "@/components/ui/NoraLogo";
 import { cn } from "@/lib/cn";
@@ -66,7 +67,8 @@ export function DashboardShell({
         <div className="border-t border-white/10 pt-4">
           <p className="truncate text-sm font-semibold text-white">{userName}</p>
           {userMeta ? <p className="truncate text-xs text-slate-300">{userMeta}</p> : null}
-          <Link href="/profile" className="nm-sidebar-item mt-3 w-full text-left text-slate-300">
+          <NotificationLink label className="nm-sidebar-item mt-3 w-full justify-start text-left !text-slate-300 hover:!bg-white/10 hover:!text-white" />
+          <Link href="/profile" className="nm-sidebar-item w-full text-left text-slate-300">
             <UserRound className="h-4 w-4" aria-hidden />
             My profile
           </Link>
@@ -81,6 +83,7 @@ export function DashboardShell({
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           <NoraLogo />
           <div className="flex items-center gap-1">
+            <NotificationLink />
             <ButtonLink href="/profile" variant="ghost" size="sm" icon={<UserRound className="h-4 w-4" />}>
               Profile
             </ButtonLink>

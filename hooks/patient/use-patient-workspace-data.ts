@@ -7,7 +7,6 @@ import type {
   Appointment,
   DailyVital,
   DepartmentTile,
-  DoctorOption,
   HealthFlags,
   PatientPrescription,
   MedicalDocument,
@@ -24,7 +23,6 @@ export type PatientWorkspaceData = {
   highRiskTotal: number;
   vitalsToday: DailyVital | null;
   basicVitals: PatientVitals[];
-  doctors: DoctorOption[];
   appointments: Appointment[];
   medications: MedicationSchedule[];
   reminders: MedicineReminder[];
@@ -44,7 +42,6 @@ const EMPTY: PatientWorkspaceData = {
   highRiskTotal: 0,
   vitalsToday: null,
   basicVitals: [],
-  doctors: [],
   appointments: [],
   medications: [],
   reminders: [],
@@ -71,12 +68,11 @@ export function usePatientWorkspaceData(signedIn: boolean) {
 
   const refresh = useCallback(async () => {
     if (!signedIn) return;
-    const [vitalsToday, departmentTiles, highRisk, doctors, appointments, medications, reminders, healthFlags, basicVitals, prescriptions] =
+    const [vitalsToday, departmentTiles, highRisk, appointments, medications, reminders, healthFlags, basicVitals, prescriptions] =
       await Promise.all([
         api.patientVitalsToday().catch(() => null),
         api.patientDepartmentTiles().catch(() => []),
         api.reports({ limit: HIGH_RISK_SHOWN, validationStatus: "HIGH_RISK" }).catch(() => ({ items: [], total: 0 })),
-        api.doctors().catch(() => []),
         api.appointments({ limit: APPOINTMENTS_LOADED }).then((page) => page.items).catch(() => []),
         api.medicines().catch(() => []),
         api.remindersToday().catch(() => []),
@@ -90,7 +86,6 @@ export function usePatientWorkspaceData(signedIn: boolean) {
       departmentTiles,
       highRiskReports: highRisk.items,
       highRiskTotal: highRisk.total,
-      doctors,
       appointments,
       medications,
       reminders,

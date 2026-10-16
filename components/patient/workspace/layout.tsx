@@ -21,6 +21,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { NotificationLink } from "@/components/notifications/NotificationLink";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { NoraLogo } from "@/components/ui/NoraLogo";
 import { cn } from "@/lib/cn";
@@ -121,6 +122,7 @@ export function WorkspaceHeader({
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <NotificationLink />
           <label className="relative flex-1 lg:w-80">
             <span className="sr-only">Search reports</span>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden />

@@ -17,3 +17,21 @@ export function formatDateTime(value: string | null | undefined) {
   return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 }
 
+
+/** The clinic's time zone (Pakistan, UTC+5 all year): the days and times patients book are in it. */
+export const CLINIC_TIME_ZONE = "Asia/Karachi";
+
+/** "Mon 12 Oct" for a moment, in clinic time. */
+export function clinicDay(value: string | Date) {
+  return new Intl.DateTimeFormat("en", { weekday: "short", day: "numeric", month: "short", timeZone: CLINIC_TIME_ZONE }).format(new Date(value));
+}
+
+/** "4:30 PM" for a moment, in clinic time. */
+export function clinicTime(value: string | Date) {
+  return new Intl.DateTimeFormat("en", { hour: "numeric", minute: "2-digit", timeZone: CLINIC_TIME_ZONE }).format(new Date(value));
+}
+
+/** "Mon 12 Oct, 4:30 PM" in clinic time. */
+export function clinicDateTime(value: string | Date) {
+  return `${clinicDay(value)}, ${clinicTime(value)}`;
+}

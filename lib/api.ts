@@ -34,6 +34,13 @@ import type {
   AdminUser,
   Page,
   PatientProfileInput,
+  Availability,
+  AvailabilityWindow,
+  ConsultationMode,
+  DoctorSearch,
+  NotificationPage,
+  Review,
+  SlotsResponse,
   DoctorProfileInput,
   Profile,
 } from "@/lib/types";
@@ -418,38 +425,65 @@ export const api = {
   doctorDashboard() {
     return apiRequest<DoctorDashboard>("/doctor/dashboard");
   },
-  appointmentDoctors(params: {
-    query?: string;
-    specialty?: string;
-    availableToday?: boolean;
-  } = {}) {
-    const searchParams = new URLSearchParams();
-    if (params.query?.trim()) {
-      searchParams.set("query", params.query.trim());
-    }
-    if (params.specialty?.trim() && params.specialty !== "All Specialties") {
-      searchParams.set("specialty", params.specialty.trim());
-    }
-    if (typeof params.availableToday === "boolean") {
-      searchParams.set("available_today", String(params.availableToday));
-    }
-    const query = searchParams.toString();
-    return apiRequest<AppointmentDoctor[]>(`/appointments/doctors${query ? `?${query}` : ""}`);
+  appointmentDoctors(search: DoctorSearch = {}, init?: { signal?: AbortSignal }) {
+    const path = withQuery("/appointments/doctors", {
+      query: search.query?.trim(),
+      specialty: search.specialty,
+      city: search.city?.trim(),
+      mode: search.mode,
+      available_today: search.availableToday ? "true" : undefined,
+      max_fee: search.maxFee,
+      min_rating: search.minRating,
+      sort: search.sort,
+    });
+    return apiRequest<AppointmentDoctor[]>(path, { signal: init?.signal });
   },
-  /** Books a verified doctor. `date` must be an ISO string with a time zone (Date#toISOString). */
-  bookAppointment(
-    payload: { doctorId: number; date: string; reason?: string | null; notes?: string | null; patientAccessOtp?: string | null },
-  ) {
+  doctorSlots(doctorId: number, days = 7, init?: { signal?: AbortSignal }) {
+    return apiRequest<SlotsResponse>(`/appointments/doctors/${doctorId}/slots?days=${days}`, { signal: init?.signal });
+  },
+  doctorReviews(doctorId: number) {
+    return apiRequest<Review[]>(`/appointments/doctors/${doctorId}/reviews?limit=5`);
+  },
+  bookAppointment(payload: {
+    doctorId: number;
+    date: string;
+    mode: ConsultationMode;
+    reason?: string | null;
+    notes?: string | null;
+    patientAccessOtp?: string | null;
+  }) {
     return apiRequest<AppointmentBookingResponse>("/appointments", {
       method: "POST",
       body: JSON.stringify({
         doctor_id: payload.doctorId,
         date: payload.date,
+        mode: payload.mode,
         reason: payload.reason || null,
         notes: payload.notes || null,
         patient_access_otp: payload.patientAccessOtp || null,
       }),
     });
+  },
+  reviewAppointment(appointmentId: number, payload: { rating: number; comment?: string | null }) {
+    return apiRequest<Review>(`/appointments/${appointmentId}/review`, {
+      method: "POST",
+      body: JSON.stringify({ rating: payload.rating, comment: payload.comment || null }),
+    });
+  },
+  availability() {
+    return apiRequest<Availability>("/doctor/availability");
+  },
+  setAvailability(windows: AvailabilityWindow[]) {
+    return apiRequest<Availability>("/doctor/availability", { method: "PUT", body: JSON.stringify({ windows }) });
+  },
+  notifications(page?: PageQuery, init?: { signal?: AbortSignal }) {
+    return apiRequest<NotificationPage>(withPage("/notifications", page), { signal: init?.signal });
+  },
+  markNotificationRead(id: number) {
+    return apiRequest<{ message: string }>(`/notifications/${id}/read`, { method: "POST" });
+  },
+  markAllNotificationsRead() {
+    return apiRequest<{ message: string }>("/notifications/read-all", { method: "POST" });
   },
   appointments(page?: PageQuery) {
     return apiRequest<Page<Appointment>>(withPage("/appointments", page));

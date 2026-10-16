@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LayoutDashboard, LogOut, UserRound } from "lucide-react";
 
+import { NotificationLink } from "@/components/notifications/NotificationLink";
 import { Button, ButtonLink } from "@/components/ui/button";
 import { NoraLogo } from "@/components/ui/NoraLogo";
 import { dashboardPathForRole, signOut as endSession } from "@/lib/auth";
@@ -68,6 +69,7 @@ export function SiteHeader({ links = DEFAULT_LINKS }: { links?: SiteLink[] }) {
                 <span className="hidden sm:inline">My dashboard</span>
                 <span className="sm:hidden">Dashboard</span>
               </ButtonLink>
+              <NotificationLink />
               <ButtonLink href="/profile" variant="ghost" size="sm" icon={<UserRound className="h-4 w-4" />} aria-label="My profile">
                 <span className="hidden lg:inline">Profile</span>
               </ButtonLink>

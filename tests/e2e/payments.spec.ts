@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { fixtures } from "./support/fixtures-file";
-import { alertWithText, expectNoHorizontalScroll, signInAs } from "./support/session";
+import { alertWithText, bookFirstSlot, expectNoHorizontalScroll, signInAs } from "./support/session";
 
 test.describe("consultation payments", () => {
   test("the doctor sets a fee, and the patient's appointment can be paid at that fee", async ({ browser }) => {
@@ -18,12 +18,8 @@ test.describe("consultation payments", () => {
 
     const page = await (await browser.newContext()).newPage();
     await signInAs(page, users.patientEmpty);
-    await page.goto("/doctors");
-    await page.getByRole("searchbox", { name: "Search doctors" }).fill(users.doctor.fullName);
-    const card = page.getByRole("article").filter({ hasText: users.doctor.fullName }).filter({ has: page.getByRole("button", { name: "Book appointment" }) });
-    await expect(card.getByText("PKR 1,500 per consultation")).toBeVisible();
-    await card.getByRole("button", { name: "Book appointment" }).click();
-    await expect(page.getByRole("status").filter({ hasText: "Appointment booked" }).first()).toBeVisible({ timeout: 20_000 });
+    await bookFirstSlot(page, users.doctor.fullName);
+    await expect(page.getByRole("article").filter({ hasText: users.doctor.fullName }).getByText("PKR 1,500 per consultation").first()).toBeVisible();
 
     await page.getByRole("link", { name: "Pay PKR 1,500" }).first().click();
     await expect(page.getByRole("heading", { name: "Consultation payments" })).toBeVisible();

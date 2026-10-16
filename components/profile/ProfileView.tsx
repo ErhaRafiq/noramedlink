@@ -11,6 +11,7 @@ import { useProfile } from "@/hooks/profile/use-profile";
 import { dashboardPathForRole } from "@/lib/auth";
 import { AccountForm } from "./AccountForm";
 import { Activity } from "./Activity";
+import { AvailabilityEditor } from "./AvailabilityEditor";
 import { DoctorForm } from "./DoctorForm";
 import { PatientForm } from "./PatientForm";
 
@@ -49,6 +50,7 @@ function ProfileContent({ role }: { role: "patient" | "doctor" | "admin" }) {
           <AccountForm key={`a-${profile.account.full_name}-${profile.account.phone}`} account={profile.account} saving={saving === "account"} onSave={saveAccount} />
           {profile.patient ? <PatientForm patient={profile.patient} saving={saving === "patient"} onSave={savePatient} /> : null}
           {profile.doctor ? <DoctorForm doctor={profile.doctor} saving={saving === "doctor"} onSave={saveDoctor} /> : null}
+          {profile.doctor ? <AvailabilityEditor /> : null}
         </div>
       )}
     </PageContainer>

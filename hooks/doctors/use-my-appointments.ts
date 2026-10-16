@@ -7,7 +7,7 @@ import type { Appointment } from "@/lib/types";
 
 const PAGE_SIZE = 20;
 
-/** The signed-in patient's appointments (soonest first) with cancel and reschedule. */
+/** The signed-in patient's appointments (soonest first) with move, cancel and rate. */
 export function useMyAppointments(signedIn: boolean) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
@@ -33,17 +33,17 @@ export function useMyAppointments(signedIn: boolean) {
     return () => window.clearTimeout(timer);
   }, [load, signedIn]);
 
-  /** Runs an update for one appointment, then reloads. Returns an error message or null. */
-  const update = useCallback(
-    async (appointmentId: number, payload: { date?: string; status?: string }) => {
+  /** Runs one change for one appointment, then reloads. Returns an error message or null. */
+  const change = useCallback(
+    async (appointmentId: number, action: () => Promise<unknown>, fallback: string) => {
       if (!signedIn || busyId !== null) return null;
       setBusyId(appointmentId);
       try {
-        await api.updateAppointment(appointmentId, payload);
+        await action();
         await load();
         return null;
       } catch (err) {
-        return err instanceof Error ? err.message : "Unable to update the appointment.";
+        return err instanceof Error ? err.message : fallback;
       } finally {
         setBusyId(null);
       }
@@ -57,8 +57,10 @@ export function useMyAppointments(signedIn: boolean) {
     error,
     busyId,
     reload: load,
-    cancel: (id: number) => update(id, { status: "CANCELLED" }),
-    // Only the date: patients may not set a status other than CANCELLED (the API answers 403).
-    reschedule: (id: number, isoDate: string) => update(id, { date: isoDate }),
+    cancel: (id: number) => change(id, () => api.updateAppointment(id, { status: "CANCELLED" }), "Unable to cancel the appointment."),
+    reschedule: (id: number, isoDate: string) =>
+      change(id, () => api.updateAppointment(id, { date: isoDate }), "Unable to move the appointment."),
+    review: (id: number, rating: number, comment: string) =>
+      change(id, () => api.reviewAppointment(id, { rating, comment }), "Unable to save your rating."),
   };
 }

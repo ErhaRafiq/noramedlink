@@ -1,19 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { SearchX, Stethoscope } from "lucide-react";
 
 import { PageContainer, PageHeader } from "@/components/layout/PageHeader";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
-import { api } from "@/lib/api";
-import { tomorrowAtTen } from "@/lib/datetime";
 import type { AppointmentDoctor } from "@/lib/types";
 import { useDoctorDirectory } from "@/hooks/doctors/use-doctor-directory";
 import { useMyAppointments } from "@/hooks/doctors/use-my-appointments";
 import { useStoredSession } from "@/hooks/use-stored-session";
-import { BookingDetails, type BookingDetailsValue } from "./BookingDetails";
+import { BookingDialog } from "./BookingDialog";
 import { DoctorCard, DoctorCardSkeleton } from "./DoctorCard";
 import { DoctorFilters } from "./DoctorFilters";
 import { MyAppointments } from "./MyAppointments";
@@ -26,12 +24,17 @@ export function DoctorsView() {
   const directory = useDoctorDirectory();
   const appointments = useMyAppointments(isPatient);
 
-  const [details, setDetails] = useState<BookingDetailsValue>(() => ({ date: tomorrowAtTen(), notes: "", accessCode: "" }));
-  const [bookingId, setBookingId] = useState<number | null>(null);
+  const [booking, setBooking] = useState<AppointmentDoctor | null>(null);
   const [notice, setNotice] = useState<Notice>(null);
+  const busyTimes = useMemo(
+    () =>
+      appointments.appointments
+        .filter((a) => a.status === "BOOKED")
+        .map((a) => ({ start: a.date, end: new Date(new Date(a.date).getTime() + a.duration_minutes * 60_000).toISOString() })),
+    [appointments.appointments],
+  );
 
-  async function book(doctor: AppointmentDoctor) {
-    if (bookingId !== null) return;
+  function startBooking(doctor: AppointmentDoctor) {
     setNotice(null);
     if (!session) {
       setNotice({ tone: "warning", text: "Please sign in as a patient to book an appointment." });
@@ -41,28 +44,13 @@ export function DoctorsView() {
       setNotice({ tone: "warning", text: "Only patient accounts can book appointments." });
       return;
     }
-    const date = new Date(details.date);
-    if (Number.isNaN(date.getTime())) {
-      setNotice({ tone: "error", text: "Choose a valid date and time in Booking details." });
-      return;
-    }
+    setBooking(doctor);
+  }
 
-    setBookingId(doctor.id);
-    try {
-      const result = await api.bookAppointment({
-        doctorId: doctor.id,
-        date: date.toISOString(),
-        notes: details.notes.trim(),
-        patientAccessOtp: details.accessCode.trim(),
-      });
-      setNotice({ tone: "success", text: result.message });
-      setDetails((current) => ({ ...current, notes: "", accessCode: "" }));
-      await appointments.reload();
-    } catch (err) {
-      setNotice({ tone: "error", text: err instanceof Error ? err.message : "Unable to book the appointment." });
-    } finally {
-      setBookingId(null);
-    }
+  async function booked(message: string) {
+    setBooking(null);
+    setNotice({ tone: "success", text: message });
+    await Promise.all([appointments.reload(), directory.retry()]);
   }
 
   return (
@@ -70,13 +58,12 @@ export function DoctorsView() {
       <PageHeader
         eyebrow="Appointments"
         title="Find a doctor"
-        description="Every doctor listed here has been verified by an administrator. Choose a time, then book."
+        description="Every doctor listed here has been verified by an administrator. Pick a real open time and book."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
-        <div className="space-y-5">
-          <BookingDetails value={details} onChange={setDetails} />
-          <DoctorFilters filters={directory.filters} specialties={directory.specialties} />
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="min-w-0 space-y-5">
+          <DoctorFilters directory={directory} />
           {notice ? <Alert tone={notice.tone}>{notice.text}</Alert> : null}
 
           <section aria-labelledby="doctor-results" aria-busy={directory.status === "loading"}>
@@ -86,12 +73,12 @@ export function DoctorsView() {
               </h2>
               {directory.status === "ready" ? (
                 <p className="text-sm text-ink-muted">
-                  {directory.doctors.length} of {directory.total}
+                  {directory.doctors.length} {directory.doctors.length === 1 ? "doctor" : "doctors"}
                 </p>
               ) : null}
             </div>
 
-            {directory.status === "loading" ? (
+            {directory.status === "loading" && !directory.hasLoaded ? (
               <div className="grid gap-4 sm:grid-cols-2">
                 {Array.from({ length: 4 }, (_, i) => (
                   <DoctorCardSkeleton key={i} />
@@ -104,20 +91,25 @@ export function DoctorsView() {
                   Try again
                 </Button>
               </Alert>
-            ) : directory.total === 0 ? (
-              <EmptyState icon={Stethoscope} title="No verified doctors yet" description="Doctors appear here once an administrator approves them." />
             ) : directory.doctors.length === 0 ? (
-              <EmptyState icon={SearchX} title="No doctors match" description="Try another name, specialty or turn off Available today." />
+              directory.filtered ? (
+                <EmptyState
+                  icon={SearchX}
+                  title="No doctors match"
+                  description="Try another name or city, or loosen the fee and rating limits."
+                  action={
+                    <Button variant="secondary" size="sm" onClick={directory.reset}>
+                      Clear filters
+                    </Button>
+                  }
+                />
+              ) : (
+                <EmptyState icon={Stethoscope} title="No verified doctors yet" description="Doctors appear here once an administrator approves them." />
+              )
             ) : (
               <div className="grid gap-4 sm:grid-cols-2">
                 {directory.doctors.map((doctor) => (
-                  <DoctorCard
-                    key={`${doctor.source}-${doctor.id}`}
-                    doctor={doctor}
-                    booking={bookingId === doctor.id}
-                    disabled={bookingId !== null}
-                    onBook={(d) => void book(d)}
-                  />
+                  <DoctorCard key={`${doctor.source}-${doctor.id}`} doctor={doctor} canBook={session === null || isPatient} onBook={startBooking} />
                 ))}
               </div>
             )}
@@ -126,6 +118,8 @@ export function DoctorsView() {
 
         <MyAppointments signedInAsPatient={isPatient} list={appointments} />
       </div>
+
+      <BookingDialog doctor={booking} busy={busyTimes} onClose={() => setBooking(null)} onBooked={(message) => void booked(message)} />
     </PageContainer>
   );
 }

@@ -12,7 +12,7 @@ Not a medical device: every medical feature is advisory (AGENTS.md section 6).
 |---|---|---|---|
 | FE-1 | Secure registration and login for patients, doctors and administrators with encrypted credentials and role-based access control | Done | `routers/auth.py`, `services/sessions.py`, `dependencies.py`; HttpOnly cookie sessions |
 | FE-2 | Manage personal profile (age, gender, contact details, medical role) | Done | `routers/profile.py`, `services/profiles.py`, `/profile` page: name and phone for everyone; date of birth (age is computed), gender, blood group, city, address and emergency contact for patients; CNIC shown masked |
-| FE-3 | Doctor profiles: specialization, qualifications, availability, consultation fees, verification status | Partial | Done: qualifications, experience, languages, city, consultation modes, fee, bio, verification (specialization and PMDC number locked to the admin). Availability: step 2 |
+| FE-3 | Doctor profiles: specialization, qualifications, availability, consultation fees, verification status | Done | Qualifications, experience, languages, city, consultation types, fee, bio and verification (specialization and PMDC number are locked to the admin) on `/profile`; weekly availability in `components/profile/AvailabilityEditor.tsx` (`GET/PUT /doctor/availability`) |
 | FE-4 | Link each profile with records, appointments, prescriptions and payment history | Done | `activity` on `GET /profile`; the profile page links each count to its page |
 
 ## Module 2: Unified Patient Health Record Repository (UPHRR)
@@ -43,10 +43,10 @@ Not in the requested scope of this pass; reports, vitals, medicines and clinical
 
 | ID | Feature | Status | Where |
 |---|---|---|---|
-| FE-1 | Search doctors by specialization, location, availability, ratings, fees | | |
-| FE-2 | Real-time availability for online or in-person consultations | | |
-| FE-3 | Book, reschedule or cancel appointments | | |
-| FE-4 | Appointment confirmations and reminders to patients and doctors | | |
+| FE-1 | Search doctors by specialization, location, availability, ratings, fees | Done | `GET /appointments/doctors` (query, specialty, city, consultation type, available today, max fee, min rating, sort); `components/doctors/DoctorFilters.tsx`. Ratings and next-open times are real; a doctor with no fee or rating is never matched by a fee or rating limit |
+| FE-2 | Real-time availability for online or in-person consultations | Done | `services/scheduling.py`: weekly windows cut into slots (clinic time, UTC+5), `GET /appointments/doctors/{id}/slots`; taken and too-soon slots are shown closed; consultation types online / in clinic / home |
+| FE-3 | Book, reschedule or cancel appointments | Done | `services/appointments.py`; one live booking per doctor and time (database unique index plus a check); a patient cannot hold two overlapping visits; move/cancel only before the visit starts; the doctor completes, marks a no-show or cancels; completed visits can be rated once |
+| FE-4 | Confirmations and reminders to patients and doctors | Done (in-app) | `services/notifications.py`, `GET /notifications`, `/notifications` page and bell: confirmation, move and cancel notices, plus 24-hour and 1-hour reminders for both people. Email or SMS needs a provider and is not configured |
 
 ## Module 6: On-Demand Doctor Home Visit Engine
 

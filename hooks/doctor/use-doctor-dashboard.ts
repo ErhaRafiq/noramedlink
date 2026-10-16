@@ -21,6 +21,7 @@ export function useDoctorDashboard(signedIn: boolean) {
   const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [endingPatientId, setEndingPatientId] = useState<number | null>(null);
+  const [changingAppointmentId, setChangingAppointmentId] = useState<number | null>(null);
   const mountedRef = useRef(true);
 
   useEffect(() => {
@@ -110,7 +111,31 @@ export function useDoctorDashboard(signedIn: boolean) {
     [endingPatientId, reload, signedIn],
   );
 
+  /** Completes, marks as missed, or cancels one of the doctor's appointments. */
+  const changeAppointment = useCallback(
+    async (appointmentId: number, status: "COMPLETED" | "NO_SHOW" | "CANCELLED") => {
+      if (!signedIn || changingAppointmentId !== null) return;
+      setChangingAppointmentId(appointmentId);
+      setNotice(null);
+      try {
+        await api.updateAppointment(appointmentId, { status });
+        setNotice({
+          tone: "success",
+          text: status === "COMPLETED" ? "Visit marked as completed." : status === "NO_SHOW" ? "Marked as a missed visit." : "Appointment cancelled; the patient was told.",
+        });
+        await reload();
+      } catch (error) {
+        setNotice({ tone: "error", text: error instanceof Error ? error.message : "Unable to update the appointment." });
+      } finally {
+        if (mountedRef.current) setChangingAppointmentId(null);
+      }
+    },
+    [changingAppointmentId, reload, signedIn],
+  );
+
   return {
+    changeAppointment,
+    changingAppointmentId,
     profile,
     overview,
     isLoading,

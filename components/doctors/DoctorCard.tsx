@@ -1,38 +1,34 @@
-import { Award, CalendarPlus, Languages, MapPin, Star, Wallet } from "lucide-react";
+import { Award, CalendarPlus, Clock, Languages, MapPin, Wallet } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { clinicDay, clinicTime } from "@/lib/datetime";
 import { formatMoney } from "@/lib/money";
 import type { AppointmentDoctor } from "@/lib/types";
-
-const MODE_LABEL = { in_clinic: "In clinic", online: "Online", home: "Home visit" } as const;
+import { MODE_LABEL } from "./BookingDialog";
+import { RatingSummary } from "./Stars";
 
 function availability(doctor: AppointmentDoctor) {
-  if (doctor.available_today === null) return { label: "Availability not set", tone: "neutral" as const };
-  return doctor.available_today ? { label: "Available today", tone: "success" as const } : { label: "Not today", tone: "neutral" as const };
+  if (!doctor.has_schedule) return { label: "No times published yet", tone: "neutral" as const };
+  if (doctor.available_today) return { label: "Available today", tone: "success" as const };
+  if (doctor.next_available) {
+    return { label: `Next: ${clinicDay(doctor.next_available)}, ${clinicTime(doctor.next_available)}`, tone: "info" as const };
+  }
+  return { label: "Fully booked for two weeks", tone: "warning" as const };
 }
 
-export function DoctorCard({
-  doctor,
-  booking,
-  disabled,
-  onBook,
-}: {
-  doctor: AppointmentDoctor;
-  /** This card's booking is in progress. */
-  booking: boolean;
-  /** Another booking is in progress. */
-  disabled: boolean;
-  onBook: (doctor: AppointmentDoctor) => void;
-}) {
+export function DoctorCard({ doctor, canBook, onBook }: { doctor: AppointmentDoctor; canBook: boolean; onBook: (doctor: AppointmentDoctor) => void }) {
   const badge = availability(doctor);
+  const bookable = doctor.has_schedule && doctor.next_available !== null;
   return (
     <article className="flex h-full flex-col rounded-card border border-line bg-white p-5 shadow-card transition-colors hover:border-line-strong">
       <div>
         <h3 className="break-words text-base font-semibold text-ink">{doctor.name}</h3>
         <p className="mt-0.5 text-sm font-medium text-brand-blue">{doctor.specialty}</p>
-        <Badge tone={badge.tone} className="mt-2">
+        <RatingSummary rating={doctor.rating} count={doctor.rating_count} className="mt-1.5" />
+        <Badge tone={badge.tone} className="mt-2 max-w-full whitespace-normal text-left">
+          <Clock className="mr-1 inline h-3 w-3" aria-hidden />
           {badge.label}
         </Badge>
       </div>
@@ -68,25 +64,14 @@ export function DoctorCard({
           </div>
         ) : null}
         <div className="flex items-center gap-2">
-          <dt className="sr-only">Rating</dt>
-          <Star className="h-4 w-4 flex-shrink-0 text-slate-400" aria-hidden />
-          <dd>{doctor.rating === null ? "No ratings yet" : `${doctor.rating.toFixed(1)} / 5`}</dd>
-        </div>
-        <div className="flex items-center gap-2">
           <dt className="sr-only">Consultation fee</dt>
           <Wallet className="h-4 w-4 flex-shrink-0 text-slate-400" aria-hidden />
           <dd>{doctor.consultation_fee ? `${formatMoney(doctor.consultation_fee)} per consultation` : "Fee not set yet"}</dd>
         </div>
       </dl>
       {doctor.bio ? <p className="mt-3 line-clamp-3 break-words text-sm leading-6 text-ink-muted">{doctor.bio}</p> : null}
-      <Button
-        className="mt-5 w-full"
-        loading={booking}
-        disabled={disabled}
-        icon={<CalendarPlus className="h-4 w-4" />}
-        onClick={() => onBook(doctor)}
-      >
-        {booking ? "Booking..." : "Book appointment"}
+      <Button className="mt-5 w-full" disabled={!bookable || !canBook} icon={<CalendarPlus className="h-4 w-4" />} onClick={() => onBook(doctor)}>
+        {bookable ? "Book appointment" : "Not bookable yet"}
       </Button>
     </article>
   );
@@ -96,13 +81,13 @@ export function DoctorCardSkeleton() {
   return (
     <div className="rounded-card border border-line bg-white p-5 shadow-card">
       <div className="space-y-2">
-        <Skeleton className="h-4 w-3/4" />
-        <Skeleton className="h-3 w-1/2" />
-        <Skeleton className="h-5 w-24 rounded-full" />
+        <Skeleton className="h-5 w-2/3" />
+        <Skeleton className="h-4 w-1/3" />
+        <Skeleton className="h-6 w-1/2" />
       </div>
-      <div className="mt-5 space-y-2">
-        <Skeleton className="h-3 w-full" />
-        <Skeleton className="h-3 w-2/3" />
+      <div className="mt-4 space-y-2">
+        <Skeleton className="h-4 w-full" />
+        <Skeleton className="h-4 w-4/5" />
       </div>
       <Skeleton className="mt-5 h-11 w-full" />
     </div>

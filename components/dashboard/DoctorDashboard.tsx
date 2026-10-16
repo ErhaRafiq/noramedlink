@@ -14,7 +14,8 @@ import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useDoctorDashboard } from "@/hooks/doctor/use-doctor-dashboard";
 import { ClinicalSummaryCard } from "./doctor/clinical-summary/ClinicalSummaryCard";
 import { PrescribeCard } from "./doctor/prescribe/PrescribeCard";
-import { ActivePatientsCard, AppointmentsCard, EmergencyCard, PatientFileCard, UnlockCard } from "./doctor/sections";
+import { DoctorAppointmentsCard } from "./doctor/DoctorAppointmentsCard";
+import { ActivePatientsCard, EmergencyCard, PatientFileCard, UnlockCard } from "./doctor/sections";
 
 const NAV: DashboardNavItem[] = [
   { id: "summary", label: "Summary", icon: LayoutDashboard },
@@ -105,7 +106,13 @@ export function DoctorDashboard() {
           </div>
 
           <div className="grid items-start gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-            <AppointmentsCard appointments={overview.appointments} selectedPatientId={selectedPatientId} onSelect={dashboard.selectPatient} />
+            <DoctorAppointmentsCard
+              appointments={overview.appointments}
+              selectedPatientId={selectedPatientId}
+              onSelect={dashboard.selectPatient}
+              changingId={dashboard.changingAppointmentId}
+              onChange={(id, status) => void dashboard.changeAppointment(id, status)}
+            />
             <PatientFileCard
               patient={activePatient}
               selectedWithoutAccess={selectedWithoutAccess}

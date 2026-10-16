@@ -19,6 +19,19 @@ export async function signInAs(page: Page, user: TestUser) {
   await page.addInitScript((userJson) => localStorage.setItem("nora_medlink_user", userJson), JSON.stringify(me));
 }
 
+/** On /doctors: search for the doctor, open their booking dialog, take the first open time and confirm. */
+export async function bookFirstSlot(page: Page, doctorName: string) {
+  await page.goto("/doctors");
+  await page.getByRole("searchbox", { name: "Search doctors" }).fill(doctorName);
+  const card = page.getByRole("article").filter({ hasText: doctorName }).filter({ has: page.getByRole("button", { name: "Book appointment" }) });
+  await card.getByRole("button", { name: "Book appointment" }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog.getByRole("heading", { name: `Book ${doctorName}` })).toBeVisible();
+  await dialog.getByRole("group", { name: /^Times on/ }).locator("button:not([disabled])").first().click();
+  await dialog.getByRole("button", { name: "Confirm booking" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Appointment booked" }).first()).toBeVisible({ timeout: 20_000 });
+}
+
 /** Signs in through the real login form. */
 export async function loginThroughForm(page: Page, email: string, password = fixtures().password) {
   await page.goto("/login");
@@ -34,6 +47,6 @@ export function alertWithText(page: Page, text: string | RegExp) {
 
 /** Fails if the page scrolls sideways (the phone-width rule in AGENTS.md section 15). */
 export async function expectNoHorizontalScroll(page: Page) {
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow, "page is wider than the viewport").toBeLessThanOrEqual(1);
 }
