@@ -19,7 +19,7 @@ from dependencies import get_current_user
 from models import User
 from rate_limit import EMAIL_LIMIT, enforce_account_limit, ip_key, limiter
 from schemas import ForgotPasswordIn, MessageOut, ResetPasswordIn, VerifyEmailIn
-from services import auth_tokens, sessions
+from services import auth_tokens, notifications, sessions
 from services.account_email import send_account_email, verification_link
 from services.signup_service import normalize_email
 
@@ -74,6 +74,7 @@ def reset_password(
     user.hashed_password = hash_password(payload.new_password)
     user.is_email_verified = True  # the code reached this inbox
     sessions.revoke_all(db, user)
+    notifications.password_changed(db, user.id)
     db.commit()
     background.add_task(send_account_email, user.id, "password_changed", {})
     return {"message": "Your password was changed. Sign in with your new password."}

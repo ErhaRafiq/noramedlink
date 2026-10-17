@@ -12,7 +12,7 @@ from database import get_db
 from dependencies import get_current_user, require_doctor, require_patient
 from models import User
 from schemas import HealthEntryIn, HealthEntryOut, HealthEntryUpdate, HealthOptionsOut, MessageOut
-from services import audit, health_record, knowledge
+from services import audit, health_record, knowledge, notifications
 from services.dashboard_access import patient_with_active_grant
 from services.knowledge.tables import records
 
@@ -99,6 +99,7 @@ def add_patient_entry(
 ):
     patient = patient_with_active_grant(db, doctor, patient_id)
     entry = health_record.create(db, patient.id, doctor, **payload.model_dump())
+    notifications.record_changed(db, patient.id, doctor.full_name, health_record.kind_label(entry.kind))
     audit.record(
         db, doctor, "health_entry.add", patient_id=patient.id, target_type="health_entry",
         target_id=entry.id, detail=health_record.kind_label(entry.kind), commit=False,
@@ -118,6 +119,7 @@ def change_patient_entry(
     patient = patient_with_active_grant(db, doctor, patient_id)
     entry = health_record.get_entry(db, patient.id, entry_id)
     health_record.update(db, entry, _changes(payload))
+    notifications.record_changed(db, patient.id, doctor.full_name, health_record.kind_label(entry.kind))
     audit.record(
         db, doctor, "health_entry.update", patient_id=patient.id, target_type="health_entry",
         target_id=entry.id, detail=health_record.kind_label(entry.kind), commit=False,

@@ -124,6 +124,7 @@ def finish(db: Session, appointment: Appointment, outcome: str) -> Appointment:
     if as_utc(appointment.date) > datetime.now(UTC):
         raise _conflict("This appointment has not started yet.")
     appointment.status = outcome
+    notifications.visit_finished(db, appointment, outcome)
     return appointment
 
 
@@ -140,6 +141,7 @@ def create_review(db: Session, appointment: Appointment, rating: int, comment: s
         comment=comment,
     )
     db.add(review)
+    notifications.review_received(db, appointment, rating)
     return review
 
 

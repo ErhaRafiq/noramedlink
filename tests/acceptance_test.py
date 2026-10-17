@@ -324,6 +324,9 @@ def scalar(sql: str, **params):
 def cleanup_test_users() -> None:
     """Delete phase0-test- users and rows tied to them. Nothing else is touched."""
     with engine.begin() as conn:
+        # "A new doctor is waiting" goes to every real administrator when a test doctor signs up; its text starts
+        # with the test doctor's name, so it is removed here (the doctor's own rows go with the doctor).
+        conn.execute(text("delete from notifications where kind = 'admin_doctor_review' and body like :p"), {"p": f"{TEST_PREFIX}%"})
         # Symptom checks sent by visitors who were not signed in carry the test marker in their text.
         if conn.execute(text("select to_regclass('public.symptom_sessions')")).scalar():
             conn.execute(text("delete from symptom_sessions where symptom_text like :p"), {"p": f"{TEST_PREFIX}%"})
@@ -670,6 +673,9 @@ def run_tests() -> None:
               scalar("select payment_status from appointments where id = :id", id=to_pay.get("id", 0)) == "PAID")
         response = backend.post("/payments/stripe/webhook", content=body, headers=headers)
         check("the same event delivered again changes nothing (duplicate)", response.json().get("outcome") == "duplicate")
+        check("the paid payment is told to the patient once, and to the doctor once, however often the webhook arrives",
+              scalar("select count(*) from notifications where user_id = :u and kind = 'payment_received' and link = '/payments'", u=patient_a) == 1
+              and scalar("select count(*) from notifications where user_id = :d and kind = 'payment_received'", d=doctor) == 1)
         body, headers = stripe_event("late-expiry", "checkout.session.expired")
         response = backend.post("/payments/stripe/webhook", content=body, headers=headers)
         check("a late 'expired' event never undoes a paid payment",
@@ -704,6 +710,7 @@ def run_tests() -> None:
         check("a signed charge.refunded for the full amount marks it REFUNDED",
               response.json().get("outcome") == "refunded" and paid_status() == "REFUNDED"
               and scalar("select refunded_at is not null from payments where stripe_session_id = :s", s=session_id) is True)
+        check("a completed refund is told to the patient once", scalar("select count(*) from notifications where user_id = :u and kind = 'payment_refunded'", u=patient_a) == 1)
         check("and the appointment REFUNDED",
               scalar("select payment_status from appointments where id = :id", id=to_pay.get("id", 0)) == "REFUNDED")
         backend.close()
@@ -1716,6 +1723,72 @@ def run_tests() -> None:
     with engine.begin() as conn:
         conn.execute(text("update appointments set status = 'CANCELLED' where id = :i"), {"i": appt})
 
+    print("\n[17e] In-app notifications: events, links, filters, unread count, dismiss")
+
+    def told(user_id: int, kind: str) -> int:
+        return scalar("select count(*) from notifications where user_id = :u and kind = :k", u=user_id, k=kind)
+
+    note_path = "/api/backend/notifications"
+    check("the unread count needs a token -> 401", call("GET", note_path + "/unread-count").status_code == 401)
+    count_now = call("GET", note_path + "/unread-count", tok_c)
+    check("the unread count is one small number", count_now.status_code == 200 and set(count_now.json()) == {"unread"}
+          and count_now.json()["unread"] == call("GET", note_path, tok_c).json()["unread"], f"got {count_now.status_code}")
+
+    # events that happened earlier in this run, told to the right person with a page to go to
+    check("a doctor opening a patient's file is told to the patient (once per unlock, with a link to the access history)",
+          told(patient_a, "access_opened") >= 1
+          and scalar("select count(*) from notifications where user_id = :u and kind = 'access_opened' and link = '/dashboard/patient#access-history'", u=patient_a) >= 1)
+    check("a doctor's change to the health record is told to the patient", told(patient_c, "record_changed") >= 2
+          and scalar("select count(*) from notifications where user_id = :u and kind = 'record_changed' and link = '/dashboard/patient#health-record'", u=patient_c) >= 2)
+    check("a new prescription and its cancellation are told to the patient", told(patient_c, "prescription_added") == 1 and told(patient_c, "prescription_cancelled") == 1)
+    check("a notification never holds a medicine name or a diagnosis",
+          scalar("select count(*) from notifications where user_id = :u and kind like 'prescription%' and (body ilike '%mg%' or body ilike '%warfarin%' or body ilike '%metformin%')", u=patient_c) == 0
+          and scalar("select count(*) from notifications where user_id = :u and kind = 'record_changed' and (body ilike '%penicillin%' or body ilike '%diabetes%')", u=patient_c) == 0)
+    check("a new doctor signing up is told to the administrators, with a link to the review queue",
+          scalar("select count(*) from notifications where user_id = :a and kind = 'admin_doctor_review' and link = '/admin#doctors'", a=admin) >= 1)
+    check("approving a doctor tells the doctor", told(scalar("select user_id from doctor_profiles where id = :i", i=new_doctor_profile), "doctor_approved") == 1)
+    check("giving and taking away the PMDC badge each tell the doctor", told(doctor, "doctor_pmdc") == 2)
+    check("each password reset tells the account (two succeeded above)", told(mail_user, "account_password") == 2)
+
+    # filters, links and the fallback link for an older notification
+    listed = call("GET", note_path + "?limit=100", tok_c).json()
+    check("every notification says its category and where it leads",
+          all(n["category"] in {"appointments", "payments", "records", "account", "admin"} for n in listed["items"])
+          and any(n["link"] == "/dashboard/patient#prescriptions" for n in listed["items"]))
+    records_only = call("GET", note_path + "?category=records&limit=100", tok_c).json()
+    check("the category filter returns only that category", records_only["total"] >= 3 and all(n["category"] == "records" for n in records_only["items"]))
+    check("an unknown category -> 422", call("GET", note_path + "?category=gossip", tok_c).status_code == 422)
+    check("the unread count counts everything, not only the filter", records_only["unread"] == listed["unread"])
+    with engine.begin() as conn:  # an older notification has no stored link
+        legacy_id = conn.execute(text("insert into notifications (user_id, title, body, status, kind) values (:u, 'Appointment confirmed', 'older one', 'UNREAD', 'appointment_confirmed') returning id"), {"u": patient_c}).scalar_one()
+    legacy = next(n for n in call("GET", note_path + "?limit=100", tok_c).json()["items"] if n["id"] == legacy_id)
+    check("an older notification still leads somewhere (by its kind and the reader's role)", legacy["link"] == "/doctors")
+    call("POST", f"{note_path}/read-all", tok_c)
+    check("read-all leaves nothing unread and the unread filter is then empty",
+          call("GET", note_path + "/unread-count", tok_c).json()["unread"] == 0 and call("GET", note_path + "?unread_only=true", tok_c).json()["total"] == 0)
+    check("reading sets the time it was read", scalar("select count(*) from notifications where user_id = :u and status = 'READ' and read_at is null", u=patient_c) == 0)
+
+    # dismissing: your own only
+    check("another user cannot dismiss my notification -> 404", call("DELETE", f"{note_path}/{legacy_id}", tok_a).status_code == 404)
+    check("dismissing needs a token -> 401", call("DELETE", f"{note_path}/{legacy_id}").status_code == 401)
+    gone = call("DELETE", f"{note_path}/{legacy_id}", tok_c)
+    check("I can dismiss my own notification", gone.status_code == 200 and scalar("select count(*) from notifications where id = :i", i=legacy_id) == 0, f"got {gone.status_code}")
+    check("dismissing it twice -> 404", call("DELETE", f"{note_path}/{legacy_id}", tok_c).status_code == 404)
+
+    # an event delivered twice is told once
+    from services import notifications as _notes
+    from database import SessionLocal as _NoteSession
+
+    with _NoteSession() as session:
+        first = _notes.add(session, patient_c, "payment_received", "Payment received", "x", dedupe_key=f"{TEST_PREFIX}dedupe-{run_id}")
+        session.commit()
+        again = _notes.add(session, patient_c, "payment_received", "Payment received", "x", dedupe_key=f"{TEST_PREFIX}dedupe-{run_id}")
+        session.commit()
+    check("an event with the same key is told once", first is not None and again is None
+          and scalar("select count(*) from notifications where dedupe_key = :k", k=f"{TEST_PREFIX}dedupe-{run_id}") == 1)
+    with engine.begin() as conn:
+        conn.execute(text("delete from notifications where dedupe_key = :k"), {"k": f"{TEST_PREFIX}dedupe-{run_id}"})
+
     print("\n[18] Sessions: HttpOnly cookies, refresh-token rotation, replay detection, logout")
     from auth import hash_password
 
@@ -1899,6 +1972,10 @@ def run_tests() -> None:
     response = call("POST", appt_url + "/review", tok_s1, {"rating": 4, "comment": "  Clear and kind  "})
     check("the patient rates the completed visit once", response.status_code == 201 and response.json()["comment"] == "Clear and kind")
     check("rating twice -> 409", call("POST", appt_url + "/review", tok_s1, {"rating": 5}).status_code == 409)
+    check("completing a visit asks the patient for a rating, once, with a link to their appointments",
+          scalar("select count(*) from notifications where user_id = :u and kind = 'appointment_completed' and link = '/doctors'", u=patient_s1) == 1)
+    check("a rating tells the doctor without saying who rated",
+          scalar("select count(*) from notifications where user_id = :d and kind = 'review_received' and body not ilike '%' || :n || '%'", d=sched_doctor, n=f"{TEST_PREFIX}") == 1)
     card = next((d for d in call("GET", "/api/backend/appointments/doctors").json() if d["doctor_id"] == sched_doctor), {})
     check("the directory now shows the real average and count", card.get("rating") == 4.0 and card.get("rating_count") == 1, f"got {card.get('rating')}")
     reviews = call("GET", f"/api/backend/appointments/doctors/{sched_doctor}/reviews").json()

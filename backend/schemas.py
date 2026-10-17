@@ -688,7 +688,10 @@ class NotificationOut(BaseModel):
     title: str
     body: str
     appointment_id: int | None
+    category: str  # appointments, payments, records, account or admin
+    link: str | None  # a page inside the app that the notification leads to
     read: bool
+    read_at: datetime | None = None
     at: datetime  # when it became visible: the reminder time, or when it was created
 
 
@@ -697,6 +700,10 @@ class NotificationPage(BaseModel):
     total: int
     limit: int
     offset: int
+    unread: int
+
+
+class UnreadCountOut(BaseModel):
     unread: int
 
 

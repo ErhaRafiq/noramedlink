@@ -10,7 +10,7 @@ from dependencies import get_current_user
 from models import User
 from rate_limit import LOGIN_LIMIT, SIGNUP_LIMIT, enforce_account_limit, ip_key, limiter
 from schemas import LoginRequest, MessageOut, RefreshRequest, SignupRequest, TokenResponse, UserOut
-from services import auth_tokens, sessions
+from services import auth_tokens, notifications, sessions
 from services.account_email import send_account_email, verification_link
 from services.signup_service import (
     build_token_response,
@@ -46,6 +46,8 @@ def signup(request: Request, payload: SignupRequest, background: BackgroundTasks
 
     # The confirmation link goes out after the response; a failure to send never fails the sign-up.
     token = auth_tokens.issue(db, user, auth_tokens.VERIFY_EMAIL)
+    if payload.role == "doctor":
+        notifications.new_doctor_for_review(db, user, (payload.specialization or "").strip())
     db.commit()
     background.add_task(send_account_email, user.id, "verify_email", {"link": verification_link(token)})
     return build_token_response(db, user)

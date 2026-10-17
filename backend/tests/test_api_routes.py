@@ -122,6 +122,8 @@ ANY_SIGNED_IN_ROLE = {
     "/payments": "the caller's own payments",
     "/profile": "the caller's own profile",
     "/notifications": "the caller's own notifications",
+    "/notifications/unread-count": "the caller's own unread count",
+    "/notifications/{notification_id}": "the caller's own notification (others look like 404): dismiss",
     "/notifications/read-all": "the caller's own notifications",
     "/notifications/{notification_id}/read": "the caller's own notification (others look like 404)",
     "/profile/account": "the caller's own name and phone",

@@ -208,6 +208,7 @@ def _apply(db: Session, payment: Payment, kind: str, session: dict) -> str:
         appointment = db.get(Appointment, payment.appointment_id) if payment.appointment_id else None
         if appointment is not None:
             appointment.payment_status = PAID
+        notifications.payment_received(db, payment, appointment)
         return "paid"
     if payment.status == PAID:
         return "already paid"
@@ -224,9 +225,17 @@ def _apply_refund(db: Session, payment: Payment, kind: str, obj: dict) -> str:
             return "partial refund ignored"
         payment.status = REFUNDED
         payment.refunded_at = datetime.now(UTC)
+        notifications.refund_completed(db, payment)
         outcome = "refunded"
     else:  # refund.failed
         payment.status = REFUND_FAILED
+        notifications.add(
+            db, payment.user_id, "payment_refund", "Refund needs attention",
+            "The refund for your cancelled appointment did not go through. Please contact support with your payment "
+            f"reference {payment.reference}.", payment.appointment_id, link="/payments",
+            dedupe_key=f"refund-failed-patient:{payment.id}",
+        )  # fmt: skip
+        notifications.refund_needs_attention(db, payment)
         outcome = "refund failed"
     if appointment is not None:
         appointment.payment_status = payment.status
@@ -272,7 +281,9 @@ def refund_for_cancellation(db: Session, appointment: Appointment) -> Payment | 
             ),
         )
     appointment.payment_status = payment.status
-    notifications.add(db, payment.user_id, "payment_refund", title, body, appointment.id)
+    notifications.add(db, payment.user_id, "payment_refund", title, body, appointment.id, link="/payments")
+    if payment.status == REFUND_FAILED and online_payment_enabled():  # a real Stripe failure, not a missing key
+        notifications.refund_needs_attention(db, payment)
     return payment
 
 

@@ -1,6 +1,7 @@
 """Stripe payments (services/payments.py): only a correctly signed webhook for the right amount
 marks a payment paid. No network: signatures are made here with a test secret."""
 
+import contextlib
 import hashlib
 import hmac
 import json
@@ -89,12 +90,22 @@ def session(**fields):
     }
 
 
-def test_a_paid_session_for_the_right_amount_marks_payment_and_appointment_paid():
+@pytest.fixture(autouse=True)
+def told(monkeypatch):
+    """The in-app notices have their own tests; here only which events were told is recorded."""
+    calls = []
+    for name in ("payment_received", "refund_completed", "refund_needs_attention"):
+        monkeypatch.setattr(payments.notifications, name, lambda *args, _n=name, **kwargs: calls.append(_n))
+    return calls
+
+
+def test_a_paid_session_for_the_right_amount_marks_payment_and_appointment_paid(told):
     appointment = SimpleNamespace(payment_status="PENDING")
     payment = pending()
     assert payments._apply(FakeDb(appointment), payment, "checkout.session.completed", session()) == "paid"
     assert payment.status == "PAID" and payment.paid_at is not None and payment.transaction_id == "pi_1"
     assert appointment.payment_status == "PAID"
+    assert told == ["payment_received"]  # the patient and the doctor are told once
 
 
 @pytest.mark.parametrize(
@@ -157,6 +168,12 @@ class RefundDb:
     def add(self, row):
         self.added.append(row)
 
+    def begin_nested(self):
+        return contextlib.nullcontext()
+
+    def flush(self):
+        pass
+
 
 def paid_payment(**fields):
     base = {
@@ -208,7 +225,7 @@ def test_without_stripe_the_cancellation_stands_and_the_failed_refund_is_visible
     assert payment.status == "REFUND_FAILED" and appointment.payment_status == "REFUND_FAILED"
 
 
-def test_only_a_full_charge_refunded_event_marks_a_payment_refunded():
+def test_only_a_full_charge_refunded_event_marks_a_payment_refunded(told):
     payment, appointment = paid_payment(status="REFUND_PENDING"), SimpleNamespace(payment_status="REFUND_PENDING")
     db = RefundDb(payment, appointment)
     assert payments._apply_refund(db, payment, "charge.refunded", {"amount_refunded": 100}) == "partial refund ignored"
@@ -221,7 +238,7 @@ def test_only_a_full_charge_refunded_event_marks_a_payment_refunded():
     assert payment.status == "REFUNDED"
 
 
-def test_a_failed_refund_is_recorded():
+def test_a_failed_refund_is_recorded(told):
     payment, appointment = paid_payment(status="REFUND_PENDING"), SimpleNamespace(payment_status="REFUND_PENDING")
     assert payments._apply_refund(RefundDb(payment, appointment), payment, "refund.failed", {}) == "refund failed"
     assert payment.status == "REFUND_FAILED" and appointment.payment_status == "REFUND_FAILED"

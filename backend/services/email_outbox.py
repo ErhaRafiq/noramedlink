@@ -29,7 +29,7 @@ from sqlalchemy.orm import Session
 from config import settings
 from database import SessionLocal
 from models import Appointment, EmailOutbox, User
-from services import email_client
+from services import email_client, notifications
 from services.email_templates import render
 from services.notifications import when_text  # 'Mon 12 Oct, 4:30 PM' in clinic time, as in the in-app notices
 from services.scheduling import as_utc
@@ -260,6 +260,7 @@ def _tick(purge: bool) -> None:
             dispatch_due(db)
             if purge:
                 purge_old(db)
+                notifications.purge_old(db)
         except Exception:
             db.rollback()
             log.exception("The email worker hit an error; it will try again")

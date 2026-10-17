@@ -10,7 +10,7 @@ from dependencies import require_admin
 from models import Appointment, DoctorProfile, PatientReport, SymptomSession, User
 from pagination import Page, PageParams, page_params, paginate
 from schemas import SymptomStatsOut
-from services import audit, pmdc
+from services import audit, notifications, pmdc
 from services.signup_service import pmdc_matches
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -151,7 +151,10 @@ def update_doctor_status(doctor_profile_id: int, next_status: str, db: Session, 
                 detail="Another approved doctor already has this PMDC/PMC number. Check the registration first.",
             )
 
+    changed = profile.verification_status != next_status
     profile.verification_status = next_status
+    if changed and next_status in ("approved", "rejected"):
+        notifications.doctor_decision(db, profile.user_id, next_status == "approved")
     if profile.user:
         profile.user.is_identity_verified = next_status == "approved"
     db.commit()

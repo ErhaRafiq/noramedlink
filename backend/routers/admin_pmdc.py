@@ -17,7 +17,7 @@ from models import DoctorProfile, User
 from pagination import Page, PageParams, page_params, paginate
 from rate_limit import PMDC_LIMIT, limiter
 from schemas import AdminDoctorOut, PmdcManualIn, PmdcStatusOut
-from services import audit, pmdc
+from services import audit, notifications, pmdc
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -112,7 +112,10 @@ def decide_pmdc_by_hand(
 ):
     """The administrator's own decision (for example after looking the doctor up on pmdc.pk), with the reason."""
     profile = _profile(db, doctor_id)
+    was_verified = profile.pmdc_verified
     pmdc.set_by_hand(profile, payload.verified, payload.note, admin.id)
+    if profile.pmdc_verified != was_verified:
+        notifications.doctor_pmdc_changed(db, profile.user_id, profile.pmdc_verified)
     audit.record(
         db, admin, "admin.pmdc_manual", target_type="doctor_profile", target_id=profile.id,
         detail="verified" if payload.verified else "not verified", commit=False,

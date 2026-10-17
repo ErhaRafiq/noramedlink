@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 from config import settings
 from models import DoctorProfile, User
 from schemas import PmdcStatusOut
-from services import audit
+from services import audit, notifications
 
 log = logging.getLogger("nora.pmdc")
 
@@ -223,7 +223,10 @@ def status_out(profile: DoctorProfile, names: dict[int, str] | None = None) -> P
 def run_check(db: Session, profile: DoctorProfile, admin: User) -> str:
     """check_doctor for the doctor's account, written to the audit log and committed. Raises as check_doctor does."""
     doctor = db.get(User, profile.user_id)
+    was_verified = profile.pmdc_verified
     outcome = check_doctor(profile, doctor.full_name if doctor else "", admin.id)
+    if profile.pmdc_verified != was_verified:
+        notifications.doctor_pmdc_changed(db, profile.user_id, profile.pmdc_verified)
     audit.record(
         db, admin, "admin.pmdc_check", target_type="doctor_profile", target_id=profile.id, detail=outcome, commit=False
     )

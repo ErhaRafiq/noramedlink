@@ -970,6 +970,7 @@ class Notification(Base):
     __table_args__ = (
         Index("notifications_user_id_created_at_idx", "user_id", "created_at"),
         Index("notifications_reminder_id_idx", "reminder_id"),
+        Index("notifications_user_status_idx", "user_id", "status"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -983,6 +984,11 @@ class Notification(Base):
     appointment_id: Mapped[int | None] = mapped_column(ForeignKey("appointments.id", ondelete="CASCADE"), nullable=True)
     kind: Mapped[str] = mapped_column(String(40), default="general", server_default="general", nullable=False)
     scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Where the notification leads (a page inside the app), when it was read, and a key so an event that is
+    # delivered twice (a payment webhook, a retry) is told once (services/notifications.py).
+    link: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dedupe_key: Mapped[str | None] = mapped_column(String(120), unique=True, nullable=True)
     sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

@@ -225,9 +225,10 @@ def test_rescheduling_moves_the_booking_and_its_reminders(db, doctor, patient):
     due = sorted(
         n.scheduled_for.replace(tzinfo=UTC) for n in db.query(Notification).filter_by(kind="appointment_reminder")
     )
-    # Both people get a 24-hour and a 1-hour reminder before the NEW time; none is left for the old one.
+    # Both people get a 24-hour, a 1-hour and a 5-minute reminder before the NEW time; none is left for the old one.
+    new = clinic(MONDAY, 10, 30)
     assert due == sorted(
-        [clinic(MONDAY, 10, 30) - timedelta(hours=24)] * 2 + [clinic(MONDAY, 10, 30) - timedelta(hours=1)] * 2
+        [new - timedelta(hours=24)] * 2 + [new - timedelta(hours=1)] * 2 + [new - timedelta(minutes=5)] * 2
     )
     assert scheduling.find_open_slot(db, doctor.id, clinic(MONDAY, 9)).available  # the old slot is free again
 
@@ -346,7 +347,9 @@ def test_reminders_are_hidden_until_due_and_removed_when_the_visit_moves(db, doc
     appointment = booking.create(db, patient, doctor, clinic(MONDAY, 9), "in_clinic", None, None)
     db.commit()
     reminders = db.query(Notification).filter_by(kind="appointment_reminder", user_id=patient.id).all()
-    assert len(reminders) == 1  # the 24-hour one is already in the past at NOW (Sunday 09:00); 1 hour is ahead
+    assert (
+        len(reminders) == 2
+    )  # the 24-hour one is already in the past at NOW (Sunday 09:00); 1 hour and 5 minutes are ahead
     visible = {n.kind for n in notifications.due_for(db, patient.id)}
     assert "appointment_confirmed" in visible and "appointment_reminder" not in visible
     notifications.clear_reminders(db, appointment.id)

@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from models import Prescription, PrescriptionItem, SafetyOverride, User
+from services import notifications
 from services.mscie.alternatives import alternatives_for
 from services.mscie.context import build_context, context_summary
 from services.mscie.engine import RANK, PatientContext, Proposed, check, resolve, worst
@@ -104,6 +105,8 @@ def confirm(
             )
         )
     db.add(prescription)
+    db.flush()  # the id, for the notification's key
+    notifications.prescription_added(db, patient.id, doctor.full_name, prescription.id)
     db.commit()
     db.refresh(prescription)
     return prescription
@@ -112,6 +115,7 @@ def confirm(
 def cancel(db: Session, prescription: Prescription) -> Prescription:
     prescription.status = "cancelled"
     prescription.cancelled_at = datetime.now(UTC)
+    notifications.prescription_cancelled(db, prescription.patient_id, prescription.doctor_name, prescription.id)
     db.commit()
     db.refresh(prescription)
     return prescription

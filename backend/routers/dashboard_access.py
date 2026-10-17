@@ -16,7 +16,7 @@ from database import get_db
 from dependencies import require_doctor, require_patient
 from models import Appointment, EmergencyBooking, Medication, PatientReport, User, Vitals
 from rate_limit import ACCESS_CODE_LIMIT, limiter
-from services import audit
+from services import audit, notifications
 from services.dashboard_access import (
     active_grants,
     create_dashboard_otp,
@@ -62,6 +62,7 @@ def unlock_patient_dashboard(
     if not grant:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Invalid or expired patient dashboard OTP.")
     patient = grant.patient
+    notifications.access_opened(db, patient.id, current_user.full_name)  # committed with the audit row
     audit.record(db, current_user, "access.grant", patient_id=patient.id)
     return {
         "message": f"Temporary dashboard access unlocked for {patient.full_name}.",
