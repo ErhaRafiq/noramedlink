@@ -17,6 +17,7 @@ import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useReportDetail, type ActionResult } from "@/hooks/patient/use-report-detail";
 import { ReportEditor } from "./report/ReportEditor";
 import { ReportAttention } from "./report/ReportAttention";
+import { ReportExplained } from "./report/ReportExplained";
 import { ReportDetailSkeleton, ReportExtraction, ReportFilePreview, ReportStats, ReportSummary } from "./report/ReportSections";
 
 const BACK_HREF = "/dashboard/patient#recent-reports";
@@ -85,6 +86,7 @@ export function PatientReportDetail({ reportId }: { reportId: number }) {
             ) : null}
             <div className="mt-6 grid gap-6 xl:grid-cols-2">
               <div className="space-y-6">
+                <ReportExplained reportId={report.id} signedIn={auth.status === "ready"} reloadKey={report.updated_at ?? null} />
                 <ReportSummary report={report} />
                 <ReportEditor
                   detail={detail}

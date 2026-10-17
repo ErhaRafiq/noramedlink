@@ -874,3 +874,45 @@ export type DoctorSearch = {
   /** Only doctors found on the PMDC register. */
   pmdcVerified?: boolean;
 };
+
+export type ExplainPosition = "above" | "below" | "within" | "unknown" | "unreadable";
+export type ExplainGauge = { min: number; max: number; low: number | null; high: number | null; value: number };
+export type ExplainResult = {
+  key: string;
+  name: string;
+  medical_name: string;
+  printed: string | null;
+  report_mark: "high" | "low" | null;
+  what_it_is: string | null;
+  position: ExplainPosition;
+  range_text: string | null;
+  where: string;
+  meaning: string | null;
+  urgent: boolean;
+  urgent_note: string | null;
+  note: string | null;
+  gauge: ExplainGauge | null;
+};
+export type ReportExplanation = {
+  readable: boolean;
+  headline: string;
+  attention: { text: string; urgent: boolean }[];
+  results: ExplainResult[];
+  insights: { title: string; text: string }[];
+  conditions: { name: string; medical_name: string; chronic: boolean; explain: string | null }[];
+  medicines: { name: string; details: string | null; stopped: boolean }[];
+  glossary: { term: string; plain: string; explain: string }[];
+  questions: string[];
+  suggestions: string[];
+  disclaimer: string;
+};
+export type AskTurn = { role: "patient" | "assistant"; text: string };
+export type AskAnswer = {
+  answer: string;
+  source: string;
+  intent: string;
+  emergency: boolean;
+  topics: string[];
+  followups: string[];
+  disclaimer: string;
+};

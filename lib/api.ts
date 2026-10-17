@@ -37,6 +37,9 @@ import type {
   HealthEntryInput,
   HealthOptions,
   SymptomCheck,
+  ReportExplanation,
+  AskAnswer,
+  AskTurn,
   SymptomStats,
   AdminActivity,
   AdminDashboardStats,
@@ -214,6 +217,12 @@ export const api = {
   },
   adminAuditActions() {
     return apiRequest<Record<string, string>>("/api/admin/audit-log/actions");
+  },
+  reportExplanation(reportId: number, init?: RequestInit) {
+    return apiRequest<ReportExplanation>(`/patient/reports/${reportId}/explanation`, init);
+  },
+  askAboutReport(reportId: number, payload: { question: string; topic?: string | null; history: AskTurn[] }) {
+    return apiRequest<AskAnswer>(`/patient/reports/${reportId}/ask`, { method: "POST", body: JSON.stringify(payload) });
   },
   checkSymptoms(text: string) {
     return apiRequest<SymptomCheck>("/symptoms/check", { method: "POST", body: JSON.stringify({ text }) });
