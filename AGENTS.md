@@ -73,7 +73,7 @@ hooks/                    Generic hooks (use-*.ts); feature data hooks in hooks/
 lib/api.ts                The only API client; every call goes to /api/backend/...
 lib/auth.ts               Session helpers (getSession, clearSession, dashboardPathForRole)
 lib/types.ts              Shared TypeScript types matching FastAPI responses
-scripts/                  Icon generator, screenshot capture, phone-overflow finder; ocr_bench/ and mscie_bench/ (evaluation data);
+scripts/                  dev.ps1 (`npm run dev:all`: backend + frontend + Stripe listener), icon generator, screenshot capture, phone-overflow finder; ocr_bench/ and mscie_bench/ (evaluation data);
                           ddinter_import/build.py (rebuilds the DDInter tables)
 notebooks/                Evaluation notebooks (ICSE, plain language, MSCIE), committed with outputs
 render.yaml               Render blueprint (deploy); .env.example: every environment variable, documented

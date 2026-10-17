@@ -172,11 +172,15 @@ app never sees card details).
 Locally (test mode, no real money):
 
 ```powershell
-# Install the Stripe CLI (https://docs.stripe.com/stripe-cli), then forward webhooks to FastAPI:
+# Install the Stripe CLI (https://docs.stripe.com/stripe-cli) and log in once:
 stripe login
-stripe listen --forward-to localhost:8000/payments/stripe/webhook
-# It prints a webhook secret (whsec_...): put it in .env as STRIPE_WEBHOOK_SECRET and restart the backend.
+# Then one command starts the backend, the frontend and the webhook listener (each in its own window).
+# The listener's secret goes to the backend as an environment variable only; nothing is written to .env:
+npm run dev:all
 ```
+
+Without `npm run dev:all`, run `stripe listen --forward-to localhost:8000/payments/stripe/webhook` yourself, put the
+`whsec_...` it prints in `.env` as `STRIPE_WEBHOOK_SECRET` and restart the backend.
 
 Pay with the test card **4242 4242 4242 4242**, any future expiry date and any CVC. Without
 `STRIPE_SECRET_KEY` the Pay button explains that online payment is not set up.

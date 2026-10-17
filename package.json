@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:all": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/dev.ps1",
     "backend": "python backend/dev_server.py",
     "backend:install": "python -m pip install -r backend/requirements-dev.txt",
     "build": "next build",
