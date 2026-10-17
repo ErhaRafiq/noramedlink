@@ -17,6 +17,7 @@ with pandera.
 | `conditions.csv` | 31 | a condition with its ICD-10 code | entity extraction, ICSE flags |
 | `lab_tests.csv` | 48 | a lab test and the names labs print | entity extraction, lab rules |
 | `plain_terms.csv` | 152 | a medical term → everyday wording | patient summaries and alerts |
+| `lab_meanings.csv` | 24 | a lab test → what a higher or a lower result can be linked to | the report explanation |
 | `interactions.csv` | 31 | a drug-drug (or class-class) interaction | MSCIE |
 | `contraindications.csv` | 19 | a drug or class vs a condition or a lab threshold | MSCIE |
 | `allergy_cross_reactivity.csv` | 10 | an allergy class → a drug or class it affects | MSCIE |
@@ -74,6 +75,14 @@ with pandera.
   shorthand.
 - **Limitations:** English only; the app's own wording of standard patient-information meanings,
   awaiting clinician review.
+
+## lab_meanings.csv
+
+- **Columns:** `test` (a test name from `lab_rules.RULES`), `higher` and `lower` (one sentence each, ends with a
+  full stop: what a result above or below the usual range can be linked to), `source`.
+- **Use:** the "Your report in simple words" explanation. General patient-information wording; it names causes a
+  result can be linked to and never says the reader has an illness.
+- **Limitations:** English only; awaiting clinician review.
 
 ## Module 4 (MSCIE) tables
 

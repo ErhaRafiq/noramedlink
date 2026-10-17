@@ -43,6 +43,11 @@ def _readable(report: PatientReport) -> bool:
     return bool(_report_text(report)) and report.ocr_status != "FAILED" and not structured.get("error")
 
 
+def report_entities(report: PatientReport, identity: list) -> list[dict[str, Any]]:
+    """What the app read from one report (test values, conditions, medicines...), rebuilt when the extractor is newer."""
+    return _report_source(report, identity)[0]["entities"]
+
+
 def _report_source(report: PatientReport, identity: list) -> tuple[dict[str, Any], bool]:
     """A report as a summary source; True when its entities had to be re-read (older extractor)."""
     structured = report.structured_data_json or {}

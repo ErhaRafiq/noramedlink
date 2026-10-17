@@ -33,6 +33,7 @@ from routers import (
     patient_insights,
     payments,
     profile,
+    report_explain,
     reports,
     symptoms,
     vitals,
@@ -91,6 +92,7 @@ app.include_router(admin.router)
 app.include_router(admin_pmdc.router)
 app.include_router(patient_insights.router)
 app.include_router(reports.router)
+app.include_router(report_explain.router)
 app.include_router(doctor.router)
 app.include_router(clinical_summary.router)
 app.include_router(mscie.router)

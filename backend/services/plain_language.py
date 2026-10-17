@@ -159,6 +159,11 @@ def plain_name(name: str) -> str:
     return term.plain if term else name
 
 
+def term_info(name: str) -> PlainTerm | None:
+    """The dictionary entry for one term (everyday wording and explanation), or None if it is not in the list."""
+    return _lookup(name) or _index()[0].get(name.lower())
+
+
 def named(name: str) -> str:
     """ "kidney waste level (Creatinine)": everyday wording with the term, for one name."""
     plain = plain_name(name)
@@ -217,3 +222,9 @@ def patient_message(warning: dict[str, Any]) -> str:
     if code == "NO_RULE_ALERTS":
         return "The app's checks found nothing to point out. That does not mean everything is normal."
     return rewrite(str(warning.get("message", ""))) + ("" if severity not in {"CAUTION", "HIGH_RISK"} else urgent)
+
+
+def short_forms(name: str) -> list[str]:
+    """The abbreviations written for one term ("Hb", "HGB" for hemoglobin), lower-cased."""
+    term = term_info(name)
+    return [a.lower() for a, t in _index()[1].items() if t is term] if term else []

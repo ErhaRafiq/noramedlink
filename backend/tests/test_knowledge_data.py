@@ -80,6 +80,15 @@ RAW_SCHEMAS = {
         },
         strict=True,
     ),
+    "lab_meanings": pa.DataFrameSchema(
+        {
+            "test": pa.Column(str, pa.Check.str_length(min_value=2), unique=True),
+            "higher": pa.Column(str, pa.Check.str_matches(r".+\.$")),
+            "lower": pa.Column(str, pa.Check.str_matches(r".+\.$")),
+            "source": pa.Column(str, pa.Check.isin(sorted(SOURCES))),
+        },
+        strict=True,
+    ),
     "plain_terms": pa.DataFrameSchema(
         {
             "aliases": pa.Column(str),

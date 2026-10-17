@@ -102,6 +102,8 @@ FASTAPI_PATIENT_ROUTES = [
     ("POST", "/api/backend/appointments/1/review"),
     ("POST", "/api/backend/patient/reports/upload"),
     ("DELETE", "/api/backend/patient/reports/1"),
+    ("GET", "/api/backend/patient/reports/1/explanation"),
+    ("POST", "/api/backend/patient/reports/1/ask"),
     ("POST", "/api/backend/nlp/summarize/saved-reports"),
 ]
 # FastAPI endpoints restricted to admins.
@@ -487,6 +489,21 @@ def run_tests() -> None:
           scalar("select count(*) from patient_reports where id = :id", id=record_b) == 1)
     response = call("GET", f"/api/backend/patient/reports/{record_b}", tok_a)
     check("A reading B's report -> 404", response.status_code == 404, f"got {response.status_code}")
+    response = call("GET", f"/api/backend/patient/reports/{record_b}/explanation", tok_a)
+    check("A reading B's report explanation -> 404", response.status_code == 404, f"got {response.status_code}")
+    response = call("POST", f"/api/backend/patient/reports/{record_b}/ask", tok_a, {"question": "What does this mean?"})
+    check("A asking about B's report -> 404", response.status_code == 404, f"got {response.status_code}")
+    response = call("GET", f"/api/backend/patient/reports/{record_a}/explanation", tok_a)
+    explained = response.json() if response.status_code == 200 else {}
+    check("A's own report explanation -> 200 with the machine-generated note",
+          response.status_code == 200 and "not by a doctor" in explained.get("disclaimer", ""), f"got {response.status_code}")
+    response = call("POST", f"/api/backend/patient/reports/{record_a}/ask", tok_a, {"question": "I have chest pain"})
+    check("A asking an emergency question -> the 1122 message",
+          response.status_code == 200 and response.json().get("emergency") is True and "1122" in response.json().get("answer", ""),
+          f"got {response.status_code}")
+    check("A question that is too short -> 422",
+          call("POST", f"/api/backend/patient/reports/{record_a}/ask", tok_a, {"question": "hi"}).status_code == 422)
+
     response = call("DELETE", f"/api/backend/patient/reports/{record_b}", tok_b)
     check("B deleting own report -> 200", response.status_code == 200, f"got {response.status_code}")
     check("B's report is gone", scalar("select count(*) from patient_reports where id = :id", id=record_b) == 0)

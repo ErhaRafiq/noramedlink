@@ -911,3 +911,100 @@ class ResetPasswordIn(BaseModel):
 
 class VerifyEmailIn(BaseModel):
     token: str = Field(min_length=20, max_length=200)
+
+
+class ExplainGaugeOut(BaseModel):
+    min: float
+    max: float
+    low: float | None
+    high: float | None
+    value: float
+
+
+class ExplainResultOut(BaseModel):
+    key: str
+    name: str  # everyday name
+    medical_name: str  # as printed on the report
+    printed: str | None  # the value as the report prints it
+    report_mark: Literal["high", "low"] | None  # the report's own H or L
+    what_it_is: str | None
+    position: Literal["above", "below", "within", "unknown", "unreadable"]  # against the app's general range
+    range_text: str | None
+    where: str
+    meaning: str | None  # what a higher or lower result can be linked to (never a diagnosis)
+    urgent: bool
+    urgent_note: str | None
+    note: str | None
+    gauge: ExplainGaugeOut | None = None
+
+
+class ExplainAttentionOut(BaseModel):
+    text: str
+    urgent: bool
+
+
+class ExplainInsightOut(BaseModel):
+    title: str
+    text: str
+
+
+class ExplainConditionOut(BaseModel):
+    name: str
+    medical_name: str
+    chronic: bool
+    explain: str | None
+
+
+class ExplainMedicineOut(BaseModel):
+    name: str
+    details: str | None
+    stopped: bool
+
+
+class ExplainGlossaryOut(BaseModel):
+    term: str
+    plain: str
+    explain: str
+
+
+class ReportExplanationOut(BaseModel):
+    readable: bool
+    headline: str
+    attention: list[ExplainAttentionOut]
+    results: list[ExplainResultOut]
+    insights: list[ExplainInsightOut]
+    conditions: list[ExplainConditionOut]
+    medicines: list[ExplainMedicineOut]
+    glossary: list[ExplainGlossaryOut]
+    questions: list[str]  # to ask the doctor
+    suggestions: list[str]  # questions the patient can ask the explainer
+    disclaimer: str
+
+
+class AskTurn(BaseModel):
+    role: Literal["patient", "assistant"]
+    text: str = Field(max_length=1500)
+
+
+class AskIn(BaseModel):
+    question: str = Field(min_length=3, max_length=500)
+    topic: str | None = Field(default=None, max_length=80, description="A result's key, from 'Explain more' on it.")
+    history: list[AskTurn] = Field(default_factory=list, max_length=12)
+
+    @field_validator("question")
+    @classmethod
+    def tidy_question(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if len(value) < 3:
+            raise ValueError("Please write your question in a few words.")
+        return value
+
+
+class AskAnswerOut(BaseModel):
+    answer: str
+    source: str  # "rules" (fixed rules from the report) or the name of the AI that re-worded it
+    intent: str
+    emergency: bool
+    topics: list[str]
+    followups: list[str]
+    disclaimer: str
