@@ -553,8 +553,25 @@ export const api = {
   setAvailability(windows: AvailabilityWindow[]) {
     return apiRequest<Availability>("/doctor/availability", { method: "PUT", body: JSON.stringify({ windows }) });
   },
-  notifications(page?: PageQuery, init?: { signal?: AbortSignal }) {
-    return apiRequest<NotificationPage>(withPage("/notifications", page), { signal: init?.signal });
+  notifications(
+    page?: PageQuery,
+    init?: { signal?: AbortSignal },
+    filters: { unreadOnly?: boolean; category?: string } = {},
+  ) {
+    const path = withQuery("/notifications", {
+      limit: page?.limit,
+      offset: page?.offset,
+      unread_only: filters.unreadOnly ? "true" : undefined,
+      category: filters.category || undefined,
+    });
+    return apiRequest<NotificationPage>(path, { signal: init?.signal });
+  },
+  /** The cheap call the bell makes every half minute. */
+  unreadNotificationCount() {
+    return apiRequest<{ unread: number }>("/notifications/unread-count");
+  },
+  dismissNotification(id: number) {
+    return apiRequest<{ message: string }>(`/notifications/${id}`, { method: "DELETE" });
   },
   markNotificationRead(id: number) {
     return apiRequest<{ message: string }>(`/notifications/${id}/read`, { method: "POST" });

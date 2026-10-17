@@ -144,7 +144,7 @@ export function WorkspaceHeader({
             className="relative h-10 w-10 flex-shrink-0 px-0"
             onClick={() => onNavigate("medications")}
             aria-label={attentionCount > 0 ? `${attentionCount} items need attention: show today's medicines` : "Nothing needs attention right now"}
-            icon={<Bell className="h-4 w-4" />}
+            icon={<Pill className="h-4 w-4" />}
           >
             {attentionCount > 0 ? (
               <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-rose-500 px-1 text-[10px] font-semibold text-white">

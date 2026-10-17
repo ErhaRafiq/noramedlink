@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
+import { NotificationsProvider } from "@/components/notifications/NotificationsProvider";
 
 // Poppins is not a variable font, so each weight is listed. 400 body, 500 labels,
 // 600 headings and buttons, 700 for the few places that need extra emphasis.
@@ -32,7 +33,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${poppins.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <NotificationsProvider>{children}</NotificationsProvider>
+      </body>
     </html>
   );
 }

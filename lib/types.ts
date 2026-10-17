@@ -843,13 +843,19 @@ export type Availability = { timezone: string; slot_choices: number[]; windows: 
 
 export type Review = { rating: number; comment: string | null; created_at: string };
 
+export type NotificationCategory = "appointments" | "payments" | "records" | "account" | "admin";
+
 export type AppNotification = {
   id: number;
   kind: string;
   title: string;
   body: string;
   appointment_id: number | null;
+  category: NotificationCategory;
+  /** A page inside the app this notification leads to. */
+  link: string | null;
   read: boolean;
+  read_at: string | null;
   /** When it became visible: the reminder time, or when it was created. */
   at: string;
 };

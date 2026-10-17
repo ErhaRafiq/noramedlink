@@ -51,7 +51,7 @@ test.describe("appointments and notifications", () => {
     await signInAs(doctorPage, users.doctorWithAccess);
     await doctorPage.goto("/notifications");
     await expect(doctorPage.getByText("New appointment").first()).toBeVisible();
-    await expect(doctorPage.getByRole("link", { name: /Notifications, \d+ unread/ })).toBeVisible(); // the bell shows the count
+    await expect(doctorPage.getByRole("button", { name: /Notifications, \d+ unread/ })).toBeVisible(); // the bell shows the count
 
     await doctorPage.goto("/dashboard/doctor");
     const card = doctorPage.getByRole("region", { name: "Appointments" }).or(doctorPage.locator("#appointments"));
