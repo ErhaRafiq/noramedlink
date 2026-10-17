@@ -126,6 +126,8 @@ ALL_ROUTES = (ADMIN_ROUTES + DOCTOR_ROUTES + PATIENT_ROUTES + ANY_USER_ROUTES
 # Tables holding rows that belong to a user, children before parents.
 # (table, column) pairs; only rows whose column is a phase0-test- user id are deleted.
 USER_OWNED_ROWS = [
+    ("email_outbox", "user_id"),
+    ("auth_tokens", "user_id"),
     ("patient_health_entries", "patient_id"),
     ("audit_logs", "actor_id"),
     ("audit_logs", "patient_id"),
@@ -182,6 +184,11 @@ def assert_local_databases() -> None:
         if host not in LOCAL_HOSTS:
             sys.exit(f"ABORT: {label} does not point to localhost. Refusing to create test users.")
     print(f"Database guard: {len(candidates)} URL(s) checked, all point to localhost.")
+    if settings.resend_api_key:  # blank in a DISABLE_PAID_SERVICES run
+        sys.exit(
+            "ABORT: an email key is configured. Test accounts use example addresses and tests must never send a "
+            "real email. Run the backend and the tests with DISABLE_PAID_SERVICES=1."
+        )
 
 
 # --------------------------------------------------------------------------- results
@@ -1454,6 +1461,260 @@ def run_tests() -> None:
     check("a doctor can be approved without any PMDC check",
           call("PATCH", f"/api/backend/api/admin/doctors/{new_doctor_profile}/approve", tok_admin).status_code == 200
           and scalar("select verification_status = 'approved' and not pmdc_verified from doctor_profiles where id = :i", i=new_doctor_profile) is True)
+
+    print("\n[17d] Email: sign-up verification, forgot password, appointment emails and reminders")
+    from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+
+    from auth import hash_password as _hash_password
+    from services import auth_tokens as _tokens
+    from services import email_outbox as _outbox
+
+    def token_rows(user_id: int, purpose: str) -> int:
+        return scalar("select count(*) from auth_tokens where user_id = :u and purpose = :p", u=user_id, p=purpose)
+
+    def put_code(user_id: int, code: str, *, minutes: int = 10, attempts: int = 0) -> None:
+        """Store a reset code the test knows (the real one is only ever in the email)."""
+        with engine.begin() as conn:
+            conn.execute(text("update auth_tokens set used_at = now() where user_id = :u and purpose = 'reset_password' and used_at is null"), {"u": user_id})
+            conn.execute(text("insert into auth_tokens (user_id, purpose, token_hash, attempts, expires_at, created_at) "
+                              "values (:u, 'reset_password', :h, :a, :e, now() - interval '2 minutes')"),
+                         {"u": user_id, "h": _tokens.fingerprint("reset_password", code, user_id), "a": attempts,
+                          "e": _dt.now(_tz.utc) + _td(minutes=minutes)})
+
+    # -- sign-up: unverified until the link is used ----------------------------------------------
+    mail_email = f"{TEST_PREFIX}mail-{run_id}@example.com"
+    response = call("POST", "/api/auth/signup", body={
+        "role": "patient", "full_name": f"{TEST_PREFIX}mail user", "email": mail_email, "password": "Mail-test-pass-1",
+        "confirm_password": "Mail-test-pass-1", "phone": f"0313 {secrets.randbelow(10**7):07d}", "cnic": "12345-1234567-1",
+        "date_of_birth": "1995-05-05", "gender": "female"})
+    check("sign-up works as before", response.status_code == 201, f"got {response.status_code}")
+    client.cookies.clear()  # the sign-up route set the new user's session cookies on the shared client: later "no token" calls must be anonymous
+    mail_user = scalar("select id from users where email = :e", e=mail_email)
+    check("a new account starts with an unconfirmed email", scalar("select is_email_verified from users where id = :i", i=mail_user) is False)
+    check("and has one verification link waiting", token_rows(mail_user, "verify_email") == 1)
+    check("sign-up wrote no content to the outbox (nothing is sent without a provider)", scalar("select count(*) from email_outbox where user_id = :u", u=mail_user) == 0)
+
+    check("confirming with a made-up token -> 400", call("POST", "/api/backend/auth/verify-email", None, {"token": "x" * 43}).status_code == 400)
+    check("a too-short token -> 422", call("POST", "/api/backend/auth/verify-email", None, {"token": "abc"}).status_code == 422)
+    link_token = "T" * 43
+    with engine.begin() as conn:  # a link token the test knows
+        conn.execute(text("update auth_tokens set used_at = now() where user_id = :u and purpose = 'verify_email'"), {"u": mail_user})
+        conn.execute(text("insert into auth_tokens (user_id, purpose, token_hash, expires_at) values (:u, 'verify_email', :h, now() + interval '1 day')"),
+                     {"u": mail_user, "h": _tokens.fingerprint("verify_email", link_token)})
+    response = call("POST", "/api/backend/auth/verify-email", None, {"token": link_token})
+    check("the link confirms the email", response.status_code == 200 and scalar("select is_email_verified from users where id = :i", i=mail_user) is True,
+          f"got {response.status_code}")
+    check("a link works once", call("POST", "/api/backend/auth/verify-email", None, {"token": link_token}).status_code == 400)
+    with engine.begin() as conn:
+        conn.execute(text("insert into auth_tokens (user_id, purpose, token_hash, expires_at) values (:u, 'verify_email', :h, now() - interval '1 minute')"),
+                     {"u": mail_user, "h": _tokens.fingerprint("verify_email", "E" * 43)})
+    check("an expired link -> 400", call("POST", "/api/backend/auth/verify-email", None, {"token": "E" * 43}).status_code == 400)
+
+    no_token = call("POST", "/api/backend/auth/resend-verification")
+    check("resend needs a sign-in -> 401", no_token.status_code == 401, f"got {no_token.status_code} {no_token.text[:80]}")
+    check("resend for an already confirmed address sends nothing and says so",
+          "already confirmed" in call("POST", "/api/backend/auth/resend-verification", tok_a).json().get("message", "")
+          and token_rows(patient_a, "verify_email") == 0)
+    with engine.begin() as conn:
+        conn.execute(text("update users set is_email_verified = false where id = :i"), {"i": patient_a})
+    first = call("POST", "/api/backend/auth/resend-verification", tok_a)
+    check("an unconfirmed account can ask for a new link", first.status_code == 200 and token_rows(patient_a, "verify_email") == 1, f"got {first.status_code}")
+    again = call("POST", "/api/backend/auth/resend-verification", tok_a)
+    check("asking again at once -> 429 with how long to wait", again.status_code == 429 and again.headers.get("retry-after", "0").isdigit()
+          and token_rows(patient_a, "verify_email") == 1, f"got {again.status_code}")
+    with engine.begin() as conn:
+        conn.execute(text("update users set is_email_verified = true where id = :i"), {"i": patient_a})
+        conn.execute(text("delete from auth_tokens where user_id = :i"), {"i": patient_a})
+
+    # -- forgot password -------------------------------------------------------------------------
+    forgot = "/api/backend/auth/forgot-password"
+    unknown = call("POST", forgot, None, {"email": f"{TEST_PREFIX}nobody-{run_id}@example.com"})
+    known = call("POST", forgot, None, {"email": mail_email})
+    check("forgot password answers the same for an unknown and a known address",
+          unknown.status_code == 202 == known.status_code and unknown.json() == known.json(), f"got {unknown.status_code} {known.status_code}")
+    check("only the real account gets a code", scalar("select count(*) from users u join auth_tokens t on t.user_id = u.id where u.email like :p and t.purpose = 'reset_password'",
+                                                   p=f"{TEST_PREFIX}nobody-%") == 0 and token_rows(mail_user, "reset_password") == 1)
+    again = call("POST", forgot, None, {"email": mail_email})
+    check("asking again within a minute is answered the same and makes no second code", again.status_code == 202 and token_rows(mail_user, "reset_password") == 1)
+    check("a malformed address -> 422", call("POST", forgot, None, {"email": "not-an-email"}).status_code == 422)
+    inactive = create_user("mail-inactive", "PATIENT", active=False)
+    with engine.begin() as conn:
+        email_of_inactive = conn.execute(text("select email from users where id = :i"), {"i": inactive}).scalar()
+    call("POST", forgot, None, {"email": email_of_inactive})
+    check("an inactive account gets no code", token_rows(inactive, "reset_password") == 0)
+
+    # -- reset password --------------------------------------------------------------------------
+    reset = "/api/backend/auth/reset-password"
+    new_password = "Brand-new-pass-9"
+    body = {"email": mail_email, "code": "123456", "new_password": new_password, "confirm_password": new_password}
+    put_code(mail_user, "123456")
+    check("a code that is not 6 digits -> 422", call("POST", reset, None, {**body, "code": "12ab56"}).status_code == 422)
+    check("passwords that differ -> 422", call("POST", reset, None, {**body, "confirm_password": "other-pass-1"}).status_code == 422)
+    check("a short password -> 422", call("POST", reset, None, {**body, "new_password": "short", "confirm_password": "short"}).status_code == 422)
+    wrong = call("POST", reset, None, {**body, "code": "654321"})
+    check("a wrong code -> 400, the same answer as an unknown address",
+          wrong.status_code == 400 and call("POST", reset, None, {**body, "email": f"{TEST_PREFIX}nobody-{run_id}@example.com"}).json() == wrong.json())
+    check("each wrong try is counted", scalar("select attempts from auth_tokens where user_id = :u and purpose = 'reset_password' and used_at is null", u=mail_user) == 1)
+
+    old_login = httpx.post(f"{BASE_URL}/api/auth/login", json={"email": mail_email, "password": "Mail-test-pass-1"}, timeout=60)
+    old_refresh = scalar("select count(*) from refresh_tokens where user_id = :u and revoked_at is null", u=mail_user)
+    check("before the reset the old password signs in and a session exists", old_login.status_code == 200 and old_refresh >= 1, f"got {old_login.status_code}")
+    put_code(mail_user, "123456")
+    done = call("POST", reset, None, body)
+    check("the right code sets the new password", done.status_code == 200, f"got {done.status_code} {done.text[:80]}")
+    check("every session of the account is signed out", scalar("select count(*) from refresh_tokens where user_id = :u and revoked_at is null", u=mail_user) == 0)
+    check("the old password no longer works", httpx.post(f"{BASE_URL}/api/auth/login", json={"email": mail_email, "password": "Mail-test-pass-1"}, timeout=60).status_code == 401)
+    check("the new password works", httpx.post(f"{BASE_URL}/api/auth/login", json={"email": mail_email, "password": new_password}, timeout=60).status_code == 200)
+    check("a code works once", call("POST", reset, None, body).status_code == 400)
+
+    put_code(mail_user, "111111", attempts=5)
+    check("after 5 wrong tries even the right code is refused", call("POST", reset, None, {**body, "code": "111111"}).status_code == 400)
+    put_code(mail_user, "222222", minutes=-1)
+    check("an expired code is refused", call("POST", reset, None, {**body, "code": "222222"}).status_code == 400)
+    with engine.begin() as conn:
+        conn.execute(text("update users set is_email_verified = false where id = :i"), {"i": mail_user})
+    put_code(mail_user, "333333")
+    call("POST", reset, None, {**body, "code": "333333", "new_password": new_password + "x", "confirm_password": new_password + "x"})
+    check("a reset also confirms the address (the code reached the inbox)", scalar("select is_email_verified from users where id = :i", i=mail_user) is True)
+    check("the code is stored hashed, never in the clear",
+          scalar("select count(*) from auth_tokens where token_hash in ('123456', '333333', '111111')") == 0
+          and scalar("select min(length(token_hash)) from auth_tokens where user_id = :u", u=mail_user) == 64)
+
+    # -- appointment emails and reminders --------------------------------------------------------
+    def outbox(kind: str, appointment_id: int, status: str = "pending") -> int:
+        return scalar("select count(*) from email_outbox where kind = :k and appointment_id = :a and status = :s", k=kind, a=appointment_id, s=status)
+
+    when = _dt.fromisoformat(next_slot(doctor).replace("Z", "+00:00"))
+    with engine.begin() as conn:
+        conn.execute(text("update users set email_reminders = true where id in (:a, :d)"), {"a": patient_a, "d": doctor})
+    response = call("POST", "/api/backend/appointments", tok_a, {"doctor_id": doctor, "date": when.isoformat(), "mode": "in_clinic", "reason": "private chest pain details"})
+    booked_mail = response.json().get("appointment", {}) if response.status_code == 201 else {}
+    appt = booked_mail.get("id", 0)
+    check("booking for the email checks -> 201", response.status_code == 201, f"got {response.status_code} {response.text[:100]}")
+    check("a confirmation is queued for the patient and for the doctor", outbox("appointment_booked", appt) == 2
+          and scalar("select count(distinct user_id) from email_outbox where appointment_id = :a and kind = 'appointment_booked'", a=appt) == 2)
+    check("a reminder is queued for each, five minutes before the start", outbox("appointment_reminder", appt) == 2
+          and scalar("select count(*) from email_outbox where appointment_id = :a and kind = 'appointment_reminder' and send_after = :t", a=appt, t=when - _td(minutes=5)) == 2)
+    check("each reminder expires three minutes after it is due",
+          scalar("select count(*) from email_outbox where appointment_id = :a and kind = 'appointment_reminder' and expires_at = send_after + interval '3 minutes'", a=appt) == 2)
+    check("the queued rows hold times and names but never the reason",
+          scalar("select count(*) from email_outbox where appointment_id = :a and (context::text ilike '%chest%' or context::text ilike '%private%')", a=appt) == 0)
+    check("the queue sent nothing: no provider is configured in tests", scalar("select count(*) from email_outbox where appointment_id = :a and status = 'sent'", a=appt) == 0)
+
+    moved_to = _dt.fromisoformat(next_slot(doctor).replace("Z", "+00:00"))
+    response = call("PUT", f"/api/backend/appointments/{appt}", tok_a, {"date": moved_to.isoformat()})
+    check("moving the appointment -> 200", response.status_code == 200, f"got {response.status_code}")
+    check("the old reminders are withdrawn and new ones queued for the new time",
+          outbox("appointment_reminder", appt, "cancelled") == 2 and outbox("appointment_reminder", appt) == 2
+          and scalar("select count(*) from email_outbox where appointment_id = :a and kind = 'appointment_reminder' and status = 'pending' and send_after = :t", a=appt, t=moved_to - _td(minutes=5)) == 2)
+    check("both are told about the move", outbox("appointment_moved", appt) == 2)
+    check("the move email carries the old time",
+          scalar("select count(*) from email_outbox where appointment_id = :a and kind = 'appointment_moved' and context->>'old_when_text' is not null", a=appt) == 2)
+
+    response = call("PUT", f"/api/backend/appointments/{appt}", tok_a, {"status": "CANCELLED"})
+    check("cancelling -> 200", response.status_code == 200, f"got {response.status_code}")
+    check("pending reminders are withdrawn and both are told", outbox("appointment_reminder", appt) == 0 and outbox("appointment_cancelled", appt) == 2)
+    check("the cancel email says who cancelled",
+          scalar("select count(*) from email_outbox where appointment_id = :a and kind = 'appointment_cancelled' and context->>'cancelled_by' = 'patient'", a=appt) == 2)
+
+    # an unconfirmed address, a person who switched reminders off, and a booking made minutes before the start
+    with engine.begin() as conn:
+        conn.execute(text("update users set email_reminders = false where id = :i"), {"i": doctor_2})
+        conn.execute(text("update users set is_email_verified = false where id = :i"), {"i": patient_b})
+    later = _dt.fromisoformat(next_slot(doctor_2).replace("Z", "+00:00"))
+    response = call("POST", "/api/backend/appointments", token_for(patient_b), {"doctor_id": doctor_2, "date": later.isoformat(), "mode": "in_clinic"})
+    second = response.json().get("appointment", {}).get("id", 0) if response.status_code == 201 else 0
+    check("booking with an unconfirmed patient and a doctor who turned reminders off -> 201", response.status_code == 201, f"got {response.status_code}")
+    check("the unconfirmed patient gets no email at all; the doctor gets the confirmation only",
+          scalar("select count(*) from email_outbox where appointment_id = :a and user_id = :p", a=second, p=patient_b) == 0
+          and outbox("appointment_booked", second) == 1 and outbox("appointment_reminder", second) == 0)
+    with engine.begin() as conn:
+        conn.execute(text("update users set email_reminders = true where id = :i"), {"i": doctor_2})
+        conn.execute(text("update users set is_email_verified = true where id = :i"), {"i": patient_b})
+
+    # the reminders switch
+    response = call("PATCH", "/api/backend/profile/account", tok_a, {"full_name": f"{TEST_PREFIX}patient a", "phone": scalar("select phone from users where id = :i", i=patient_a) or "0300 0000001", "email_reminders": False})
+    check("a person can switch reminder emails off in their profile", response.status_code == 200
+          and scalar("select email_reminders from users where id = :i", i=patient_a) is False
+          and call("GET", "/api/backend/profile", tok_a).json()["account"]["email_reminders"] is False, f"got {response.status_code} {response.text[:100]}")
+    with engine.begin() as conn:
+        conn.execute(text("update users set email_reminders = true where id = :i"), {"i": patient_a})
+
+    # -- the sender: due rows go once, late and stale reminders do not ---------------------------
+    from database import SessionLocal as _Session
+
+    sent_log: list[dict] = []
+
+    def fake_sender(**kwargs):
+        sent_log.append(kwargs)
+        return f"em_{len(sent_log)}"
+
+    soon = _dt.now(_tz.utc) + _td(hours=3)
+    with engine.begin() as conn:  # earlier sections queued rows too: only this section's rows should be due now
+        conn.execute(text("update email_outbox set status = 'cancelled' where status = 'pending'"))
+        conn.execute(text("update appointments set status = 'BOOKED', date = :d where id = :i"), {"d": soon, "i": appt})
+        for n, (kind, offset_s, expires_s, ctx_start) in enumerate([
+                ("appointment_reminder", -30, 120, soon),                       # due now, in time, still true
+                ("appointment_reminder", -400, -60, soon),                      # missed its window: expired
+                ("appointment_reminder", -30, 120, soon + _td(days=1))]):       # the appointment has since moved: stale
+            conn.execute(text("insert into email_outbox (user_id, to_address, kind, context, dedupe_key, appointment_id, status, send_after, expires_at) "
+                              "values (:u, :to, :k, cast(:c as json), :key, :a, 'pending', now() + make_interval(secs => :o), now() + make_interval(secs => :x))"),
+                         {"u": patient_a, "to": f"{TEST_PREFIX}a-{run_id}@example.test", "k": kind, "a": appt, "key": f"{TEST_PREFIX}dispatch-{run_id}-{n}",
+                          "o": offset_s, "x": expires_s,
+                          "c": json.dumps({"audience": "patient", "recipient_name": "A", "patient_name": "A", "doctor_name": "D", "when_text": "Mon 1 Jan, 9:00 AM",
+                                           "mode": "in_clinic", "start_iso": ctx_start.isoformat(), "minutes": 5})})
+    with _Session() as session:
+        went = _outbox.dispatch_due(session, sender=fake_sender, pause=0)
+    check("the sender sends the one reminder that is due and true", went == 1 and len(sent_log) == 1, f"sent {went}")
+    check("it sends an email with both parts, from the queue's own key (so a retry cannot double it)",
+          sent_log and sent_log[0]["html"] and sent_log[0]["text"] and sent_log[0]["idempotency_key"] == f"{TEST_PREFIX}dispatch-{run_id}-0")
+    check("a reminder that missed its window is dropped, not sent late",
+          scalar("select status from email_outbox where dedupe_key = :k", k=f"{TEST_PREFIX}dispatch-{run_id}-1") == "expired")
+    check("a reminder for a time the appointment no longer has is cancelled",
+          scalar("select status from email_outbox where dedupe_key = :k", k=f"{TEST_PREFIX}dispatch-{run_id}-2") == "cancelled")
+    with _Session() as session:
+        check("running it again sends nothing more", _outbox.dispatch_due(session, sender=fake_sender, pause=0) == 0 and len(sent_log) == 1)
+
+    def failing(retryable: bool):
+        def send_failing(**kwargs):
+            from services.email_client import EmailError
+            raise EmailError("HTTP 429 rate_limit_exceeded" if retryable else "HTTP 422 validation_error", retryable=retryable)
+        return send_failing
+
+    with engine.begin() as conn:
+        for n, retryable in enumerate((True, False)):
+            conn.execute(text("insert into email_outbox (user_id, to_address, kind, context, dedupe_key, status, send_after) "
+                              "values (:u, :to, 'password_changed', cast(:c as json), :key, 'pending', now() - interval '1 second')"),
+                         {"u": patient_a, "to": f"{TEST_PREFIX}b-{run_id}@example.test", "key": f"{TEST_PREFIX}fail-{run_id}-{n}", "c": json.dumps({"name": "A"})})
+    with _Session() as session:
+        _outbox.dispatch_due(session, sender=failing(True), pause=0, limit=50)
+    rows = {r[0]: r[1:] for r in engine.connect().execute(text(
+        "select dedupe_key, status, attempts, last_error from email_outbox where dedupe_key like :p"), {"p": f"{TEST_PREFIX}fail-{run_id}-%"}).fetchall()}
+    check("a provider error that may pass is retried later, not dropped",
+          all(v[0] == "pending" and v[1] == 1 and "429" in v[2] for v in rows.values()), f"got {rows}")
+    check("and waits before the next try", scalar("select min(send_after) > now() from email_outbox where dedupe_key like :p", p=f"{TEST_PREFIX}fail-{run_id}-%") is True)
+    with engine.begin() as conn:
+        conn.execute(text("update email_outbox set send_after = now() - interval '1 second' where dedupe_key like :p"), {"p": f"{TEST_PREFIX}fail-{run_id}-%"})
+    with _Session() as session:
+        _outbox.dispatch_due(session, sender=failing(False), pause=0, limit=50)
+    check("an error that will never pass marks the email failed at once",
+          scalar("select count(*) from email_outbox where dedupe_key like :p and status = 'failed'", p=f"{TEST_PREFIX}fail-{run_id}-%") == 2)
+    from services.email_client import EmailDisabled as _Disabled
+
+    def no_provider(**kwargs):
+        raise _Disabled
+
+    with engine.begin() as conn:
+        conn.execute(text("insert into email_outbox (user_id, to_address, kind, context, dedupe_key, status, send_after) "
+                          "values (:u, :to, 'password_changed', cast(:c as json), :key, 'pending', now() - interval '1 second')"),
+                     {"u": patient_a, "to": f"{TEST_PREFIX}c-{run_id}@example.test", "key": f"{TEST_PREFIX}nop-{run_id}", "c": json.dumps({"name": "A"})})
+    with _Session() as session:
+        _outbox.dispatch_due(session, sender=no_provider, pause=0)
+    check("without a provider the queue waits and counts no attempt",
+          scalar("select status = 'pending' and attempts = 0 from email_outbox where dedupe_key = :k", k=f"{TEST_PREFIX}nop-{run_id}") is True)
+
+    with engine.begin() as conn:
+        conn.execute(text("update appointments set status = 'CANCELLED' where id = :i"), {"i": appt})
 
     print("\n[18] Sessions: HttpOnly cookies, refresh-token rotation, replay detection, logout")
     from auth import hash_password

@@ -163,7 +163,7 @@ def create_user(payload: SignupRequest, email: str, phone: str, db: Session) -> 
         hashed_password=hash_password(payload.password),
         role=role,
         phone=phone,
-        is_email_verified=True,
+        is_email_verified=False,  # confirmed by the emailed link (routers/account_email.py)
         is_identity_verified=is_admin,
     )
     db.add(user)

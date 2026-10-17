@@ -70,6 +70,13 @@ def revoke_family(db: Session, family_id: str) -> None:
         row.revoked_at = now
 
 
+def revoke_all(db: Session, user: User) -> None:
+    """Sign the account out everywhere: every refresh token it has is revoked. The caller commits."""
+    now = _now()
+    for row in db.query(RefreshToken).filter(RefreshToken.user_id == user.id, RefreshToken.revoked_at.is_(None)):
+        row.revoked_at = now
+
+
 def refresh_session(db: Session, refresh_token: str) -> tuple[User, str, str]:
     """Trade a refresh token for a new pair. Commits (a replay must still revoke the family)."""
     row = db.query(RefreshToken).filter(RefreshToken.token_hash == _hash(refresh_token or "")).first()

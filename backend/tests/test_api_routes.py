@@ -22,6 +22,9 @@ PUBLIC = {
     "/appointments/doctors/{doctor_id}/reviews": "ratings of a verified doctor, without patient names",
     "/symptoms/check": "emergency advice must not wait behind a login; rate limited per IP, identity optional",
     "/files/{file_path:path}": "signed, short-lived links; the signature is checked in the handler",
+    "/auth/forgot-password": "no account yet to sign in with; same answer for every address, rate limited, emails the account only",
+    "/auth/reset-password": "needs the emailed 6-digit code (5 tries, 10 minutes); rate limited; same error for every failure",
+    "/auth/verify-email": "the single-use link from the email is the proof; rate limited",
     "/payments/stripe/webhook": "called by Stripe; trusted only with a valid Stripe-Signature (services/payments.py)",
     **{f"{prefix}/{path}": "signing in and signing up" for prefix in ("/auth", "/api/auth")
        for path in ("login", "signup", "refresh", "logout")},
@@ -122,6 +125,7 @@ ANY_SIGNED_IN_ROLE = {
     "/notifications/read-all": "the caller's own notifications",
     "/notifications/{notification_id}/read": "the caller's own notification (others look like 404)",
     "/profile/account": "the caller's own name and phone",
+    "/auth/resend-verification": "the caller's own confirmation link; one a minute, 3 an hour",
     "/health-record/options": "suggestion words from the knowledge base (allergy and condition names); no patient data",
 }
 

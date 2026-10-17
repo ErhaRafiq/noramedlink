@@ -111,6 +111,8 @@ def profile_out(db: Session, user: User) -> ProfileOut:
             phone=user.phone,
             role=user.role.lower(),
             created_at=user.created_at,
+            email_verified=user.is_email_verified,
+            email_reminders=user.email_reminders,
         ),
         patient=patient_out(user.patient_profile) if user.patient_profile else None,
         doctor=doctor_out(user.doctor_profile) if user.doctor_profile else None,
@@ -124,6 +126,8 @@ def update_account(db: Session, user: User, payload: AccountUpdate) -> User:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="That phone number is already registered.")
     user.full_name = payload.full_name
     user.phone = payload.phone
+    if payload.email_reminders is not None:
+        user.email_reminders = payload.email_reminders
     db.commit()
     db.refresh(user)
     return user

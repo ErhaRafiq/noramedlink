@@ -83,6 +83,7 @@ class Settings:
     rate_limit_payment: str = "10/minute"
     rate_limit_symptoms: str = "20/minute"  # per IP: the public symptom checker
     rate_limit_pmdc: str = "20/minute"  # per admin: lookups on the PMDC public register
+    rate_limit_email: str = "5/minute"  # per IP: endpoints that cause an email (forgot password, resend)
     trusted_proxy_ips: list[str] = field(default_factory=lambda: ["127.0.0.1", "::1"])
 
     # Payments (Stripe Checkout, the hosted payment page). Test keys (sk_test_...) take no real money.
@@ -95,6 +96,13 @@ class Settings:
     pmdc_lookup_enabled: bool = True
     pmdc_lookup_url: str = "https://hospitals-inspections.pmdc.pk/api/DRC/GetData"
     pmdc_lookup_timeout: float = 10.0  # seconds
+
+    # Email through Resend (services/email_client.py). Empty key: nothing is sent, and the app works without it.
+    # The sender's domain must be verified in Resend. Off in test runs (DISABLE_PAID_SERVICES) like every outside call.
+    resend_api_key: str = ""
+    email_from: str = "Nora MedLink <noreply@noramedlink.online>"
+    email_reply_to: str = ""  # optional: where a reply goes (the from address is a no-reply)
+    email_reminder_minutes: int = 5  # how long before an appointment the reminder email goes
 
     # Logging
     log_level: str = "INFO"
@@ -118,13 +126,16 @@ def load_settings() -> Settings:
         stripe_webhook_secret=env_str("STRIPE_WEBHOOK_SECRET", strip_quotes=True),
         pmdc_lookup_enabled=env_bool("PMDC_LOOKUP_ENABLED", True),
         pmdc_lookup_url=env_str("PMDC_LOOKUP_URL", Settings.pmdc_lookup_url),
+        resend_api_key=env_str("RESEND_API_KEY", strip_quotes=True),
+        email_from=env_str("EMAIL_FROM", Settings.email_from),
+        email_reply_to=env_str("EMAIL_REPLY_TO"),
     )
 
 
 def _without_paid_services(loaded: Settings) -> Settings:
     if not loaded.paid_services_disabled:
         return loaded
-    return replace(loaded, ai_api_key="", stripe_secret_key="", pmdc_lookup_enabled=False)
+    return replace(loaded, ai_api_key="", stripe_secret_key="", pmdc_lookup_enabled=False, resend_api_key="")
 
 
 settings = _without_paid_services(load_settings())

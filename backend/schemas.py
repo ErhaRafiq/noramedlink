@@ -493,6 +493,8 @@ class AccountOut(BaseModel):
     phone: str
     role: Role
     created_at: datetime
+    email_verified: bool = False
+    email_reminders: bool = True  # email 5 minutes before an appointment
 
 
 class PatientProfileOut(BaseModel):
@@ -543,6 +545,7 @@ class ProfileOut(BaseModel):
 class AccountUpdate(BaseModel):
     full_name: str = Field(min_length=2, max_length=160)
     phone: str = Field(min_length=7, max_length=40)
+    email_reminders: bool | None = None  # None: leave as it is
 
     @field_validator("full_name", "phone")
     @classmethod
@@ -872,3 +875,32 @@ class AdminDoctorOut(BaseModel):
     verification_status: str
     created_at: datetime
     pmdc: PmdcStatusOut
+
+
+class ForgotPasswordIn(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordIn(BaseModel):
+    email: EmailStr
+    code: str = Field(pattern=r"^\s*[0-9]{6}\s*$", description="The 6-digit code from the email.")
+    new_password: str = Field(max_length=128)
+    confirm_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def strong_password(cls, password: str) -> str:
+        if len(password) < 8:
+            raise ValueError("Weak password. Password must be at least 8 characters.")
+        return password
+
+    @field_validator("confirm_password")
+    @classmethod
+    def passwords_match(cls, confirm_password: str, info):
+        if info.data.get("new_password") != confirm_password:
+            raise ValueError("Password and confirm password must match.")
+        return confirm_password
+
+
+class VerifyEmailIn(BaseModel):
+    token: str = Field(min_length=20, max_length=200)

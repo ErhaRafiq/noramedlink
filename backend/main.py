@@ -1,3 +1,4 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -12,6 +13,7 @@ from database import check_database_connection, ensure_runtime_dirs, run_migrati
 from logging_config import configure_logging
 from rate_limit import limiter, rate_limit_exceeded_handler
 from routers import (
+    account_email,
     admin,
     admin_pmdc,
     appointments,
@@ -35,6 +37,7 @@ from routers import (
     symptoms,
     vitals,
 )
+from services import email_outbox
 
 configure_logging()
 
@@ -44,7 +47,13 @@ async def lifespan(app: FastAPI):
     ensure_runtime_dirs()
     # Schema changes go through Alembic migrations (backend/migrations), not create_all.
     run_migrations()
-    yield
+    stop = asyncio.Event()
+    worker = asyncio.create_task(email_outbox.run_worker(stop))  # sends the queued appointment emails and reminders
+    try:
+        yield
+    finally:
+        stop.set()
+        worker.cancel()
 
 
 app = FastAPI(
@@ -77,6 +86,7 @@ app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(auth.router)
 app.include_router(auth.router, prefix="/api")
+app.include_router(account_email.router)
 app.include_router(admin.router)
 app.include_router(admin_pmdc.router)
 app.include_router(patient_insights.router)

@@ -1,6 +1,6 @@
 """Signup, login and the current user (/auth and /api/auth). Helpers live in services/signup_service.py."""
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, status
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -10,7 +10,8 @@ from dependencies import get_current_user
 from models import User
 from rate_limit import LOGIN_LIMIT, SIGNUP_LIMIT, enforce_account_limit, ip_key, limiter
 from schemas import LoginRequest, MessageOut, RefreshRequest, SignupRequest, TokenResponse, UserOut
-from services import sessions
+from services import auth_tokens, sessions
+from services.account_email import send_account_email, verification_link
 from services.signup_service import (
     build_token_response,
     create_user,
@@ -27,7 +28,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit(SIGNUP_LIMIT, key_func=ip_key)
-def signup(request: Request, payload: SignupRequest, db: Session = Depends(get_db)):
+def signup(request: Request, payload: SignupRequest, background: BackgroundTasks, db: Session = Depends(get_db)):
     email, phone = normalize_signup_payload(payload)
     validate_role_specific_fields(payload)
     ensure_unique_identity(db, email, phone, doctor_pmdc(payload))
@@ -43,6 +44,10 @@ def signup(request: Request, payload: SignupRequest, db: Session = Depends(get_d
             detail="Email already registered",
         ) from exc
 
+    # The confirmation link goes out after the response; a failure to send never fails the sign-up.
+    token = auth_tokens.issue(db, user, auth_tokens.VERIFY_EMAIL)
+    db.commit()
+    background.add_task(send_account_email, user.id, "verify_email", {"link": verification_link(token)})
     return build_token_response(db, user)
 
 

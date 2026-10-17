@@ -42,6 +42,7 @@ ACCESS_CODE_LIMIT = settings.rate_limit_access_code  # per patient, issuing doct
 PAYMENT_LIMIT = settings.rate_limit_payment  # per user: starting a Stripe Checkout
 SYMPTOM_LIMIT = settings.rate_limit_symptoms  # per IP: the public symptom checker
 PMDC_LIMIT = settings.rate_limit_pmdc  # per admin: lookups on the PMDC public register
+EMAIL_LIMIT = settings.rate_limit_email  # per IP: endpoints that cause an email
 
 RATE_LIMIT_ENABLED = settings.rate_limit_enabled
 STORAGE_URI = settings.rate_limit_storage_uri

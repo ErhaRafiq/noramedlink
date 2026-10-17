@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from models import Appointment, AppointmentReview, User
-from services import notifications, payments
+from services import email_outbox, notifications, payments
 from services.scheduling import SlotUnavailable, as_utc, find_open_slot
 
 FINAL_STATUSES = {"COMPLETED", "NO_SHOW", "CANCELLED"}
@@ -83,6 +83,7 @@ def create(
     db.add(appointment)
     flush_or_conflict(db)
     notifications.booked(db, appointment, patient.full_name, doctor.full_name)
+    email_outbox.appointment_booked(db, appointment, patient, doctor)
     return appointment
 
 
@@ -97,10 +98,12 @@ def reschedule(db: Session, appointment: Appointment, new_start: datetime, patie
         raise _conflict("This appointment has already started and can no longer be moved.")
     slot = _open_slot(db, appointment.doctor_id, as_utc(new_start), ignore_id=appointment.id)
     _patient_is_free(db, patient.id, slot.start, slot.minutes, ignore_id=appointment.id)
+    old_start = appointment.date
     appointment.date = slot.start
     appointment.duration_minutes = slot.minutes
     flush_or_conflict(db)
     notifications.rescheduled(db, appointment, patient.full_name, appointment.doctor_name)
+    email_outbox.appointment_moved(db, appointment, old_start, patient)
     return appointment
 
 
@@ -110,6 +113,7 @@ def cancel(db: Session, appointment: Appointment, patient: User, by_doctor: bool
         raise _conflict("This appointment has already started and can no longer be cancelled.")
     appointment.status = "CANCELLED"
     notifications.cancelled(db, appointment, patient.full_name, appointment.doctor_name, by_doctor)
+    email_outbox.appointment_cancelled(db, appointment, by_doctor, patient)
     payments.refund_for_cancellation(db, appointment)
     return appointment
 

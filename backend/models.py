@@ -35,6 +35,10 @@ class User(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     is_email_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
     is_identity_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    # Email 5 minutes before an appointment (services/email_outbox.py). Other emails are not optional.
+    email_reminders: Mapped[bool] = mapped_column(
+        Boolean, default=True, server_default=expression.true(), nullable=False
+    )
     dashboard_access_key: Mapped[str | None] = mapped_column(String(120), unique=True, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -842,6 +846,50 @@ class SignupOtp(Base):
     verified: Mapped[bool] = mapped_column(Boolean, default=False, index=True, nullable=False)
     payload_json: Mapped[dict] = mapped_column(JSON, default=dict, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), index=True)
+
+
+class AuthToken(Base):
+    """A one-time secret that proves control of an email address: a 6-digit code (password reset) or a long
+    link token (email verification). Only a keyed hash is stored; a code allows 5 wrong tries and expires."""
+
+    __tablename__ = "auth_tokens"
+    __table_args__ = (Index("auth_tokens_user_purpose_idx", "user_id", "purpose", "created_at"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    purpose: Mapped[str] = mapped_column(String(20), nullable=False)  # verify_email or reset_password
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    attempts: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+
+class EmailOutbox(Base):
+    """One email to send, or that was sent (services/email_outbox.py). Appointment emails are queued in the same
+    transaction as the booking and sent by a small worker, so a request never waits on the mail provider and a
+    rolled-back booking sends nothing. `dedupe_key` makes each email go once. The row holds names and times to
+    render the email with, never a secret and never the reason for a visit; code and verification emails are
+    sent at once and only logged here, without their content."""
+
+    __tablename__ = "email_outbox"
+    __table_args__ = (Index("email_outbox_due_idx", "status", "send_after"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    to_address: Mapped[str] = mapped_column(String(255), nullable=False)
+    kind: Mapped[str] = mapped_column(String(40), nullable=False)
+    context: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    dedupe_key: Mapped[str] = mapped_column(String(160), unique=True, nullable=False)
+    appointment_id: Mapped[int | None] = mapped_column(nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(12), default="pending", server_default="pending", nullable=False)
+    attempts: Mapped[int] = mapped_column(default=0, server_default="0", nullable=False)
+    send_after: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    provider_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    last_error: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class SymptomSession(Base):
