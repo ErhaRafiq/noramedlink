@@ -123,5 +123,4 @@ Dashboards exist for the patient, doctor and admin (see the brief).
 | Admin: symptom checker usage | Done | counts only (Module 7) |
 | Admin: PMDC verification | Done | "All doctors and PMDC verification" on `/admin` (filter by approval, PMDC status, name or number) and a PMDC panel on every pending doctor: check on the register, decide by hand, open the PMDC site |
 | Admin: payment confirmation | Removed on purpose | Only Stripe's signed webhook marks a payment paid (Module 8) |
-
 | Report explainer | A report in everyday words, and questions about it | Done | `services/report_explainer.py`, `GET /patient/reports/{id}/explanation`, `POST .../ask`, "Your report in simple words" on the report page: where each result sits against the usual range (gauge), what the test is, what higher or lower can be linked to (`lab_meanings.csv`), explain-more per result and an ask box. Fixed rules decide; an AI may only re-word behind number and banned-phrase guards; emergencies get 1122, treatment and diagnosis questions are refused. Questions are not stored. Machine-generated note on every answer |
