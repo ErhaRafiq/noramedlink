@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { LogIn } from "lucide-react";
@@ -58,6 +59,11 @@ export function LoginForm() {
         onChange={(event) => setPassword(event.target.value)}
         required
       />
+      <p className="-mt-2 text-right text-sm">
+        <Link href="/forgot-password" className="font-semibold text-brand-blue hover:underline">
+          Forgot your password?
+        </Link>
+      </p>
       {error ? <Alert tone="error">{error}</Alert> : null}
       <Button type="submit" size="lg" loading={isSubmitting} icon={<LogIn className="h-4 w-4" />} className="w-full">
         {isSubmitting ? "Signing in..." : "Sign in"}

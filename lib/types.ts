@@ -764,7 +764,18 @@ export type ConsultationMode = "online" | "in_clinic" | "home";
 
 /** GET /profile: the signed-in user's own profile (backend/services/profiles.py). */
 export type Profile = {
-  account: { id: number; full_name: string; email: string; phone: string; role: UserRole; created_at: string };
+  account: {
+    id: number;
+    full_name: string;
+    email: string;
+    phone: string;
+    role: UserRole;
+    created_at: string;
+    /** The emailed link was used (or the address proved itself in a password reset). */
+    email_verified: boolean;
+    /** An email 5 minutes before each appointment. */
+    email_reminders: boolean;
+  };
   patient: PatientProfile | null;
   doctor: DoctorProfile | null;
   /** Counts of what is linked to this profile. */

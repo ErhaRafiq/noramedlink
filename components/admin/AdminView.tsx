@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Activity, BadgeCheck, CalendarDays, FileText, LayoutDashboard, ScrollText, Search, Stethoscope, UserRound, Users } from "lucide-react";
 
+import { EmailVerifyBanner } from "@/components/auth/EmailVerifyBanner";
 import { DashboardShell, type DashboardNavItem } from "@/components/layout/DashboardShell";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,8 @@ export function AdminView() {
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-ink">Admin dashboard</h1>
         <p className="mt-1 text-sm text-ink-muted">Doctor verification, new accounts and platform activity.</p>
       </header>
+
+      <EmailVerifyBanner verified={auth.user.is_email_verified} />
 
       {notice ? <Alert tone={notice.ok ? "success" : "error"}>{notice.message}</Alert> : null}
 

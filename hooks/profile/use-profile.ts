@@ -40,7 +40,7 @@ export function useProfile() {
       setProfile(next);
       // The header and dashboards show the name; keep the stored profile in step.
       const stored = getSession()?.user;
-      if (stored) updateStoredUser({ ...stored, full_name: next.account.full_name, phone: next.account.phone });
+      if (stored) updateStoredUser({ ...stored, full_name: next.account.full_name, phone: next.account.phone, is_email_verified: next.account.email_verified });
       return { ok: true };
     } catch (err) {
       return { ok: false, message: err instanceof Error ? err.message : "The profile could not be saved." };
@@ -54,7 +54,7 @@ export function useProfile() {
     error,
     saving,
     retry: () => setLoadCount((count) => count + 1),
-    saveAccount: (values: { full_name: string; phone: string }) => save("account", () => api.updateAccount(values)),
+    saveAccount: (values: { full_name: string; phone: string; email_reminders?: boolean }) => save("account", () => api.updateAccount(values)),
     savePatient: (values: PatientProfileInput) => save("patient", () => api.updatePatientProfile(values)),
     saveDoctor: (values: DoctorProfileInput) => save("doctor", () => api.updateDoctorProfile(values)),
   };

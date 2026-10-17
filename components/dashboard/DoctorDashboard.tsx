@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { CalendarDays, ClipboardList, FileSearch, HeartPulse, KeyRound, LayoutDashboard, Pill, Siren, Stethoscope, Users } from "lucide-react";
 
+import { EmailVerifyBanner } from "@/components/auth/EmailVerifyBanner";
 import { DashboardShell, type DashboardNavItem } from "@/components/layout/DashboardShell";
 import { Alert } from "@/components/ui/alert";
 import { ButtonLink } from "@/components/ui/button";
@@ -72,6 +73,8 @@ export function DoctorDashboard() {
           Doctor directory
         </ButtonLink>
       </header>
+
+      <EmailVerifyBanner verified={auth.user.is_email_verified} />
 
       {profile && !isVerified ? (
         <Alert tone="warning" title={verification === "rejected" ? "Verification rejected" : "Verification pending"}>

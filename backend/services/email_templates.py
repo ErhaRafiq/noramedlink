@@ -299,7 +299,8 @@ def _appointment(kind: str, c: dict) -> Rendered:
     )
     body = (
         _h1(title)
-        + _p(f"{greeting} {intro}")
+        + _p(greeting)
+        + _p(intro)
         + _rows(_appointment_rows(c))
         + paid
         + _button("Open Nora MedLink", url)

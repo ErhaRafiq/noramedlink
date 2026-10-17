@@ -383,7 +383,20 @@ export const api = {
   profile() {
     return apiRequest<Profile>("/profile");
   },
-  updateAccount(payload: { full_name: string; phone: string }) {
+  /** Starts a password reset: the same answer whether or not the address has an account. */
+  forgotPassword(email: string) {
+    return apiRequest<{ message: string }>("/auth/forgot-password", { method: "POST", body: JSON.stringify({ email }) });
+  },
+  resetPassword(payload: { email: string; code: string; new_password: string; confirm_password: string }) {
+    return apiRequest<{ message: string }>("/auth/reset-password", { method: "POST", body: JSON.stringify(payload) });
+  },
+  verifyEmail(token: string) {
+    return apiRequest<{ message: string }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) });
+  },
+  resendVerification() {
+    return apiRequest<{ message: string }>("/auth/resend-verification", { method: "POST" });
+  },
+  updateAccount(payload: { full_name: string; phone: string; email_reminders?: boolean }) {
     return apiRequest<Profile>("/profile/account", { method: "PATCH", body: JSON.stringify(payload) });
   },
   updatePatientProfile(payload: PatientProfileInput) {

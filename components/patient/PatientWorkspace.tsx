@@ -8,6 +8,7 @@ import { api } from "@/lib/api";
 import { signOut as endSession } from "@/lib/auth";
 import { isDepartmentSlug, type DepartmentSlug } from "@/lib/departments";
 import type { MedicalDocument } from "@/lib/types";
+import { EmailVerifyBanner } from "@/components/auth/EmailVerifyBanner";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useNotificationPermission, useScheduledNotifications } from "@/hooks/use-browser-notifications";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -164,6 +165,8 @@ export function PatientWorkspace({
         />
 
         <main className="mx-auto w-full max-w-6xl flex-1 space-y-6 p-4 sm:p-6 xl:p-8">
+          <EmailVerifyBanner verified={user?.is_email_verified !== false} />
+
           <QuickLinks />
 
           <KpiRow

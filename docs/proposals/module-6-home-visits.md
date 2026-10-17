@@ -51,7 +51,7 @@ for every pair. Final states: completed, cancelled, declined, expired.
 No ETA unless the doctor types one when marking en route, labelled "estimated by your doctor". No map
 pin that moves. No doctor name before a doctor accepts. The 1122 notice is on every screen of the flow.
 
-## 3. Schema (migration 0019, additive and idempotent; 0018 is the PMDC verification)
+## 3. Schema (migration 0020, additive and idempotent; 0018 is the PMDC verification and 0019 the email tables)
 
 **New table `home_visit_requests`**
 

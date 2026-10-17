@@ -16,6 +16,23 @@ Not a medical device: every medical feature is advisory (AGENTS.md section 6).
 | FE-3b | Doctor verification: PMDC registration number | Done | Signup checks the number's form and stores it as `12345-P` (`services/pmdc.py`, mirrored in `lib/pmdc.ts`). The admin checks it on the PMDC public register ("Check on PMDC") or decides by hand with a written reason; `doctor_profiles.pmdc_verified` is true only for found + ACTIVE + matching name, or the admin's decision. A doctor can be approved and active without it; a verified doctor shows a "PMDC verified" badge and can be filtered. Details below |
 | FE-4 | Link each profile with records, appointments, prescriptions and payment history | Done | `activity` on `GET /profile`; the profile page links each count to its page |
 
+### Email (Resend): confirmation, password reset, appointment emails and reminders
+
+Full detail, limits and setup in `docs/email.md`. In short:
+
+- **Sign-up** creates an unconfirmed account and emails a link (24 hours, once). Nothing is blocked; a banner on the
+  dashboards and profile offers a new link (one a minute, 3 an hour). Accounts that existed before keep their flag.
+- **Forgot password** (`/forgot-password`): a 6-digit code by email (10 minutes, 5 tries, once). The answer is the same
+  for every address. A reset signs the account out everywhere, confirms the address and sends a "password changed" notice.
+- **Appointments**: a booking, move or cancellation emails the patient and the doctor (Pakistan time, type, the other
+  person's name, never the reason). A reminder goes 5 minutes before the visit unless the person switched it off
+  in `/profile`; it is withdrawn if the appointment moves or is cancelled and dropped if it could not go in time.
+- **Not a cron job**: the reminder row is written at booking and a loop inside the server sends rows that are due. On a
+  free host that sleeps, an uptime monitor pinging `/health` every 5 minutes keeps it awake.
+- **Rate limits** on every endpoint that causes an email (per IP, per address, and per account in the database).
+- **Not built:** a daily send cap (left to you), email change, an unsubscribe link (transactional email only), calendar
+  attachments, SMS.
+
 ### Doctor PMDC verification (how it works)
 
 - **The number:** the PMDC register searches an exact number written like `12345-P` (digits, a hyphen, one letter; letters seen: P, N, S, D; four or five digits are usual). `12345P`, `12345/P` and `12345` find nothing there. PMDC publishes no format document, so the rule is deliberately broad: 3 to 7 digits and any one letter, any case, with an optional "PMDC", "PM&DC", "PMC" or "Reg. No." in front. Signup refuses anything else with an example. Existing doctors keep what they entered; a number that does not fit shows "Number not recognised" to the admin.
@@ -67,7 +84,7 @@ added the structured record and the audit trail.
 | FE-1 | Search doctors by specialization, location, availability, ratings, fees | Done | `GET /appointments/doctors` (query, specialty, city, consultation type, available today, max fee, min rating, sort); `components/doctors/DoctorFilters.tsx`. Ratings and next-open times are real; a doctor with no fee or rating is never matched by a fee or rating limit |
 | FE-2 | Real-time availability for online or in-person consultations | Done | `services/scheduling.py`: weekly windows cut into slots (clinic time, UTC+5), `GET /appointments/doctors/{id}/slots`; taken and too-soon slots are shown closed; consultation types online / in clinic / home |
 | FE-3 | Book, reschedule or cancel appointments | Done | `services/appointments.py`; one live booking per doctor and time (database unique index plus a check); a patient cannot hold two overlapping visits; move/cancel only before the visit starts; the doctor completes, marks a no-show or cancels; completed visits can be rated once |
-| FE-4 | Confirmations and reminders to patients and doctors | Done (in-app) | `services/notifications.py`, `GET /notifications`, `/notifications` page and bell: confirmation, move and cancel notices, plus 24-hour and 1-hour reminders for both people. Email or SMS needs a provider and is not configured |
+| FE-4 | Confirmations and reminders to patients and doctors | Done (in-app and email) | `services/notifications.py`, `GET /notifications`, `/notifications` page and bell: confirmation, move and cancel notices, plus 24-hour and 1-hour reminders for both people. Email or SMS needs a provider and is not configured |
 
 ## Module 6: On-Demand Doctor Home Visit Engine
 

@@ -9,6 +9,7 @@ import { ErrorState, PageLoader } from "@/components/ui/spinner";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useProfile } from "@/hooks/profile/use-profile";
 import { dashboardPathForRole } from "@/lib/auth";
+import { EmailVerifyBanner } from "@/components/auth/EmailVerifyBanner";
 import { AccountForm } from "./AccountForm";
 import { Activity } from "./Activity";
 import { AvailabilityEditor } from "./AvailabilityEditor";
@@ -46,6 +47,7 @@ function ProfileContent({ role }: { role: "patient" | "doctor" | "admin" }) {
         </div>
       ) : (
         <div className="space-y-6">
+          <EmailVerifyBanner verified={profile.account.email_verified} />
           <Activity profile={profile} />
           <AccountForm key={`a-${profile.account.full_name}-${profile.account.phone}`} account={profile.account} saving={saving === "account"} onSave={saveAccount} />
           {profile.patient ? <PatientForm patient={profile.patient} saving={saving === "patient"} onSave={savePatient} /> : null}
