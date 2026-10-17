@@ -73,14 +73,18 @@ export function sameOriginOrNone(request: Request) {
   }
 }
 
-// One refresh per refresh token at a time: parallel requests that all found the access token
-// expired share the rotation that is under way. Once it has finished the entry is gone, so a used
-// token presented later is refused by FastAPI (and treated as a replay).
+// One refresh per refresh token: parallel requests that all found the access token expired share the
+// rotation that is under way. A request that arrives just after it finished still carries the old refresh
+// cookie (the browser has not stored the new one yet), so the finished answer is kept for SHARE_MS and handed
+// to it too; without that, FastAPI would refuse the used token and the page would sign the user out. SHARE_MS
+// stays under FastAPI's own grace for a raced token (3 s), and a used token presented after that is still
+// refused and treated as a replay.
+const SHARE_MS = 2000;
 const inflight = new Map<string, Promise<Tokens | null>>();
 
 export function refreshTokens(request: Request, refreshToken: string): Promise<Tokens | null> {
-  const running = inflight.get(refreshToken);
-  if (running) return running;
+  const shared = inflight.get(refreshToken);
+  if (shared) return shared;
   const task = (async () => {
     try {
       const response = await fetch(`${backendBaseUrl()}/auth/refresh`, {
@@ -94,10 +98,16 @@ export function refreshTokens(request: Request, refreshToken: string): Promise<T
       return { access_token: data.access_token, refresh_token: data.refresh_token };
     } catch {
       return null;
-    } finally {
-      inflight.delete(refreshToken);
     }
   })();
   inflight.set(refreshToken, task);
+  void task.then((tokens) => {
+    if (tokens === null) {
+      inflight.delete(refreshToken); // a failure is never shared: the next request asks again
+      return;
+    }
+    const timer = setTimeout(() => inflight.delete(refreshToken), SHARE_MS);
+    timer.unref?.();
+  });
   return task;
 }

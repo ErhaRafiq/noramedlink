@@ -3,6 +3,11 @@ import { expect, test } from "@playwright/test";
 import { BASE_URL, fixtures } from "./support/fixtures-file";
 import { ACCESS_COOKIE, REFRESH_COOKIE, alertWithText, loginThroughForm, signInAs } from "./support/session";
 
+// Sign-in and refresh calls are limited per client IP. The whole suite runs from one machine, so late in a long
+// run these tests could meet a limit that earlier specs used up. The Next.js proxy forwards the browser's
+// X-Forwarded-For, so this file counts as its own client (a documentation address, never a real one).
+test.use({ extraHTTPHeaders: { "x-forwarded-for": "198.51.100.41" } });
+
 test.describe("sign in", () => {
   test("asks for both fields before calling the API", async ({ page }) => {
     await page.goto("/login");
