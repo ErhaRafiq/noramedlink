@@ -83,6 +83,6 @@ test.describe("my profile", () => {
 
   test("signed-out visitors are sent to sign in", async ({ page }) => {
     await page.goto("/profile");
-    await expect(page).toHaveURL(/\/login$/);
+    await expect(page).toHaveURL(/\/login\?next=\%2Fprofile/);
   });
 });

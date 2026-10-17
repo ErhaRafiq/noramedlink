@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function NotFound() {
   return (
-    <SitePage>
+    <SitePage publicView>
       <div className="mx-auto flex max-w-md flex-col items-center px-4 py-24 text-center">
         <span className="grid h-12 w-12 place-items-center rounded-full bg-blue-50 text-brand-blue">
           <Compass className="h-6 w-6" aria-hidden />

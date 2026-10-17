@@ -21,7 +21,7 @@ export function PremiumLanding() {
   return (
     <div className="premium-page">
       <AmbientBackground />
-      <SiteHeader links={LANDING_LINKS} />
+      <SiteHeader links={LANDING_LINKS} publicView />
       <main className="relative">
         <Hero />
         <FeatureGrid />

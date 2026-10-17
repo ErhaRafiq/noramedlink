@@ -37,7 +37,7 @@ test.describe("protected pages", () => {
   test("without a session they send you to sign in", async ({ page }) => {
     for (const path of ["/dashboard/patient", "/dashboard/doctor", "/admin"]) {
       await page.goto(path);
-      await expect(page).toHaveURL(/\/login$/);
+      await expect(page).toHaveURL(/\/login\?next=/);
     }
   });
 
@@ -55,7 +55,7 @@ test.describe("protected pages", () => {
       localStorage.setItem("nora_medlink_user", JSON.stringify({ id: 1, role: "patient", full_name: "Someone" }));
     });
     await page.goto("/dashboard/patient");
-    await expect(page).toHaveURL(/\/login$/);
+    await expect(page).toHaveURL(/\/login(\?.*)?$/);
     expect(await page.evaluate(() => localStorage.getItem("nora_medlink_user"))).toBeNull();
   });
 });

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
+import { GuestOnly } from "@/components/auth/GuestOnly";
 import { SignupForm } from "@/components/auth/SignupForm";
 import { SkeletonCard } from "@/components/ui/skeleton";
 
@@ -25,10 +26,12 @@ export default function SignupPage() {
         </>
       }
     >
-      {/* The form reads ?role= from the URL, which needs a Suspense boundary. */}
-      <Suspense fallback={<SkeletonCard lines={6} />}>
-        <SignupForm />
-      </Suspense>
+      <GuestOnly>
+        {/* The form reads ?role= from the URL, which needs a Suspense boundary. */}
+        <Suspense fallback={<SkeletonCard lines={6} />}>
+          <SignupForm />
+        </Suspense>
+      </GuestOnly>
     </AuthLayout>
   );
 }

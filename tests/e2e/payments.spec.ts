@@ -47,9 +47,9 @@ test.describe("consultation payments", () => {
     await expect(page.getByRole("button", { name: "Try again" })).toBeVisible();
   });
 
-  test("the receipt page asks signed-out visitors to sign in", async ({ page }) => {
+  test("the receipt page sends signed-out visitors to sign in", async ({ page }) => {
     await page.goto("/payments/receipt?id=1");
-    await expect(page.getByText("Sign in to see this receipt.")).toBeVisible();
+    await expect(page).toHaveURL(/\/login\?next=%2Fpayments%2Freceipt/);
   });
 
   test("the receipt page fits a phone screen @mobile", async ({ page }) => {

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
+import { SessionWatcher } from "@/components/auth/SessionWatcher";
 import { NotificationsProvider } from "@/components/notifications/NotificationsProvider";
 
 // Poppins is not a variable font, so each weight is listed. 400 body, 500 labels,
@@ -35,6 +36,7 @@ export default function RootLayout({
     <html lang="en" className={`${poppins.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col">
         <NotificationsProvider>{children}</NotificationsProvider>
+        <SessionWatcher />
       </body>
     </html>
   );

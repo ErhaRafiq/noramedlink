@@ -139,8 +139,7 @@ export function PatientWorkspace({
   }
 
   function signOut() {
-    void endSession();
-    router.push("/login");
+    void endSession().then(() => router.push("/login"));
   }
 
   if (auth.status === "error") return <ErrorState message={auth.message} onRetry={() => window.location.reload()} />;

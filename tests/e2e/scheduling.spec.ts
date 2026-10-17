@@ -75,6 +75,6 @@ test.describe("appointments and notifications", () => {
 
   test("signed-out visitors cannot see notifications", async ({ page }) => {
     await page.goto("/notifications");
-    await expect(page).toHaveURL(/\/login$/);
+    await expect(page).toHaveURL(/\/login\?next=%2Fnotifications/);
   });
 });

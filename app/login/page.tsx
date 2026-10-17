@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
+import { GuestOnly } from "@/components/auth/GuestOnly";
 import { LoginForm } from "@/components/auth/LoginForm";
 
 export const metadata: Metadata = {
@@ -9,7 +10,8 @@ export const metadata: Metadata = {
   description: "Sign in to your Nora MedLink account.",
 };
 
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string; expired?: string }> }) {
+  const { next, expired } = await searchParams;
   return (
     <AuthLayout
       title="Welcome back"
@@ -23,7 +25,9 @@ export default function LoginPage() {
         </>
       }
     >
-      <LoginForm />
+      <GuestOnly>
+        <LoginForm next={next} expired={expired === "1"} />
+      </GuestOnly>
     </AuthLayout>
   );
 }

@@ -24,12 +24,15 @@ const DEFAULT_LINKS: SiteLink[] = [
 
 /**
  * Top bar for every page outside the dashboards. Shows sign in / get started when
- * signed out, and the user's dashboard and sign out when signed in. Gains a border and
+ * signed out, and the user's dashboard and sign out when signed in. `publicView` always shows the signed-out bar. Gains a border and
  * shadow once the page scrolls (throttled listener).
  */
-export function SiteHeader({ links = DEFAULT_LINKS }: { links?: SiteLink[] }) {
+export function SiteHeader({ links = DEFAULT_LINKS, publicView = false }: { links?: SiteLink[]; publicView?: boolean }) {
   const router = useRouter();
-  const { ready, session } = useStoredSession();
+  const stored = useStoredSession();
+  // Public and marketing pages look the same for everyone: no profile, no dashboard link. Signing in or getting
+  // started from them sends an already signed-in person straight to their dashboard (GuestOnly).
+  const { ready, session } = publicView ? { ready: true, session: null } : stored;
   const [scrolled, setScrolled] = useState(false);
   const onScroll = useThrottledCallback(() => setScrolled(window.scrollY > 8), 100);
 
@@ -40,8 +43,7 @@ export function SiteHeader({ links = DEFAULT_LINKS }: { links?: SiteLink[] }) {
   }, [onScroll]);
 
   function signOut() {
-    void endSession();
-    router.push("/");
+    void endSession().then(() => router.push("/"));
   }
 
   return (

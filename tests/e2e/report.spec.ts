@@ -37,6 +37,7 @@ test.describe("report page", () => {
 
   test("an invalid id shows the not-found page", async ({ page }) => {
     // app/loading.tsx makes this route stream, so Next keeps status 200 and renders not-found (with noindex).
+    await signInAs(page, fixtures().users.patient);
     await page.goto("/dashboard/patient/reports/not-a-number");
     await expect(page.getByRole("heading", { name: "Page not found" })).toBeVisible();
   });

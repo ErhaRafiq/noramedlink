@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <SitePage>
+    <SitePage publicView>
       <AboutStory />
     </SitePage>
   );

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { AuthLayout } from "@/components/auth/AuthLayout";
+import { GuestOnly } from "@/components/auth/GuestOnly";
 import { ForgotPasswordFlow } from "@/components/auth/ForgotPasswordFlow";
 
 export const metadata: Metadata = {
@@ -23,7 +24,9 @@ export default function ForgotPasswordPage() {
         </>
       }
     >
-      <ForgotPasswordFlow />
+      <GuestOnly>
+        <ForgotPasswordFlow />
+      </GuestOnly>
     </AuthLayout>
   );
 }

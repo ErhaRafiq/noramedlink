@@ -9,9 +9,9 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/ui/field";
 import { api } from "@/lib/api";
-import { dashboardPathForRole, saveSession } from "@/lib/auth";
+import { dashboardPathForRole, safeNextPath, saveSession } from "@/lib/auth";
 
-export function LoginForm() {
+export function LoginForm({ next, expired = false }: { next?: string; expired?: boolean }) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,7 +31,9 @@ export function LoginForm() {
     try {
       const auth = await api.login({ email: email.trim().toLowerCase(), password });
       saveSession(auth);
-      router.push(dashboardPathForRole(auth.user.role));
+      // Back to the page the person was sent away from, if it is on this site; the page's own guard sends a
+      // wrong-role visitor to their dashboard.
+      router.push(safeNextPath(next) ?? dashboardPathForRole(auth.user.role));
       // Keep the button busy while the dashboard loads.
     } catch (err) {
       setError(err instanceof Error ? err.message : "Sign in failed. Please try again.");
@@ -64,6 +66,7 @@ export function LoginForm() {
           Forgot your password?
         </Link>
       </p>
+      {expired && !error ? <Alert tone="info">Your session ended. Please sign in again.</Alert> : null}
       {error ? <Alert tone="error">{error}</Alert> : null}
       <Button type="submit" size="lg" loading={isSubmitting} icon={<LogIn className="h-4 w-4" />} className="w-full">
         {isSubmitting ? "Signing in..." : "Sign in"}

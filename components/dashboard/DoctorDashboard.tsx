@@ -39,8 +39,7 @@ export function DoctorDashboard() {
   const { profile, overview, notice, selectedPatientId } = dashboard;
 
   function signOut() {
-    void endSession();
-    router.replace("/login");
+    void endSession().then(() => router.replace("/login"));
   }
 
   if (auth.status === "error") return <ErrorState message={auth.message} onRetry={() => window.location.reload()} />;
