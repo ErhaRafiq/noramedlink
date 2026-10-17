@@ -104,15 +104,22 @@ test.describe("the session is a cookie JavaScript cannot read", () => {
     const before = (await page.context().cookies()).find((c) => c.name === REFRESH_COOKIE)?.value;
 
     await page.context().clearCookies({ name: ACCESS_COOKIE }); // as if the 15-minute access token had expired
-    const sessionCheck = page.waitForResponse((r) => r.url().includes("/api/backend/api/auth/me"));
     await page.reload();
-    expect((await sessionCheck).status()).toBe(200); // still signed in: the proxy refreshed the session
-    await expect(page).toHaveURL(/\/admin$/);
-
-    const cookies = await page.context().cookies();
-    expect(cookies.find((c) => c.name === ACCESS_COOKIE)?.httpOnly).toBe(true);
-    const after = cookies.find((c) => c.name === REFRESH_COOKIE)?.value;
-    expect(after && after !== before, "the refresh token was rotated").toBe(true);
+    // Wait for the outcome itself, not for "a" session check: a call still in flight from the page before the
+    // reload would answer first and be read as the renewed session (it has no new cookies yet).
+    await expect(page.getByRole("heading", { name: "Admin dashboard" })).toBeVisible();
+    await expect
+      .poll(async () => (await page.context().cookies()).find((c) => c.name === ACCESS_COOKIE)?.httpOnly, {
+        message: "the proxy refreshed the session and set a new access cookie",
+      })
+      .toBe(true);
+    await expect
+      .poll(async () => {
+        const after = (await page.context().cookies()).find((c) => c.name === REFRESH_COOKIE)?.value;
+        return Boolean(after && after !== before);
+      }, { message: "the refresh token was rotated" })
+      .toBe(true);
+    await expect(page).toHaveURL(/\/admin$/); // still signed in
   });
 
   test("signing out ends the session on the server: the old refresh cookie no longer works", async ({ page, request }) => {
