@@ -1053,7 +1053,9 @@ def run_tests() -> None:
           response.status_code == 200
           and scalar("select verification_status from doctor_profiles where id = :id", id=profile_id) == "rejected")
 
-    taken = scalar("select pmdc_number from doctor_profiles where user_id = :id", id=doctor)
+    taken = f"{8_000_000 + secrets.randbelow(900_000)}-P"
+    with engine.begin() as conn:
+        conn.execute(text("update doctor_profiles set pmdc_number = :p where user_id = :id"), {"p": taken, "id": doctor})
     response = call("POST", "/api/auth/signup", body={
         "role": "doctor", "full_name": f"{TEST_PREFIX}pmdc duplicate", "email": f"{TEST_PREFIX}pmdc-dup-{run_id}@example.com",
         "password": "Pmdc-test-pass-1", "confirm_password": "Pmdc-test-pass-1", "phone": f"0311 {secrets.randbelow(10**7):07d}",
@@ -1347,6 +1349,111 @@ def run_tests() -> None:
           call("GET", "/api/backend/patient/access-history", tok_a).json()["total"]
           == scalar("select count(*) from audit_logs where patient_id = :a and actor_role <> 'patient'", a=patient_a))
     create_grant(doctor_c, patient_c, expires_in=timedelta(hours=-1))
+
+    print("\n[17c] Doctor PMDC verification: the format at signup, the admin's check, the badge")
+    signup_path = "/api/auth/signup"
+    pm_digits = str(9_000_000 + secrets.randbelow(900_000))  # seven digits, unlikely to be anyone's number
+
+    def doctor_signup(tag: str, number: str):
+        return httpx.post(f"{BASE_URL}{signup_path}", json={
+            "role": "doctor", "full_name": f"{TEST_PREFIX}pmdc {tag}", "email": f"{TEST_PREFIX}pmdc-{tag}-{run_id}@example.com",
+            "password": "Pmdc-test-pass-1", "confirm_password": "Pmdc-test-pass-1", "phone": f"0312 {secrets.randbelow(10**7):07d}",
+            "pmdc_number": number, "specialization": "Cardiology", "hospital_name": "Test Hospital"}, timeout=60)
+
+    response = doctor_signup("bad", "PMC-12345")
+    check("doctor signup with a number that is not in a recognised form -> 422 with an example",
+          response.status_code == 422 and "12345-P" in str(response.json().get("detail")), f"got {response.status_code}")
+    check("no account was created by a refused signup",
+          scalar("select count(*) from users where email like :e", e=f"{TEST_PREFIX}pmdc-bad-%") == 0)
+    response = doctor_signup("ok", f" pmdc  {pm_digits} p ")
+    check("a number written with a prefix, spaces and lower case is accepted", response.status_code in (200, 201), f"got {response.status_code}")
+    check("and stored in the standard form the register searches on",
+          scalar("select pmdc_number from doctor_profiles dp join users u on u.id = dp.user_id where u.email = :e",
+                 e=f"{TEST_PREFIX}pmdc-ok-{run_id}@example.com") == f"{pm_digits}-P")
+    response = doctor_signup("dup", f"{pm_digits}/p")
+    check("the same number in another spelling -> 409 already registered", response.status_code == 409, f"got {response.status_code}")
+    new_doctor_profile = scalar("select dp.id from doctor_profiles dp join users u on u.id = dp.user_id where u.email = :e",
+                                e=f"{TEST_PREFIX}pmdc-ok-{run_id}@example.com")
+    check("a new doctor starts not PMDC verified and waits for approval",
+          scalar("select not pmdc_verified and verification_status = 'pending' from doctor_profiles where id = :i", i=new_doctor_profile) is True)
+
+    profile_id = scalar("select id from doctor_profiles where user_id = :u", u=doctor)
+    admin_doctors = "/api/backend/api/admin/doctors"
+    check("admin doctor list without a token -> 401", call("GET", admin_doctors).status_code == 401)
+    check("a patient on the admin doctor list -> 403", call("GET", admin_doctors, tok_a).status_code == 403)
+    check("a doctor on the admin doctor list -> 403", call("GET", admin_doctors, tok_doctor).status_code == 403)
+    response = call("GET", f"{admin_doctors}?approval=pending&limit=100", tok_admin)
+    listing = response.json() if response.status_code == 200 else {}
+    mine = [d for d in listing.get("items", []) if d["id"] == new_doctor_profile]
+    check("admin lists doctors with their PMDC status (format, not checked yet)",
+          response.status_code == 200 and mine and mine[0]["pmdc"]["format_ok"] is True and mine[0]["pmdc"]["verified"] is False
+          and mine[0]["pmdc"]["message"] == "Not checked yet." and mine[0]["pmdc"]["searchable"] == f"{pm_digits}-P", f"got {response.status_code}")
+    check("an unknown filter value -> 422", call("GET", admin_doctors + "?pmdc=maybe", tok_admin).status_code == 422)
+    check("the list filters by name or number", any(d["id"] == new_doctor_profile for d in call("GET", f"{admin_doctors}?q={pm_digits}", tok_admin).json()["items"])
+          and all(d["id"] != new_doctor_profile for d in call("GET", f"{admin_doctors}?q=zzzqqq-no-such", tok_admin).json()["items"]))
+
+    with engine.begin() as conn:  # an earlier check gave this doctor a real-looking number: back to a placeholder
+        conn.execute(text("update doctor_profiles set pmdc_number = :p where id = :i"), {"p": f"{TEST_PREFIX}doctor-{run_id}", "i": profile_id})
+    check_path_ = f"/api/backend/api/admin/doctors/{profile_id}/pmdc-check"
+    check("a PMDC check without a token -> 401", call("POST", check_path_).status_code == 401)
+    check("a patient cannot run a PMDC check -> 403", call("POST", check_path_, tok_a).status_code == 403)
+    check("a doctor cannot run a PMDC check -> 403", call("POST", check_path_, tok_doctor).status_code == 403)
+    check("a check on a doctor that does not exist -> 404", call("POST", "/api/backend/api/admin/doctors/999999999/pmdc-check", tok_admin).status_code == 404)
+    # The test users' numbers are placeholders, so the register is never asked: the answer is "does not fit".
+    response = call("POST", check_path_, tok_admin)
+    result = response.json() if response.status_code == 200 else {}
+    check("a number that does not fit is reported without asking the register",
+          response.status_code == 200 and result.get("outcome") == "format_invalid" and result.get("verified") is False
+          and result.get("format_ok") is False, f"got {response.status_code} {result}")
+    if settings.pmdc_lookup_enabled:
+        print("  SKIP  a check that would ask the PMDC register (tests never call outside services; run with DISABLE_PAID_SERVICES=1)")
+    else:
+        with engine.begin() as conn:
+            conn.execute(text("update doctor_profiles set pmdc_number = '123456-P' where id = :i"), {"i": profile_id})
+        response = call("POST", check_path_, tok_admin)
+        check("with the lookup switched off a real-looking number -> 503 and nothing changes",
+              response.status_code == 503 and scalar("select pmdc_verified from doctor_profiles where id = :i", i=profile_id) is False,
+              f"got {response.status_code}")
+        with engine.begin() as conn:
+            conn.execute(text("update doctor_profiles set pmdc_number = :p where id = :i"),
+                         {"p": f"{TEST_PREFIX}doctor-{run_id}", "i": profile_id})
+
+    by_hand = f"/api/backend/api/admin/doctors/{profile_id}/pmdc-verified"
+    check("a decision by hand without a token -> 401", call("PUT", by_hand, None, {"verified": True, "note": "checked it myself"}).status_code == 401)
+    check("a doctor cannot mark themselves verified -> 403", call("PUT", by_hand, tok_doctor, {"verified": True, "note": "checked it myself"}).status_code == 403)
+    check("a decision by hand needs a reason -> 422", call("PUT", by_hand, tok_admin, {"verified": True, "note": "ok"}).status_code == 422)
+    response = call("PUT", by_hand, tok_admin, {"verified": True, "note": "Checked on pmdc.pk: the name is spelled differently."})
+    manual = response.json() if response.status_code == 200 else {}
+    check("admin marks the doctor PMDC verified by hand, with the reason and who decided",
+          response.status_code == 200 and manual.get("verified") is True and manual.get("outcome") == "manual"
+          and "spelled differently" in manual.get("message", "") and manual.get("checked_by_name"), f"got {response.status_code}")
+    check("the decision is on the audit log, without the note",
+          scalar("select count(*) from audit_logs where action = 'admin.pmdc_manual' and target_id = :i", i=profile_id) == 1
+          and "spelled differently" not in call("GET", "/api/backend/api/admin/audit-log?action=admin.pmdc_manual&limit=100", tok_admin).text)
+    public = call("GET", "/api/backend/appointments/doctors").json()
+    card = next((d for d in public if d["id"] == doctor), {})
+    check("the public doctor card carries the PMDC verified flag and date, never the number",
+          card.get("pmdc_verified") is True and card.get("pmdc_checked_at") and "pmdc_number" not in card and "pmdc_note" not in card
+          and "pmdc_register_name" not in card)
+    only = call("GET", "/api/backend/appointments/doctors?pmdc_verified=true").json()
+    check("the PMDC verified filter lists only verified doctors", doctor in [d["id"] for d in only] and all(d["pmdc_verified"] for d in only))
+    check("without the filter other doctors are still listed, unverified",
+          any(d["pmdc_verified"] is False for d in public) or len(public) == len([d for d in public if d["pmdc_verified"]]))
+    check("a doctor sees their own PMDC status on the profile",
+          call("GET", "/api/backend/profile", tok_doctor).json()["doctor"]["pmdc_verified"] is True)
+    response = call("PUT", "/api/backend/doctor/profile", tok_doctor, {
+        "hospital_name": "phase0-test hospital", "consultation_modes": ["in_clinic"], "pmdc_verified": False, "pmdc_number": "1-X"})
+    check("a doctor cannot change the flag or the number through their profile",
+          response.status_code == 200 and scalar("select pmdc_verified from doctor_profiles where id = :i", i=profile_id) is True
+          and scalar("select pmdc_number from doctor_profiles where id = :i", i=profile_id) != "1-X", f"got {response.status_code}")
+    check("an unapproved doctor is never listed, verified or not",
+          all(d["id"] != new_doctor_profile for d in public) and new_doctor_profile not in [d["id"] for d in public])
+    response = call("PUT", by_hand, tok_admin, {"verified": False, "note": "Withdrawn: the register shows a different doctor."})
+    check("the administrator can take the badge away", response.status_code == 200 and response.json().get("verified") is False
+          and all(d["id"] != doctor for d in call("GET", "/api/backend/appointments/doctors?pmdc_verified=true").json()))
+    check("a doctor can be approved without any PMDC check",
+          call("PATCH", f"/api/backend/api/admin/doctors/{new_doctor_profile}/approve", tok_admin).status_code == 200
+          and scalar("select verification_status = 'approved' and not pmdc_verified from doctor_profiles where id = :i", i=new_doctor_profile) is True)
 
     print("\n[18] Sessions: HttpOnly cookies, refresh-token rotation, replay detection, logout")
     from auth import hash_password

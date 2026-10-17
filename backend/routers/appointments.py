@@ -128,6 +128,8 @@ def doctor_to_out(
         city=profile.city if profile else None,
         languages=split_list(profile.languages) if profile else [],
         consultation_modes=split_list(profile.consultation_modes) if profile else [],
+        pmdc_verified=bool(profile and profile.pmdc_verified),
+        pmdc_checked_at=profile.pmdc_checked_at if profile and profile.pmdc_verified else None,
     )
 
 
@@ -141,6 +143,7 @@ def filter_doctors(
     max_fee: int | None = None,
     min_rating: float | None = None,
     sort: SortKey = "soonest",
+    pmdc_verified: bool | None = None,
 ) -> list[AppointmentDoctorOut]:
     text = (query or "").strip().lower()
     wanted_specialty = (specialty or "").strip().lower()
@@ -168,6 +171,8 @@ def filter_doctors(
         results = [d for d in results if d.consultation_fee is not None and d.consultation_fee <= max_fee]
     if min_rating is not None:
         results = [d for d in results if d.rating is not None and d.rating >= min_rating]
+    if pmdc_verified:
+        results = [d for d in results if d.pmdc_verified]
 
     far = datetime.max.replace(tzinfo=UTC)
     keys = {
@@ -224,11 +229,12 @@ def list_doctors(
     max_fee: int | None = Query(default=None, ge=0, le=1_000_000),
     min_rating: float | None = Query(default=None, ge=0, le=5),
     sort: SortKey = "soonest",
+    pmdc_verified: bool | None = Query(default=None, description="true: only doctors found on the PMDC register"),
     db: Session = Depends(get_db),
 ):
     """Verified, active doctors only, with their real rating, fee and next open slot."""
     return filter_doctors(
-        verified_directory(db), query, specialty, available_today, city, mode, max_fee, min_rating, sort
+        verified_directory(db), query, specialty, available_today, city, mode, max_fee, min_rating, sort, pmdc_verified
     )
 
 

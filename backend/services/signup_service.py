@@ -13,6 +13,7 @@ from auth import hash_password
 from config import settings
 from models import DoctorProfile, PatientProfile, User
 from schemas import SignupRequest, TokenResponse, UserOut
+from services import pmdc
 from services.sessions import start_session
 
 
@@ -100,7 +101,10 @@ def ensure_unique_identity(db: Session, email: str, phone: str, pmdc_number: str
 
 
 def doctor_pmdc(payload: SignupRequest) -> str | None:
-    return payload.pmdc_number if payload.role == "doctor" else None
+    """The number to check for duplicates, in the standard form when it has one."""
+    if payload.role != "doctor" or not payload.pmdc_number:
+        return None
+    return pmdc.normalize_registration(payload.pmdc_number) or payload.pmdc_number
 
 
 def validate_role_specific_fields(payload: SignupRequest) -> None:
@@ -128,6 +132,11 @@ def validate_role_specific_fields(payload: SignupRequest) -> None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="PMDC/PMC registration number is required for doctor signup.",
+            )
+        if pmdc.normalize_registration(payload.pmdc_number) is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"That PMDC registration number is not in a recognised form. {pmdc.FORMAT_HELP}",
             )
         if not (payload.specialization or "").strip() or not (payload.hospital_name or "").strip():
             raise HTTPException(
@@ -174,7 +183,7 @@ def create_user(payload: SignupRequest, email: str, phone: str, db: Session) -> 
         db.add(
             DoctorProfile(
                 user_id=user.id,
-                pmdc_number=(payload.pmdc_number or "").strip(),
+                pmdc_number=pmdc.normalize_registration(payload.pmdc_number) or (payload.pmdc_number or "").strip(),
                 specialization=(payload.specialization or "").strip(),
                 hospital_name=(payload.hospital_name or "").strip(),
                 verification_status="pending",

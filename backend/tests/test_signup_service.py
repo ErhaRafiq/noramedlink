@@ -57,10 +57,23 @@ def test_incomplete_patient(fields, message):
 
 
 def test_doctor_needs_registration_specialty_and_hospital():
-    complete = {"pmdc_number": "PMC-12345", "specialization": "Cardiology", "hospital_name": "City Hospital"}
+    complete = {"pmdc_number": "PMC 12345-P", "specialization": "Cardiology", "hospital_name": "City Hospital"}
     validate_role_specific_fields(payload(role="doctor", **complete))
     assert "PMDC/PMC" in rejected(payload(role="doctor", **{**complete, "pmdc_number": " "})).detail
     assert "Specialization" in rejected(payload(role="doctor", **{**complete, "hospital_name": None})).detail
+
+
+@pytest.mark.parametrize("number", ["PMC-12345", "12345", "HACKED", "12-P", "12345-PP", "P-12345"])
+def test_a_doctor_number_that_is_not_in_a_recognised_form_is_refused_with_an_example(number):
+    complete = {"specialization": "Cardiology", "hospital_name": "City Hospital"}
+    error = rejected(payload(role="doctor", pmdc_number=number, **complete))
+    assert error.status_code == 422 and "12345-P" in error.detail
+
+
+def test_the_number_is_checked_for_duplicates_in_its_standard_form():
+    complete = {"specialization": "Cardiology", "hospital_name": "City Hospital"}
+    assert signup_service.doctor_pmdc(payload(role="doctor", pmdc_number="pmdc 12345 p", **complete)) == "12345-P"
+    assert signup_service.doctor_pmdc(payload(role="patient")) is None
 
 
 def test_admin_needs_the_configured_invite_code(monkeypatch):

@@ -293,6 +293,8 @@ class AppointmentDoctorOut(BaseModel):
     city: str | None = None
     languages: list[str] = Field(default_factory=list)
     consultation_modes: list[str] = Field(default_factory=list)  # online, in_clinic, home
+    pmdc_verified: bool = False  # the number was found ACTIVE on the PMDC register under this name
+    pmdc_checked_at: datetime | None = None
     source: Literal["registered"] = "registered"
 
 
@@ -517,6 +519,9 @@ class DoctorProfileOut(BaseModel):
     languages: list[str]
     consultation_modes: list[str]
     consultation_fee: int | None
+    pmdc_verified: bool = False  # an administrator checks the number against the PMDC register
+    pmdc_outcome: str | None = None
+    pmdc_checked_at: datetime | None = None
 
 
 class ActivityOut(BaseModel):
@@ -825,3 +830,45 @@ class AccessHistoryOut(BaseModel):
     actor_role: str
     detail: str
     created_at: datetime
+
+
+class PmdcStatusOut(BaseModel):
+    """Where a doctor's PMDC verification stands, for the administrator."""
+
+    number: str  # as the doctor entered it
+    searchable: str | None  # the form the register searches on (12345-P); None: the number does not fit
+    format_ok: bool
+    verified: bool
+    outcome: str | None  # verified, inactive, name_mismatch, not_found, format_invalid or manual; None: never checked
+    message: str
+    register_name: str | None  # as the register spells it, so the administrator can compare
+    register_status: str | None  # ACTIVE or In Active
+    checked_at: datetime | None
+    checked_by_name: str | None
+    note: str | None  # the reason for a decision by hand
+
+
+class PmdcManualIn(BaseModel):
+    verified: bool
+    note: str = Field(min_length=10, max_length=300, description="Why (for example: checked on pmdc.pk myself).")
+
+    @field_validator("note")
+    @classmethod
+    def tidy_note(cls, value: str) -> str:
+        value = " ".join(value.split())
+        if len(value) < 10:
+            raise ValueError("Please write a few words on why.")
+        return value
+
+
+class AdminDoctorOut(BaseModel):
+    id: int  # the doctor profile id (what the approve, reject and PMDC routes take)
+    user_id: int
+    full_name: str
+    email: str
+    phone: str
+    specialization: str
+    hospital_name: str
+    verification_status: str
+    created_at: datetime
+    pmdc: PmdcStatusOut

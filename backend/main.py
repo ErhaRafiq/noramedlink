@@ -13,6 +13,7 @@ from logging_config import configure_logging
 from rate_limit import limiter, rate_limit_exceeded_handler
 from routers import (
     admin,
+    admin_pmdc,
     appointments,
     audit,
     auth,
@@ -77,6 +78,7 @@ app.add_middleware(SlowAPIMiddleware)
 app.include_router(auth.router)
 app.include_router(auth.router, prefix="/api")
 app.include_router(admin.router)
+app.include_router(admin_pmdc.router)
 app.include_router(patient_insights.router)
 app.include_router(reports.router)
 app.include_router(doctor.router)

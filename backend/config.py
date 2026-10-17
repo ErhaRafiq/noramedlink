@@ -82,12 +82,19 @@ class Settings:
     rate_limit_access_code: str = "10/minute"
     rate_limit_payment: str = "10/minute"
     rate_limit_symptoms: str = "20/minute"  # per IP: the public symptom checker
+    rate_limit_pmdc: str = "20/minute"  # per admin: lookups on the PMDC public register
     trusted_proxy_ips: list[str] = field(default_factory=lambda: ["127.0.0.1", "::1"])
 
     # Payments (Stripe Checkout, the hosted payment page). Test keys (sk_test_...) take no real money.
     stripe_secret_key: str = ""  # empty: online payment is off (checkout answers 503)
     stripe_webhook_secret: str = ""  # whsec_...: verifies that webhook calls come from Stripe
     payment_currency: str = "pkr"
+
+    # PMDC register lookup (admin doctor verification). The same free public search the PMDC website uses.
+    # Only the registration number is sent. Off in test runs (DISABLE_PAID_SERVICES) like every outside call.
+    pmdc_lookup_enabled: bool = True
+    pmdc_lookup_url: str = "https://hospitals-inspections.pmdc.pk/api/DRC/GetData"
+    pmdc_lookup_timeout: float = 10.0  # seconds
 
     # Logging
     log_level: str = "INFO"
@@ -109,13 +116,15 @@ def load_settings() -> Settings:
         biobert_enabled=env_bool("BIOBERT_ENABLED", True),
         stripe_secret_key=env_str("STRIPE_SECRET_KEY", strip_quotes=True),
         stripe_webhook_secret=env_str("STRIPE_WEBHOOK_SECRET", strip_quotes=True),
+        pmdc_lookup_enabled=env_bool("PMDC_LOOKUP_ENABLED", True),
+        pmdc_lookup_url=env_str("PMDC_LOOKUP_URL", Settings.pmdc_lookup_url),
     )
 
 
 def _without_paid_services(loaded: Settings) -> Settings:
     if not loaded.paid_services_disabled:
         return loaded
-    return replace(loaded, ai_api_key="", stripe_secret_key="")
+    return replace(loaded, ai_api_key="", stripe_secret_key="", pmdc_lookup_enabled=False)
 
 
 settings = _without_paid_services(load_settings())

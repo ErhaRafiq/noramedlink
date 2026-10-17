@@ -18,6 +18,7 @@ from sqlalchemy import (
     text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql import expression
 
 from database import Base
 
@@ -51,6 +52,7 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
         uselist=False,
+        foreign_keys="DoctorProfile.user_id",
     )
     medical_documents: Mapped[list["MedicalDocument"]] = relationship(
         back_populates="user",
@@ -130,6 +132,18 @@ class DoctorProfile(Base):
     consultation_modes: Mapped[str] = mapped_column(
         String(40), default="in_clinic", server_default="in_clinic", nullable=False
     )  # online, in_clinic, home
+    # PMDC register check (services/pmdc.py). A doctor can be approved and active without it; a verified
+    # one carries a badge. True only when the register lists the number as ACTIVE under the doctor's name
+    # (or an administrator confirmed it by hand, with a note).
+    pmdc_verified: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=expression.false(), nullable=False
+    )
+    pmdc_outcome: Mapped[str | None] = mapped_column(String(20), nullable=True)  # verified, inactive, ...
+    pmdc_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pmdc_register_name: Mapped[str | None] = mapped_column(String(160), nullable=True)  # as the register spells it
+    pmdc_register_status: Mapped[str | None] = mapped_column(String(40), nullable=True)  # ACTIVE or In Active
+    pmdc_checked_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    pmdc_note: Mapped[str | None] = mapped_column(String(300), nullable=True)  # the reason for a manual decision
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -137,7 +151,7 @@ class DoctorProfile(Base):
         onupdate=func.now(),
     )
 
-    user: Mapped[User] = relationship(back_populates="doctor_profile")
+    user: Mapped[User] = relationship(back_populates="doctor_profile", foreign_keys=[user_id])
 
 
 class Appointment(Base):

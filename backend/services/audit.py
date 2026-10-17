@@ -27,6 +27,8 @@ ACTIONS = {
     "safety.override": "overrode a medication safety alert",
     "admin.doctor_approve": "approved a doctor",
     "admin.doctor_reject": "rejected a doctor",
+    "admin.pmdc_check": "checked a doctor on the PMDC register",
+    "admin.pmdc_manual": "decided a doctor's PMDC verification by hand",
 }
 VIEW_WINDOW = timedelta(minutes=10)
 

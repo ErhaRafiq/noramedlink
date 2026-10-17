@@ -10,7 +10,7 @@ from dependencies import require_admin
 from models import Appointment, DoctorProfile, PatientReport, SymptomSession, User
 from pagination import Page, PageParams, page_params, paginate
 from schemas import SymptomStatsOut
-from services import audit
+from services import audit, pmdc
 from services.signup_service import pmdc_matches
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -53,6 +53,7 @@ def pending_doctor_out(profile: DoctorProfile) -> dict:
         "hospitalName": profile.hospital_name,
         "verificationStatus": profile.verification_status,
         "createdAt": profile.created_at,
+        "pmdc": pmdc.status_out(profile).model_dump(mode="json"),
     }
 
 
@@ -168,7 +169,17 @@ def approve_doctor(
     admin: User = Depends(require_admin),
     db: Session = Depends(get_db),
 ):
-    return update_doctor_status(doctor_id, "approved", db, admin)
+    result = update_doctor_status(doctor_id, "approved", db, admin)
+    # Best effort: ask the PMDC register too, so a doctor who checks out gets the badge without another click.
+    # Approval never depends on it: any failure is ignored and the doctor stays approved, not PMDC verified.
+    profile = db.get(DoctorProfile, doctor_id)
+    if profile is not None and not profile.pmdc_verified:
+        try:
+            pmdc.run_check(db, profile, admin)
+            result = pending_doctor_out(profile)
+        except pmdc.PmdcError:
+            db.rollback()
+    return result
 
 
 @router.patch("/doctors/{doctor_id}/reject")

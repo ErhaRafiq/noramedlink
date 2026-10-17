@@ -12,7 +12,7 @@ os.environ.setdefault("HF_HUB_OFFLINE", "1")
 import pytest
 
 from config import settings
-from services import ai_client, payments
+from services import ai_client, payments, pmdc
 from services.mscie import openfda
 
 NO_EXTERNAL_KEYS = replace(
@@ -21,6 +21,7 @@ NO_EXTERNAL_KEYS = replace(
     stripe_secret_key="",
     stripe_webhook_secret="",
     paid_services_disabled=True,
+    pmdc_lookup_enabled=False,
 )
 
 
@@ -35,3 +36,4 @@ def no_external_services(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(ai_client, "settings", NO_EXTERNAL_KEYS)
     monkeypatch.setattr(openfda, "settings", NO_EXTERNAL_KEYS)  # no openFDA lookups
     monkeypatch.setattr(payments, "settings", NO_EXTERNAL_KEYS)  # no Stripe calls
+    monkeypatch.setattr(pmdc, "settings", NO_EXTERNAL_KEYS)  # no PMDC register lookups

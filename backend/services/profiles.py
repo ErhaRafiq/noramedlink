@@ -64,6 +64,9 @@ def doctor_out(profile: DoctorProfile) -> DoctorProfileOut:
         languages=split_list(profile.languages),
         consultation_modes=split_list(profile.consultation_modes),
         consultation_fee=profile.consultation_fee,
+        pmdc_verified=profile.pmdc_verified,
+        pmdc_outcome=profile.pmdc_outcome,
+        pmdc_checked_at=profile.pmdc_checked_at,
     )
 
 
