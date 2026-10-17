@@ -1,3 +1,4 @@
+import { normalizePmdc, PMDC_FORMAT_HELP } from "@/lib/pmdc";
 import type { SignupPayload, UserRole } from "@/lib/types";
 
 export type SignupValues = {
@@ -54,7 +55,8 @@ export function validateSignup(values: SignupValues): Partial<Record<keyof Signu
     if (!values.gender) errors.gender = "Select an option.";
   }
   if (values.role === "doctor") {
-    if (!values.pmdc_number.trim()) errors.pmdc_number = "Enter your PMDC/PMC registration number.";
+    if (!values.pmdc_number.trim()) errors.pmdc_number = "Enter your PMDC registration number.";
+    else if (normalizePmdc(values.pmdc_number) === null) errors.pmdc_number = `That number is not in a recognised form. ${PMDC_FORMAT_HELP}`;
     if (!values.specialization.trim()) errors.specialization = "Enter your specialization.";
     if (!values.hospital_name.trim()) errors.hospital_name = "Enter your hospital or clinic.";
   }
@@ -80,7 +82,7 @@ export function buildSignupPayload(values: SignupValues): SignupPayload {
   if (values.role === "doctor") {
     return {
       ...common,
-      pmdc_number: values.pmdc_number.trim(),
+      pmdc_number: normalizePmdc(values.pmdc_number) ?? values.pmdc_number.trim(),
       specialization: values.specialization.trim(),
       hospital_name: values.hospital_name.trim(),
     };

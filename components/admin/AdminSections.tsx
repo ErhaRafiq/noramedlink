@@ -8,6 +8,7 @@ import { Card, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { formatDateTime } from "@/lib/datetime";
 import type { AdminActivity, AdminDashboardStats, AdminDoctor, AdminUser, SymptomStats } from "@/lib/types";
+import { PmdcPanel } from "./PmdcPanel";
 import type { DoctorDecision } from "@/hooks/admin/use-admin-dashboard";
 
 export function DoctorReviewQueue({
@@ -26,7 +27,7 @@ export function DoctorReviewQueue({
       <CardHeader
         eyebrow="Verification"
         title="Doctors waiting for review"
-        description="Check the registration number before approving. Approved doctors become visible and bookable."
+        description="Check the PMDC registration number before approving. Approved doctors become visible and bookable; PMDC verification is separate and not required."
         action={<Badge tone={doctors.length > 0 ? "warning" : "neutral"}>{doctors.length} pending</Badge>}
       />
       {doctors.length === 0 ? (
@@ -71,6 +72,7 @@ export function DoctorReviewQueue({
                     </Button>
                   </div>
                 </div>
+                <PmdcPanel doctorId={doctor.id} initial={doctor.pmdc} />
               </li>
             );
           })}

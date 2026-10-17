@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 
+import { PmdcBadge } from "@/components/doctors/PmdcBadge";
 import { Alert } from "@/components/ui/alert";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -89,7 +90,18 @@ export function DoctorForm({
       ) : null}
       <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit} noValidate>
         <TextField label="Specialization" value={doctor.specialization} readOnly hint="Verified by an administrator." />
-        <TextField label="PMDC / PMC number" value={doctor.pmdc_number} readOnly hint="Verified by an administrator." />
+        <div>
+          <TextField label="PMDC / PMC number" value={doctor.pmdc_number} readOnly hint="Only an administrator can change this number." />
+          <div className="mt-2 text-xs text-ink-muted" data-testid="pmdc-status">
+            {doctor.pmdc_verified ? (
+              <PmdcBadge verified checkedAt={doctor.pmdc_checked_at} />
+            ) : doctor.pmdc_outcome && doctor.pmdc_outcome !== "manual" ? (
+              <>Not PMDC verified: an administrator could not match this number on the PMDC register. Contact them if it is correct.</>
+            ) : (
+              <>Not PMDC verified yet. An administrator checks your number on the PMDC register; you can be active without it, and a verified doctor gets a badge.</>
+            )}
+          </div>
+        </div>
         <TextField label="Hospital or clinic" value={hospital} onChange={(e) => setHospital(e.target.value)} error={errors.hospital} />
         <TextField label="City" value={city} onChange={(e) => setCity(e.target.value)} />
         <TextAreaField label="Qualifications" rows={2} value={qualifications} onChange={(e) => setQualifications(e.target.value)} hint="For example: MBBS, FCPS (Cardiology)" wrapperClassName="sm:col-span-2" />

@@ -7,6 +7,7 @@ import { clinicDay, clinicTime } from "@/lib/datetime";
 import { formatMoney } from "@/lib/money";
 import type { AppointmentDoctor } from "@/lib/types";
 import { MODE_LABEL } from "./BookingDialog";
+import { PmdcBadge } from "./PmdcBadge";
 import { RatingSummary } from "./Stars";
 
 function availability(doctor: AppointmentDoctor) {
@@ -26,6 +27,7 @@ export function DoctorCard({ doctor, canBook, onBook }: { doctor: AppointmentDoc
       <div>
         <h3 className="break-words text-base font-semibold text-ink">{doctor.name}</h3>
         <p className="mt-0.5 text-sm font-medium text-brand-blue">{doctor.specialty}</p>
+        <PmdcBadge verified={doctor.pmdc_verified} checkedAt={doctor.pmdc_checked_at} className="mt-1.5" />
         <RatingSummary rating={doctor.rating} count={doctor.rating_count} className="mt-1.5" />
         <Badge tone={badge.tone} className="mt-2 max-w-full whitespace-normal text-left">
           <Clock className="mr-1 inline h-3 w-3" aria-hidden />

@@ -13,7 +13,19 @@ Not a medical device: every medical feature is advisory (AGENTS.md section 6).
 | FE-1 | Secure registration and login for patients, doctors and administrators with encrypted credentials and role-based access control | Done | `routers/auth.py`, `services/sessions.py`, `dependencies.py`; HttpOnly cookie sessions |
 | FE-2 | Manage personal profile (age, gender, contact details, medical role) | Done | `routers/profile.py`, `services/profiles.py`, `/profile` page: name and phone for everyone; date of birth (age is computed), gender, blood group, city, address and emergency contact for patients; CNIC shown masked |
 | FE-3 | Doctor profiles: specialization, qualifications, availability, consultation fees, verification status | Done | Qualifications, experience, languages, city, consultation types, fee, bio and verification (specialization and PMDC number are locked to the admin) on `/profile`; weekly availability in `components/profile/AvailabilityEditor.tsx` (`GET/PUT /doctor/availability`) |
+| FE-3b | Doctor verification: PMDC registration number | Done | Signup checks the number's form and stores it as `12345-P` (`services/pmdc.py`, mirrored in `lib/pmdc.ts`). The admin checks it on the PMDC public register ("Check on PMDC") or decides by hand with a written reason; `doctor_profiles.pmdc_verified` is true only for found + ACTIVE + matching name, or the admin's decision. A doctor can be approved and active without it; a verified doctor shows a "PMDC verified" badge and can be filtered. Details below |
 | FE-4 | Link each profile with records, appointments, prescriptions and payment history | Done | `activity` on `GET /profile`; the profile page links each count to its page |
+
+### Doctor PMDC verification (how it works)
+
+- **The number:** the PMDC register searches an exact number written like `12345-P` (digits, a hyphen, one letter; letters seen: P, N, S, D; four or five digits are usual). `12345P`, `12345/P` and `12345` find nothing there. PMDC publishes no format document, so the rule is deliberately broad: 3 to 7 digits and any one letter, any case, with an optional "PMDC", "PM&DC", "PMC" or "Reg. No." in front. Signup refuses anything else with an example. Existing doctors keep what they entered; a number that does not fit shows "Number not recognised" to the admin.
+- **The check:** `POST /api/admin/doctors/{id}/pmdc-check` asks the register's free public search (the same call pmdc.pk makes; only the number is sent). Outcomes: `verified` (found, ACTIVE, name matches), `inactive`, `name_mismatch`, `not_found`, `format_invalid` (no request is made). If the register cannot be reached, nothing is changed and the admin is told so. A later check can take the badge away.
+- **Name match:** every word of the shorter name must match a word of the longer one (about 88% alike, with the common spellings of Muhammad and Ahmad folded together), at least two words unless both names have one. The number is already unique, so this only guards against a typo or a borrowed number; it is not an identity check.
+- **By hand:** `PUT /api/admin/doctors/{id}/pmdc-verified` with a reason of at least ten characters (for example after looking the doctor up on pmdc.pk). The reason stays on the profile, not on the public card or in the audit log.
+- **Approval is separate:** approving never needs PMDC verification. Approval does try a check best-effort so a doctor who checks out gets the badge without another click; any failure is ignored.
+- **Who sees what:** patients see the badge, its date and the "PMDC verified only" filter; never the number, the register's name or the note. The doctor sees their own status on `/profile`. The admin sees everything above.
+- **Outside service:** `https://hospitals-inspections.pmdc.pk/api/DRC/GetData` (no key, no sign-in). Switch off with `PMDC_LOOKUP_ENABLED=0`; `DISABLE_PAID_SERVICES=1` switches it off too, so tests never call it. Rate limited per admin. The endpoint is PMDC's own website's search, not a documented API: it can change, which is why a failure is never read as "not verified".
+- **Not built:** automatic re-checks on a schedule, checking at signup, or a check by CNIC or name.
 
 ## Module 2: Unified Patient Health Record Repository (UPHRR)
 
@@ -92,4 +104,5 @@ Dashboards exist for the patient, doctor and admin (see the brief).
 | Admin: doctor verification, account overview, recent activity | Done | `components/admin/` |
 | Admin: audit log view with filters | Done | "Who accessed or changed records" on `/admin`: filter by action, role and patient number, 15 rows at a time (`GET /api/admin/audit-log`). Rows cannot be edited or deleted |
 | Admin: symptom checker usage | Done | counts only (Module 7) |
+| Admin: PMDC verification | Done | "All doctors and PMDC verification" on `/admin` (filter by approval, PMDC status, name or number) and a PMDC panel on every pending doctor: check on the register, decide by hand, open the PMDC site |
 | Admin: payment confirmation | Removed on purpose | Only Stripe's signed webhook marks a payment paid (Module 8) |

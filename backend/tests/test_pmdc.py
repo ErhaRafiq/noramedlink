@@ -60,6 +60,8 @@ def test_the_usual_ways_of_writing_a_number_become_the_form_the_register_searche
         "12345",  # no letter: the register would find nothing
         "P-12345",
         "12345-PP",
+        "00000-P",  # all zeros: not a number the register has
+        "00012-P",  # too short once the zeros are dropped
         "12345-1",
         "12-P",  # too short
         "12345678-P",  # too long
@@ -74,6 +76,12 @@ def test_the_usual_ways_of_writing_a_number_become_the_form_the_register_searche
 )
 def test_a_number_that_does_not_fit_is_refused(raw):
     assert pmdc.normalize_registration(raw) is None
+
+
+@pytest.mark.parametrize("raw", ["12345-P", "012345-p", "pmdc no. 0012345 - n", "PM&DC 1234-D", "123/S"])
+def test_the_standard_form_normalises_to_itself(raw):
+    once = pmdc.normalize_registration(raw)
+    assert once is not None and pmdc.normalize_registration(once) == once
 
 
 # --- names ---------------------------------------------------------------------------------------------

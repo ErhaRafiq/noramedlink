@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { SelectField, TextField } from "@/components/ui/field";
 import { api } from "@/lib/api";
 import { dashboardPathForRole, saveSession } from "@/lib/auth";
+import { PMDC_EXAMPLE } from "@/lib/pmdc";
 import { buildSignupPayload, EMPTY_SIGNUP, MIN_PASSWORD_LENGTH, parseRole, validateSignup, type SignupValues } from "@/lib/signup";
 import type { UserRole } from "@/lib/types";
 import { RoleSelector } from "./RoleSelector";
@@ -94,7 +95,13 @@ export function SignupForm() {
 
         {values.role === "doctor" ? (
           <>
-            <TextField label="PMDC/PMC registration number" {...field("pmdc_number")} />
+            <TextField
+              label="PMDC/PMC registration number"
+              placeholder={PMDC_EXAMPLE}
+              autoCapitalize="characters"
+              hint={`As printed on your PMDC certificate, for example ${PMDC_EXAMPLE}. An administrator checks it on the PMDC register.`}
+              {...field("pmdc_number")}
+            />
             <TextField label="Specialization" placeholder="e.g. Cardiology" {...field("specialization")} />
             <TextField label="Hospital or clinic" wrapperClassName="sm:col-span-2" {...field("hospital_name")} />
           </>

@@ -58,7 +58,10 @@ def normalize_registration(raw: str | None) -> str | None:
     match = _NUMBER.match(text)
     if not match:
         return None
-    return f"{int(match.group(1))}-{match.group(2)}"
+    digits = str(int(match.group(1)))  # the register has no leading zeros
+    if not 3 <= len(digits) <= 7:  # counted after the zeros go, so the result always normalises to itself
+        return None
+    return f"{digits}-{match.group(2)}"
 
 
 class PmdcError(Exception):

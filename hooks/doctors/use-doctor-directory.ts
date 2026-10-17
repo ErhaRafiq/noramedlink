@@ -26,6 +26,7 @@ export function useDoctorDirectory() {
   const [city, setCity] = useState("");
   const [mode, setMode] = useState<ConsultationMode | "">("");
   const [availableToday, setAvailableToday] = useState(false);
+  const [pmdcVerified, setPmdcVerified] = useState(false);
   const [maxFee, setMaxFee] = useState("");
   const [minRating, setMinRating] = useState("");
   const [sort, setSort] = useState<DoctorSort>("soonest");
@@ -43,11 +44,12 @@ export function useDoctorDirectory() {
       maxFee: debouncedFee && Number(debouncedFee) > 0 ? Number(debouncedFee) : undefined,
       minRating: minRating ? Number(minRating) : undefined,
       sort,
+      pmdcVerified,
     }),
-    [availableToday, debouncedCity, debouncedFee, debouncedSearch, minRating, mode, sort, specialty],
+    [availableToday, debouncedCity, debouncedFee, debouncedSearch, minRating, mode, pmdcVerified, sort, specialty],
   );
   const filtered = useMemo(
-    () => Boolean(request.query || request.specialty || request.city || request.mode || request.availableToday || request.maxFee || request.minRating),
+    () => Boolean(request.query || request.specialty || request.city || request.mode || request.availableToday || request.maxFee || request.minRating || request.pmdcVerified),
     [request],
   );
 
@@ -87,12 +89,13 @@ export function useDoctorDirectory() {
       setCity("");
       setMode("");
       setAvailableToday(false);
+      setPmdcVerified(false);
       setMaxFee("");
       setMinRating("");
     },
     filters: {
       search, setSearch, specialty, setSpecialty, city, setCity, mode, setMode,
-      availableToday, setAvailableToday, maxFee, setMaxFee, minRating, setMinRating, sort, setSort,
+      availableToday, setAvailableToday, pmdcVerified, setPmdcVerified, maxFee, setMaxFee, minRating, setMinRating, sort, setSort,
     },
   };
 }

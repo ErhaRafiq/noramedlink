@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Activity, CalendarDays, FileText, LayoutDashboard, ScrollText, Search, Stethoscope, UserRound, Users } from "lucide-react";
+import { Activity, BadgeCheck, CalendarDays, FileText, LayoutDashboard, ScrollText, Search, Stethoscope, UserRound, Users } from "lucide-react";
 
 import { DashboardShell, type DashboardNavItem } from "@/components/layout/DashboardShell";
 import { Alert } from "@/components/ui/alert";
@@ -15,12 +15,14 @@ import { signOut as endSession } from "@/lib/auth";
 import type { AdminDoctor } from "@/lib/types";
 import { useAdminDashboard } from "@/hooks/admin/use-admin-dashboard";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
+import { AdminDoctorsSection } from "./AdminDoctorsSection";
 import { AuditLogSection } from "./AuditLogSection";
 import { AccountOverview, DoctorReviewQueue, RecentAccounts, RecentActivity, SymptomUsage } from "./AdminSections";
 
 const NAV: DashboardNavItem[] = [
   { id: "summary", label: "Summary", icon: LayoutDashboard },
   { id: "doctors", label: "Doctor review", icon: Stethoscope },
+  { id: "all-doctors", label: "All doctors", icon: BadgeCheck },
   { id: "users", label: "New sign-ups", icon: Users },
   { id: "overview", label: "Accounts", icon: UserRound },
   { id: "activity", label: "Activity", icon: Activity },
@@ -101,6 +103,8 @@ export function AdminView() {
             />
             <RecentAccounts users={dashboard.users} />
           </div>
+
+          <AdminDoctorsSection refreshKey={dashboard.pendingDoctors.length} />
 
           <div className="grid items-start gap-6 xl:grid-cols-[0.9fr_1.1fr]">
             <AccountOverview stats={stats} pendingDoctors={dashboard.pendingDoctors.length} />

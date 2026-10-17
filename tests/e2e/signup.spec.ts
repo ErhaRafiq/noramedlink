@@ -49,7 +49,7 @@ test.describe("sign up", () => {
     await page.getByLabel("Phone number").fill("0300 1112223");
     await page.getByLabel("Password", { exact: true }).fill("E2e-signup-pass-1");
     await page.getByLabel("Confirm password").fill("E2e-signup-pass-1");
-    await page.getByLabel("PMDC/PMC registration number").fill("PMC-00000");
+    await page.getByLabel("PMDC/PMC registration number").fill("PMC 12345-P");
     await page.getByLabel("Specialization").fill("Cardiology");
     await page.getByLabel("Hospital or clinic").fill("Test Hospital");
     await page.getByRole("button", { name: "Create account" }).click();

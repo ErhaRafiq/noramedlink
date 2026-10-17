@@ -90,6 +90,15 @@ export function DoctorFilters({ directory }: { directory: Directory }) {
           />
           Available today
         </label>
+        <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-700">
+          <input
+            type="checkbox"
+            checked={filters.pmdcVerified}
+            onChange={(event) => filters.setPmdcVerified(event.target.checked)}
+            className="h-4 w-4 rounded border-slate-300 text-brand-blue focus:ring-brand-blue"
+          />
+          PMDC verified only
+        </label>
         {directory.filtered ? (
           <Button variant="ghost" size="sm" onClick={directory.reset}>
             Clear filters

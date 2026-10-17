@@ -12,6 +12,7 @@ import { cn } from "@/lib/cn";
 import { clinicDateTime, formatDateTime } from "@/lib/datetime";
 import { formatMoney } from "@/lib/money";
 import type { AppointmentDoctor, ConsultationMode, Review } from "@/lib/types";
+import { PmdcBadge } from "./PmdcBadge";
 import { RatingSummary } from "./Stars";
 import { SlotPicker } from "./SlotPicker";
 
@@ -89,7 +90,10 @@ function BookingForm({
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-        <RatingSummary rating={doctor.rating} count={doctor.rating_count} />
+        <div className="flex flex-wrap items-center gap-2">
+          <RatingSummary rating={doctor.rating} count={doctor.rating_count} />
+          <PmdcBadge verified={doctor.pmdc_verified} checkedAt={doctor.pmdc_checked_at} />
+        </div>
         <span className="text-ink-muted">
           {doctor.consultation_fee ? `${formatMoney(doctor.consultation_fee)} per consultation` : "Fee not set yet"}
         </span>

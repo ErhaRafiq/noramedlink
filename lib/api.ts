@@ -29,6 +29,8 @@ import type {
   SignupPayload,
   SummaryResponse,
   AccessHistoryRow,
+  AdminDoctorRow,
+  PmdcStatus,
   AuditLogRow,
   HealthEntry,
   HealthEntryChanges,
@@ -224,6 +226,17 @@ export const api = {
   },
   adminUsers(page?: PageQuery) {
     return apiRequest<Page<AdminUser>>(withPage("/api/admin/users", page));
+  },
+  adminDoctors(filters: { approval?: string; pmdc?: string; q?: string }, page: PageQuery = {}) {
+    return apiRequest<Page<AdminDoctorRow>>(withQuery("/api/admin/doctors", { ...filters, limit: page.limit, offset: page.offset }));
+  },
+  /** Asks the PMDC public register about the doctor's number and records the answer. */
+  adminCheckPmdc(doctorId: number) {
+    return apiRequest<PmdcStatus>(`/api/admin/doctors/${doctorId}/pmdc-check`, { method: "POST" });
+  },
+  /** The administrator's own decision, with the reason (at least ten characters). */
+  adminDecidePmdc(doctorId: number, verified: boolean, note: string) {
+    return apiRequest<PmdcStatus>(`/api/admin/doctors/${doctorId}/pmdc-verified`, { method: "PUT", body: JSON.stringify({ verified, note }) });
   },
   adminPendingDoctors() {
     return apiRequest<AdminDoctor[]>("/api/admin/doctors/pending");
@@ -485,6 +498,7 @@ export const api = {
       max_fee: search.maxFee,
       min_rating: search.minRating,
       sort: search.sort,
+      pmdc_verified: search.pmdcVerified ? "true" : undefined,
     });
     return apiRequest<AppointmentDoctor[]>(path, { signal: init?.signal });
   },

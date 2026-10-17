@@ -155,6 +155,27 @@ export type AdminUser = {
   updatedAt: string;
 };
 
+export type PmdcOutcome = "verified" | "inactive" | "name_mismatch" | "not_found" | "format_invalid" | "manual";
+
+/** Where a doctor's PMDC verification stands (backend/services/pmdc.py). */
+export type PmdcStatus = {
+  /** As the doctor entered it. */
+  number: string;
+  /** The form the register searches on (12345-P); null: the number does not fit. */
+  searchable: string | null;
+  format_ok: boolean;
+  verified: boolean;
+  outcome: PmdcOutcome | null;
+  message: string;
+  /** As the register spells it, so the administrator can compare. */
+  register_name: string | null;
+  register_status: string | null;
+  checked_at: string | null;
+  checked_by_name: string | null;
+  /** The reason for a decision by hand. */
+  note: string | null;
+};
+
 export type AdminDoctor = {
   id: number;
   userId: number;
@@ -166,6 +187,21 @@ export type AdminDoctor = {
   hospitalName: string;
   verificationStatus: string;
   createdAt: string;
+  pmdc: PmdcStatus;
+};
+
+/** One row of the administrator's doctor list (GET /api/admin/doctors). */
+export type AdminDoctorRow = {
+  id: number;
+  user_id: number;
+  full_name: string;
+  email: string;
+  phone: string;
+  specialization: string;
+  hospital_name: string;
+  verification_status: "pending" | "approved" | "rejected" | string;
+  created_at: string;
+  pmdc: PmdcStatus;
 };
 
 export type AdminActivity = {
@@ -377,6 +413,9 @@ export type AppointmentDoctor = {
   city: string | null;
   languages: string[];
   consultation_modes: ConsultationMode[];
+  /** The registration number was found ACTIVE on the PMDC public register under this name. */
+  pmdc_verified: boolean;
+  pmdc_checked_at: string | null;
   source: "registered";
 };
 
@@ -757,6 +796,9 @@ export type DoctorProfile = {
   languages: string[];
   consultation_modes: ConsultationMode[];
   consultation_fee: number | null;
+  pmdc_verified: boolean;
+  pmdc_outcome: PmdcOutcome | null;
+  pmdc_checked_at: string | null;
 };
 
 export type PatientProfileInput = {
@@ -812,4 +854,6 @@ export type DoctorSearch = {
   maxFee?: number;
   minRating?: number;
   sort?: DoctorSort;
+  /** Only doctors found on the PMDC register. */
+  pmdcVerified?: boolean;
 };
