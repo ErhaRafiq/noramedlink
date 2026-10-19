@@ -56,4 +56,27 @@ test.describe("sign up", () => {
     await expect(alertWithText(page, "Email already registered")).toBeVisible();
     await expect(page).toHaveURL(/\/signup/);
   });
+
+  test("a PMDC number in any of the register's forms passes the form check before any request is sent", async ({ page }) => {
+    let signupCalls = 0;
+    await page.route("**/api/auth/signup", (route) => {
+      signupCalls += 1;
+      return route.abort();
+    });
+    await page.goto("/signup?role=doctor");
+    const number = page.getByLabel("PMDC/PMC registration number");
+    const refused = page.getByText("That number is not in a recognised form.");
+    for (const bad of ["1815-K", "12345", "1815-AJKK", "P-12345"]) {
+      await number.fill(bad);
+      await page.getByRole("button", { name: "Create account" }).click();
+      await expect(refused).toBeVisible();
+    }
+    expect(signupCalls).toBe(0);
+
+    for (const good of ["1815-AJK", "12345-P", "100-S", "2000-b", "PMDC 1815 ajk"]) {
+      await number.fill(good);
+      await page.getByRole("button", { name: "Create account" }).click();
+      await expect(refused).toHaveCount(0);
+    }
+  });
 });

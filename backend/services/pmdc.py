@@ -2,9 +2,11 @@
 
 What was verified (read from pmdc.pk, not assumed): the register's search is a free, open POST to
 `hospitals-inspections.pmdc.pk/api/DRC/GetData` with `RegistrationNo`; it answers `{status, data: [{RegistrationNo,
-Name, FatherName, Status}], message}`. It matches the number exactly in the form `12345-P` (digits, a hyphen, one
-letter): "12345P", "12345/P" and "12345" find nothing. Numbers seen use the letters P, N, S and D with four or five
-digits; PMDC publishes no format document, so any single letter is accepted and the digits run from 3 to 7.
+Name, FatherName, Status}], message}`. It matches the number exactly in the form `digits-SUFFIX`: "12345P",
+"12345/P" and "12345" find nothing. PMDC publishes no format document, so the forms were found by asking the register
+itself (October 2026): the suffix is one of P, N, S, B, D, F or AJK (for example 1815-AJK, 12345-P, 100000-P), and
+the digits run from 1 to 6 on the numbers found (up to 7 are accepted). Other letters ("1815-K", "1815-A") and a
+number of 7 digits found nothing. The suffix list is the one place to extend if PMDC adds a region.
 Status values seen: `ACTIVE` and `In Active`.
 
 Rules (the register is public data, but we are a guest on it):
@@ -35,20 +37,22 @@ from services import audit, notifications
 log = logging.getLogger("nora.pmdc")
 
 EXAMPLE = "12345-P"
+# The endings the register has numbers under: P Punjab, N, S Sindh, B Balochistan, D dental, F, and AJK.
+SUFFIXES = ("AJK", "B", "D", "F", "N", "P", "S")
 FORMAT_HELP = (
-    "Enter the registration number as it is printed on your PMDC certificate: digits, a dash and a letter, "
-    f"for example {EXAMPLE}."
+    "Enter the registration number as it is printed on your PMDC certificate: digits, a dash and the ending "
+    f"({', '.join(SUFFIXES)}), for example {EXAMPLE} or 1815-AJK."
 )
 REGISTER_URL = "https://pmdc.pk/"  # the human page: "Search for Any Doctor ... by Registration Number"
 
 # Words people put in front of the number.
 _PREFIX = re.compile(r"^(?:(?:PM\s*&\s*DC|PM\s*AND\s*DC|PMDC|PMC|REGISTRATION|REGD?|NUMBER|NO|NUM|ID)\b[\s.:#/\-]*)+")
-_NUMBER = re.compile(r"^([0-9]{3,7})\s*[-/\s]?\s*([A-Z])$")  # ASCII digits only
+_NUMBER = re.compile(r"^([0-9]{1,7})\s*[-/\s]?\s*([A-Z]{1,3})$")  # ASCII digits only
 _DASHES = str.maketrans({"‐": "-", "‑": "-", "‒": "-", "–": "-", "—": "-", "−": "-"})
 
 
 def normalize_registration(raw: str | None) -> str | None:
-    """The number in the form the register searches on ("12345-P"), or None when it does not fit.
+    """The number in the form the register searches on ("12345-P", "1815-AJK"), or None when it does not fit.
 
     Accepts the usual ways of writing it: any case, spaces, "12345P", "12345/P", "12345 - p", a leading
     "PMDC", "PM&DC", "PMC", "Reg No." and the like. Leading zeros are dropped, as the register has none.
@@ -58,10 +62,11 @@ def normalize_registration(raw: str | None) -> str | None:
     match = _NUMBER.match(text)
     if not match:
         return None
-    digits = str(int(match.group(1)))  # the register has no leading zeros
-    if not 3 <= len(digits) <= 7:  # counted after the zeros go, so the result always normalises to itself
+    suffix = match.group(2)
+    number = int(match.group(1))  # the register has no leading zeros
+    if suffix not in SUFFIXES or number < 1 or number > 9_999_999:  # checked after the zeros go: idempotent
         return None
-    return f"{digits}-{match.group(2)}"
+    return f"{number}-{suffix}"
 
 
 class PmdcError(Exception):

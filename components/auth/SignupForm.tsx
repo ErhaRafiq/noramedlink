@@ -99,7 +99,7 @@ export function SignupForm() {
               label="PMDC/PMC registration number"
               placeholder={PMDC_EXAMPLE}
               autoCapitalize="characters"
-              hint={`As printed on your PMDC certificate, for example ${PMDC_EXAMPLE}. An administrator checks it on the PMDC register.`}
+              hint={`As printed on your PMDC certificate, for example ${PMDC_EXAMPLE} or 1815-AJK. An administrator checks it on the PMDC register.`}
               {...field("pmdc_number")}
             />
             <TextField label="Specialization" placeholder="e.g. Cardiology" {...field("specialization")} />

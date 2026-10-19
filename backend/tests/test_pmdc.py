@@ -44,6 +44,17 @@ def lookup_on(monkeypatch):
         ("1234-D", "1234-D"),
         ("123-S", "123-S"),
         ("1234567-P", "1234567-P"),
+        ("1815-AJK", "1815-AJK"),  # Azad Jammu and Kashmir: a three-letter ending
+        ("1815ajk", "1815-AJK"),
+        ("1815 / AJK", "1815-AJK"),
+        ("PMDC 1815-AJK", "1815-AJK"),
+        ("01815-ajk", "1815-AJK"),
+        ("12-P", "12-P"),  # the register has short numbers too
+        ("1-S", "1-S"),
+        ("00012-P", "12-P"),
+        ("100000-P", "100000-P"),
+        ("2000-B", "2000-B"),
+        ("2000-F", "2000-F"),
     ],
 )
 def test_the_usual_ways_of_writing_a_number_become_the_form_the_register_searches(raw, canonical):
@@ -61,9 +72,13 @@ def test_the_usual_ways_of_writing_a_number_become_the_form_the_register_searche
         "P-12345",
         "12345-PP",
         "00000-P",  # all zeros: not a number the register has
-        "00012-P",  # too short once the zeros are dropped
+        "1815-K",  # an ending the register does not use
+        "1815-A",
+        "1815-AJ",
+        "1815-AJKK",
+        "1815-AJK-1",
+        "12345-X",
         "12345-1",
-        "12-P",  # too short
         "12345678-P",  # too long
         "abcde-P",
         "12345-P-1",
@@ -78,7 +93,9 @@ def test_a_number_that_does_not_fit_is_refused(raw):
     assert pmdc.normalize_registration(raw) is None
 
 
-@pytest.mark.parametrize("raw", ["12345-P", "012345-p", "pmdc no. 0012345 - n", "PM&DC 1234-D", "123/S"])
+@pytest.mark.parametrize(
+    "raw", ["12345-P", "012345-p", "pmdc no. 0012345 - n", "PM&DC 1234-D", "123/S", "1815-AJK", "00001-ajk"]
+)
 def test_the_standard_form_normalises_to_itself(raw):
     once = pmdc.normalize_registration(raw)
     assert once is not None and pmdc.normalize_registration(once) == once
