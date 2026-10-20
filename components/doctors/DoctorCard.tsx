@@ -16,6 +16,7 @@ function availability(doctor: AppointmentDoctor) {
   if (doctor.next_available) {
     return { label: `Next: ${clinicDay(doctor.next_available)}, ${clinicTime(doctor.next_available)}`, tone: "info" as const };
   }
+  if (!doctor.has_schedule) return { label: "Has not published appointment times yet", tone: "neutral" as const };
   return { label: "Fully booked for two weeks", tone: "warning" as const };
 }
 
@@ -73,7 +74,7 @@ export function DoctorCard({ doctor, canBook, onBook }: { doctor: AppointmentDoc
       </dl>
       {doctor.bio ? <p className="mt-3 line-clamp-3 break-words text-sm leading-6 text-ink-muted">{doctor.bio}</p> : null}
       <Button className="mt-5 w-full" disabled={!bookable || !canBook} icon={<CalendarPlus className="h-4 w-4" />} onClick={() => onBook(doctor)}>
-        {bookable ? "Book appointment" : "Not bookable yet"}
+        {bookable ? "Book appointment" : doctor.has_schedule ? "No free times" : "Times not published yet"}
       </Button>
     </article>
   );
