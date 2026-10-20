@@ -99,8 +99,14 @@ Open **http://localhost:3000**.
 
 ## Reports and OCR
 
-1. The patient uploads a PDF, Word (.docx), JPG, PNG, WebP or TIFF report (up to 10 MB; large photos are shrunk in
-   the browser first) and picks a department.
+**Summarize page (`/summarize`):** besides pasting text, a signed-in user can pick a PDF, Word file or photo (or take
+one with the phone camera). `POST /nlp/read-file` reads it with the same local OCR, deletes it at once (nothing is
+stored), and returns the text for the person to check and correct, with the numbers OCR was unsure of listed. The
+summary is then asked for as before. At startup the backend loads the OCR models once (`main.py`), so the first photo
+after a restart is not slow.
+
+1. The patient uploads a PDF, Word (.docx), JPG, PNG, WebP, iPhone HEIC or TIFF report (up to 10 MB; large photos are
+   shrunk in the browser first; a HEIC photo is stored as an upright JPEG) and picks a department.
 2. FastAPI checks the token, the file type and the file's contents, and stores it privately under
    `backend/uploads/<patient id>/<department>/`. Files are served only to the owner, or to a
    doctor with an active access grant, through short-lived signed links.

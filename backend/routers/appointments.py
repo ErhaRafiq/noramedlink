@@ -8,7 +8,7 @@ from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, contains_eager
 
 from database import get_db
 from dependencies import get_current_user, require_patient
@@ -94,6 +94,7 @@ def verified_doctors_query(db: Session):
     return (
         db.query(User)
         .join(DoctorProfile, DoctorProfile.user_id == User.id)
+        .options(contains_eager(User.doctor_profile))  # the profile comes with the same query, not one per doctor
         .filter(
             func.lower(User.role) == "doctor",
             User.is_active.is_(True),
