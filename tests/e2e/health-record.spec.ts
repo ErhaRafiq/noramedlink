@@ -55,7 +55,7 @@ test.describe("health record", () => {
     const doctorPage = await doctorContext.newPage();
     await signInAs(doctorPage, users.doctorWithAccess);
     await doctorPage.goto("/dashboard/doctor");
-    await doctorPage.getByRole("button", { name: new RegExp(users.patient.fullName) }).click();
+    await doctorPage.getByRole("button", { name: new RegExp(`${users.patient.fullName} \\d+ reports?`) }).click();
 
     const card = doctorPage.locator("#health-record");
     await expect(card.getByRole("heading", { name: new RegExp(`Allergies and conditions: ${users.patient.fullName}`) })).toBeVisible({ timeout: 30_000 });

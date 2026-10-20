@@ -45,6 +45,9 @@ configure_logging()
 log = logging.getLogger("nora.startup")
 
 
+MODELS = {"state": "loading"}  # "loading" until the warm-up below ends; shown by /health
+
+
 def _warm_up_models() -> None:
     """Loads the OCR models (and BioBERT when on) once at startup. Without this the first photo or scan after a
     restart waits for them to load, which can take a minute or two and looks like a failed upload."""
@@ -58,6 +61,8 @@ def _warm_up_models() -> None:
             biobert_service._load_pipeline()
     except Exception as exc:  # a missing model is reported when a report needs it, not at startup
         log.warning("Model warm-up skipped: %s", type(exc).__name__)
+    finally:
+        MODELS["state"] = "ready"
 
 
 @asynccontextmanager
@@ -67,7 +72,7 @@ async def lifespan(app: FastAPI):
     run_migrations()
     stop = asyncio.Event()
     worker = asyncio.create_task(email_outbox.run_worker(stop))  # sends the queued appointment emails and reminders
-    warm = None if settings.paid_services_disabled else asyncio.create_task(asyncio.to_thread(_warm_up_models))
+    warm = asyncio.create_task(asyncio.to_thread(_warm_up_models))  # local models: not a paid or outside service
     try:
         yield
     finally:
@@ -146,7 +151,7 @@ async def sqlalchemy_exception_handler(request, exc: SQLAlchemyError):
 @app.get("/health")
 @limiter.exempt
 def health_check():
-    return {"status": "ok", "service": "Nora MedLink API"}
+    return {"status": "ok", "service": "Nora MedLink API", "models": MODELS["state"]}
 
 
 @app.get("/health/database")

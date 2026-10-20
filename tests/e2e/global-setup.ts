@@ -14,5 +14,13 @@ export default async function globalSetup() {
       throw new Error(`${name} is not reachable at ${url} (${(error as Error).message}). Start it first.`);
     }
   }
+  // The first report that needs the language models waits for them to load (a minute or two): wait here instead,
+  // so no test times out on a cold backend. /health says "ready" once the backend has loaded them.
+  const deadline = Date.now() + 5 * 60_000;
+  while (Date.now() < deadline) {
+    const health = (await (await fetch(`${BASE_URL}/api/backend/health`)).json()) as { models?: string };
+    if (health.models !== "loading") break;
+    await new Promise((resolve) => setTimeout(resolve, 2000));
+  }
   runFixtures(["setup", FIXTURES_FILE]);
 }
