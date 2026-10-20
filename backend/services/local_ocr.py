@@ -149,8 +149,10 @@ def read_text(path: Path) -> OcrText:
             return _read_pdf(path)
         if suffix == ".docx":
             return _read_docx(path)
+        import pillow_heif
         from PIL import Image
 
+        pillow_heif.register_heif_opener()
         with Image.open(path) as image:
             rows = _ocr_frames(image)
     except LocalOcrError:

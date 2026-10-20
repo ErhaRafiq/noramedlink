@@ -109,3 +109,42 @@ async def test_save_rejects_files_over_the_limit(upload_root: Path, monkeypatch:
         await save_upload_file(upload("big.pdf", "application/pdf", big), "lab", patient_id=7)
     assert caught.value.status_code == 413
     assert not any(p.is_file() for p in upload_root.rglob("*"))  # partial file removed
+
+
+def heic_bytes() -> bytes:
+    import pillow_heif
+
+    buffer = BytesIO()
+    pillow_heif.from_pillow(Image.new("RGB", (16, 16), "white")).save(buffer)
+    return buffer.getvalue()
+
+
+@pytest.mark.parametrize("content_type", ["image/heic", "image/heif", "application/octet-stream", ""])
+def test_heic_photos_are_accepted_whatever_type_the_browser_sends(content_type: str):
+    assert validate_upload(upload("IMG_0001.HEIC", content_type)) == ".heic"
+
+
+def test_an_unrelated_type_is_still_refused_for_a_heic_name():
+    with pytest.raises(HTTPException):
+        validate_upload(upload("IMG_0001.heic", "text/html"))
+    with pytest.raises(HTTPException):
+        validate_upload(upload("notes.txt", "application/octet-stream"))
+
+
+@pytest.mark.anyio
+async def test_a_heic_photo_is_stored_as_a_jpeg(upload_root: Path):
+    stored, file_type = await save_upload_file(
+        upload("IMG_0001.heic", "image/heic", heic_bytes()), "general", patient_id=7
+    )
+    assert file_type == "jpg" and stored.endswith(".jpg")
+    on_disk = stored_path_to_disk_path(stored)
+    with Image.open(on_disk) as image:
+        assert image.format == "JPEG" and image.size == (16, 16)
+    assert not list(on_disk.parent.glob("*.heic"))  # the original is gone
+
+
+@pytest.mark.anyio
+async def test_a_broken_heic_file_is_refused(upload_root: Path):
+    with pytest.raises(HTTPException) as error:
+        await save_upload_file(upload("IMG_0002.heic", "image/heic", b"not a photo"), "general", patient_id=7)
+    assert error.value.status_code == 400

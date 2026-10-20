@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -41,6 +42,22 @@ from routers import (
 from services import email_outbox
 
 configure_logging()
+log = logging.getLogger("nora.startup")
+
+
+def _warm_up_models() -> None:
+    """Loads the OCR models (and BioBERT when on) once at startup. Without this the first photo or scan after a
+    restart waits for them to load, which can take a minute or two and looks like a failed upload."""
+    try:
+        from services import local_ocr
+
+        local_ocr._engine()
+        if settings.biobert_enabled:
+            from services import biobert_service
+
+            biobert_service._load_pipeline()
+    except Exception as exc:  # a missing model is reported when a report needs it, not at startup
+        log.warning("Model warm-up skipped: %s", type(exc).__name__)
 
 
 @asynccontextmanager
@@ -50,11 +67,14 @@ async def lifespan(app: FastAPI):
     run_migrations()
     stop = asyncio.Event()
     worker = asyncio.create_task(email_outbox.run_worker(stop))  # sends the queued appointment emails and reminders
+    warm = None if settings.paid_services_disabled else asyncio.create_task(asyncio.to_thread(_warm_up_models))
     try:
         yield
     finally:
         stop.set()
         worker.cancel()
+        if warm:
+            warm.cancel()
 
 
 app = FastAPI(

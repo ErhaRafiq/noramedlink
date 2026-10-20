@@ -2,17 +2,31 @@ import zipfile
 from pathlib import Path
 from uuid import uuid4
 
+import pillow_heif
 from fastapi import HTTPException, UploadFile, status
-from PIL import Image, UnidentifiedImageError
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from config import settings
 from database import get_upload_root_path
 
 DOCX_TYPE = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".pdf", ".docx"}
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".tif", ".tiff", ".pdf", ".docx", ".heic", ".heif"}
+# iPhones (and some Android phones) save photos as HEIC. Some browsers send no type, or a generic one, for it.
+HEIC_EXTENSIONS = {".heic", ".heif"}
+HEIC_CONTENT_TYPES = {
+    "image/heic",
+    "image/heif",
+    "image/heic-sequence",
+    "image/heif-sequence",
+    "application/octet-stream",
+    "",
+}
 ALLOWED_CONTENT_TYPES = {
     "image/jpeg", "image/jpg", "image/png", "image/webp", "image/tiff", "application/pdf", DOCX_TYPE,
 }  # fmt: skip
+
+
+pillow_heif.register_heif_opener()  # lets Pillow open HEIC photos
 
 
 def get_upload_root() -> Path:
@@ -28,10 +42,11 @@ def sanitize_path_segment(value: str) -> str:
 def validate_upload(file: UploadFile) -> str:
     filename = file.filename or ""
     suffix = Path(filename).suffix.lower()
-    if suffix not in ALLOWED_EXTENSIONS or file.content_type not in ALLOWED_CONTENT_TYPES:
+    heic = suffix in HEIC_EXTENSIONS and (file.content_type or "") in HEIC_CONTENT_TYPES
+    if suffix not in ALLOWED_EXTENSIONS or not (heic or file.content_type in ALLOWED_CONTENT_TYPES):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Only PDF, Word (.docx), JPG, PNG, WebP and TIFF reports are supported.",
+            detail="Only PDF, Word (.docx), JPG, PNG, WebP, HEIC and TIFF reports are supported.",
         )
     return suffix
 
@@ -85,8 +100,27 @@ async def save_upload_file(file: UploadFile, category: str, patient_id: int | st
             output.write(chunk)
 
     validate_stored_file(stored_path, suffix)
-    public_path = Path("uploads") / patient_dir / category_dir / stored_name
+    if suffix in HEIC_EXTENSIONS:
+        stored_path, suffix = _heic_to_jpeg(stored_path), ".jpg"
+    public_path = Path("uploads") / patient_dir / category_dir / stored_path.name
     return public_path.as_posix(), suffix.lstrip(".")
+
+
+def _heic_to_jpeg(path: Path) -> Path:
+    """Browsers other than Safari cannot show HEIC, so the stored file is a JPEG, turned upright."""
+    target = path.with_suffix(".jpg")
+    try:
+        with Image.open(path) as image:
+            ImageOps.exif_transpose(image).convert("RGB").save(target, "JPEG", quality=92)
+    except Exception:
+        target.unlink(missing_ok=True)
+        path.unlink(missing_ok=True)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="That HEIC photo could not be read. Take the photo again or save it as JPG.",
+        ) from None
+    path.unlink(missing_ok=True)
+    return target
 
 
 def stored_path_to_disk_path(stored_file_path: str) -> Path:

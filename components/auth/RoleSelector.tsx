@@ -1,12 +1,12 @@
-import { ShieldCheck, Stethoscope, UserRound, type LucideIcon } from "lucide-react";
+import { Stethoscope, UserRound, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/cn";
 import type { UserRole } from "@/lib/types";
 
+// Admin accounts are not offered on the public form; the API still creates one with the admin invite code.
 const ROLES: Array<{ role: UserRole; title: string; description: string; icon: LucideIcon }> = [
   { role: "patient", title: "Patient", description: "Keep your reports, vitals and medicines", icon: UserRound },
   { role: "doctor", title: "Doctor", description: "Review files patients share with you", icon: Stethoscope },
-  { role: "admin", title: "Admin", description: "Requires an invite code", icon: ShieldCheck },
 ];
 
 /** Account type chooser, built as a radio group so it works with the keyboard. */
@@ -14,7 +14,7 @@ export function RoleSelector({ value, onChange }: { value: UserRole; onChange: (
   return (
     <fieldset>
       <legend className="text-sm font-medium text-slate-700">Account type</legend>
-      <div className="mt-2 grid gap-3 sm:grid-cols-3">
+      <div className="mt-2 grid gap-3 sm:grid-cols-2">
         {ROLES.map(({ role, title, description, icon: Icon }) => {
           const selected = value === role;
           return (

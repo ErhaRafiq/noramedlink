@@ -37,7 +37,7 @@ export const MIN_PASSWORD_LENGTH = 8;
 const CNIC_PATTERN = /^(?:\d{5}-\d{7}-\d|\d{13})$/;
 
 export function parseRole(value: string | null | undefined): UserRole {
-  return value === "doctor" || value === "admin" ? value : "patient";
+  return value === "doctor" ? value : "patient"; // admin is not a public sign-up choice
 }
 
 /** Field-level errors (empty object = valid). The backend validates again. */

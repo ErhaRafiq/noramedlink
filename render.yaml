@@ -1,16 +1,11 @@
-# Render Blueprint: Nora MedLink as one monorepo, two web services and a database.
+# Render Blueprint: Nora MedLink as one monorepo, two web services.
 #   nora-web  Next.js (repo root)        the website; proxies /api/backend/* to nora-api
 #   nora-api  FastAPI (backend/)         the API; runs `alembic upgrade head` at startup
-#   nora-db   PostgreSQL
-# Free plan limits (see README, "Deploy to Render"): services sleep after 15 idle minutes,
-# uploaded files are lost on every restart or deploy (no disk), BioBERT is off (512 MB memory),
-# and the free database has an expiry date.
-
-databases:
-  - name: nora-db
-    plan: free
-    databaseName: noramedlink
-    user: nora
+# The database is an external free PostgreSQL (Neon, see README "Deploy to Render"): Render's own free
+# database is deleted after about 30 days. Paste its connection string as DATABASE_URL on nora-api.
+# Free plan limits: services sleep after 15 idle minutes (reminder emails need an uptime pinger on
+# nora-api /health), uploaded files are lost on every restart or deploy (no disk), BioBERT is off
+# (512 MB memory).
 
 envVarGroups:
   # Shared by both services. Secrets are entered in the Render dashboard (sync: false), never here.
@@ -41,13 +36,22 @@ services:
         - backend/**
     envVars:
       - fromGroup: nora-shared
+      # Neon: use the DIRECT connection string (not the "pooler" one), it ends with ?sslmode=require.
       - key: DATABASE_URL
-        fromDatabase:
-          name: nora-db
-          property: connectionString
-      # The website's public address, e.g. https://nora-web.onrender.com (CORS and Stripe's return pages).
+        sync: false
+      # The website's public address, e.g. https://nora-web.onrender.com (CORS, Stripe return pages, links in emails).
       - key: FRONTEND_ORIGIN
         sync: false
+      # Email through Resend. Empty key: no email is sent. The domain in EMAIL_FROM must be verified in Resend.
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        value: "Nora MedLink <noreply@noramedlink.online>"
+      - key: EMAIL_REPLY_TO
+        sync: false
+      # Doctor verification on the free public PMDC register (the admin can always decide by hand).
+      - key: PMDC_LOOKUP_ENABLED
+        value: "1"
       # BioBERT needs about 1 GB of memory; the free instance has 512 MB. The fixed rules still run.
       - key: BIOBERT_ENABLED
         value: "0"
