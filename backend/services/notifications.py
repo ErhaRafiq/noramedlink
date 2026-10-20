@@ -284,8 +284,8 @@ def password_changed(db: Session, user_id: int) -> None:
 def doctor_decision(db: Session, doctor_user_id: int, approved: bool) -> None:
     if approved:
         add(db, doctor_user_id, "doctor_approved", "Your account was approved",
-            "Patients can now find and book you. Set your weekly hours in your profile so they can pick a time.",
-            link="/profile")  # fmt: skip
+            "Patients can find you now, but they can only book once you set your weekly hours. It takes a minute.",
+            link="/profile#hours")  # fmt: skip
     else:
         add(db, doctor_user_id, "doctor_rejected", "Your registration was not approved",
             "An administrator did not approve your registration. Contact them if you think this is a mistake.",

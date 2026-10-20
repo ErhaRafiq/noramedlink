@@ -63,7 +63,7 @@ def test_doctor_needs_registration_specialty_and_hospital():
     assert "Specialization" in rejected(payload(role="doctor", **{**complete, "hospital_name": None})).detail
 
 
-@pytest.mark.parametrize("number", ["PMC-12345", "12345", "HACKED", "12-P", "12345-PP", "P-12345"])
+@pytest.mark.parametrize("number", ["PMC-12345", "12345", "HACKED", "12-X", "12345-PP", "P-12345"])
 def test_a_doctor_number_that_is_not_in_a_recognised_form_is_refused_with_an_example(number):
     complete = {"specialization": "Cardiology", "hospital_name": "City Hospital"}
     error = rejected(payload(role="doctor", pmdc_number=number, **complete))

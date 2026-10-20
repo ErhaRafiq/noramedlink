@@ -119,7 +119,7 @@ export function AvailabilityEditor() {
   }
 
   return (
-    <Card aria-labelledby="hours-title">
+    <Card id="hours" className="scroll-mt-24" aria-labelledby="hours-title">
       <CardHeader
         title={<span id="hours-title">Weekly hours</span>}
         description="Patients book one of the appointment times cut from these windows. Times are in Pakistan time (PKT). Appointments already booked stay as they are."

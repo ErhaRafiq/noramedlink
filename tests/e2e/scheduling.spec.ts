@@ -78,3 +78,25 @@ test.describe("appointments and notifications", () => {
     await expect(page).toHaveURL(/\/login\?next=%2Fnotifications/);
   });
 });
+
+test.describe("an approved doctor without weekly hours", () => {
+  test("is told patients cannot book yet, with a link to the hours editor", async ({ page }) => {
+    await signInAs(page, fixtures().users.doctorWithAccess);
+    await page.route("**/api/backend/doctor/availability", (route) =>
+      route.fulfill({ json: { timezone: "Asia/Karachi", slot_choices: [15, 20, 30, 45, 60], windows: [] } }),
+    );
+    await page.goto("/dashboard/doctor");
+    const banner = page.getByRole("status").filter({ hasText: "Patients cannot book you yet" });
+    await expect(banner).toBeVisible();
+    await expectNoHorizontalScroll(page);
+    await banner.getByRole("link", { name: "Set my weekly hours" }).click();
+    await expect(page).toHaveURL(/\/profile#hours$/);
+  });
+
+  test("a doctor who has hours sees no such notice", async ({ page }) => {
+    await signInAs(page, fixtures().users.doctorWithAccess);
+    await page.goto("/dashboard/doctor");
+    await expect(page.getByRole("heading", { name: /Welcome back/ })).toBeVisible();
+    await expect(page.getByText("Patients cannot book you yet")).toHaveCount(0);
+  });
+});

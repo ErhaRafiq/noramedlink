@@ -11,6 +11,7 @@ import { SkeletonCard } from "@/components/ui/skeleton";
 import { ErrorState, PageLoader } from "@/components/ui/spinner";
 import { StatCard, StatCardSkeleton } from "@/components/ui/stat-card";
 import { signOut as endSession } from "@/lib/auth";
+import { HoursBanner } from "./doctor/HoursBanner";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useDoctorDashboard } from "@/hooks/doctor/use-doctor-dashboard";
 import { ClinicalSummaryCard } from "./doctor/clinical-summary/ClinicalSummaryCard";
@@ -74,6 +75,7 @@ export function DoctorDashboard() {
       </header>
 
       <EmailVerifyBanner verified={auth.user.is_email_verified} />
+      <HoursBanner approved={isVerified} />
 
       {profile && !isVerified ? (
         <Alert tone="warning" title={verification === "rejected" ? "Verification rejected" : "Verification pending"}>
