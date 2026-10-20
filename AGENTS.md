@@ -123,6 +123,7 @@ The app needs **two terminals running at the same time**: backend and frontend.
 | Phone overflow check | `node scripts/find-overflow.mjs http://localhost:3000/<page>` (lists elements wider than 390px) |
 | Backend smoke tests | `$env:HF_HUB_OFFLINE="1"; backend\venv\Scripts\python.exe backend\test_quick.py` |
 | Migration state | `cd backend; .\venv\Scripts\python.exe -m alembic current` |
+| Query counts (N+1) | `$env:DISABLE_PAID_SERVICES="1"; backendenv\Scripts\python.exe tests\query_count_test.py` (local database only; fails if any list endpoint runs more SQL with 15 rows than with 3) |
 | Schema drift check | `cd backend; .\venv\Scripts\python.exe -m alembic check` (must report no new operations) |
 | Free a stuck port | `Get-NetTCPConnection -LocalPort 8000 -State Listen \| ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }` |
 
