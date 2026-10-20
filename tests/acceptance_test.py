@@ -121,6 +121,7 @@ FASTAPI_ANY_USER_ROUTES = [
     ("PUT", "/api/backend/appointments/1"),
     ("GET", "/api/backend/payments"),
     ("POST", "/api/backend/nlp/summarize"),
+    ("POST", "/api/backend/nlp/read-file"),
 ]
 ALL_ROUTES = (ADMIN_ROUTES + DOCTOR_ROUTES + PATIENT_ROUTES + ANY_USER_ROUTES
               + FASTAPI_PATIENT_ROUTES + FASTAPI_ANY_USER_ROUTES + FASTAPI_ADMIN_ROUTES)
@@ -826,6 +827,22 @@ def run_tests() -> None:
             cell_.text = value
         word_file = io.BytesIO()
         document.save(word_file)
+        response = client.post(
+            "/api/backend/nlp/read-file",
+            headers={"Authorization": f"Bearer {tok_a}"},
+            files={"file": ("phase0.docx", word_file.getvalue(),
+                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        )
+        read = response.json() if response.status_code == 200 else {}
+        check("a Word file is read for the Summarize page and nothing is stored -> 200 with its text",
+              response.status_code == 200 and "Glucose 250 mg/dL" in read.get("text", "") and read.get("source") == "text_layer",
+              f"got {response.status_code}")
+        response = client.post("/api/backend/nlp/read-file", headers={"Authorization": f"Bearer {tok_a}"},
+                               files={"file": ("notes.txt", b"hello", "text/plain")})
+        check("a text file on the Summarize page -> 400", response.status_code == 400, f"got {response.status_code}")
+        response = client.post("/api/backend/nlp/read-file", headers={"Authorization": f"Bearer {tok_a}"},
+                               files={"file": ("x.png", b"not an image", "image/png")})
+        check("a broken image on the Summarize page -> 400", response.status_code == 400, f"got {response.status_code}")
         response = client.post(
             "/api/backend/patient/reports/upload",
             headers={"Authorization": f"Bearer {tok_a}"},

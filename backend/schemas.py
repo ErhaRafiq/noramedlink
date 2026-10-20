@@ -218,6 +218,17 @@ class SummarizeRequest(BaseModel):
     category: str | None = None
 
 
+class FileTextOut(BaseModel):
+    """The text read from a picked file (nothing is stored), for the reader to check before summarising."""
+
+    text: str
+    truncated: bool
+    source: Literal["ocr", "text_layer"]
+    confidence: float | None
+    uncertain: list[str]  # numbers the OCR was unsure of, shown as "check against the original"
+    uncertain_count: int
+
+
 class SummaryResponse(BaseModel):
     summary: str
     method: Literal["gemini", "openai", "groq", "rule_based"]

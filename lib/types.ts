@@ -875,6 +875,15 @@ export type DoctorSearch = {
   pmdcVerified?: boolean;
 };
 
+export type FileText = {
+  text: string;
+  truncated: boolean;
+  source: "ocr" | "text_layer";
+  confidence: number | null;
+  uncertain: string[];
+  uncertain_count: number;
+};
+
 export type ExplainPosition = "above" | "below" | "within" | "unknown" | "unreadable";
 export type ExplainGauge = { min: number; max: number; low: number | null; high: number | null; value: number };
 export type ExplainResult = {

@@ -9,8 +9,10 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { api } from "@/lib/api";
+import { useFileText } from "@/hooks/use-file-text";
 import { useStoredSession } from "@/hooks/use-stored-session";
 import type { SummaryResponse } from "@/lib/types";
+import { FileReader } from "./FileReader";
 import { SummaryResult } from "./SummaryResult";
 
 const MIN_LENGTH = 20;
@@ -24,6 +26,7 @@ export function SummarizeView() {
   const [result, setResult] = useState<SummaryResponse | null>(null);
   const [pending, setPending] = useState<"text" | "saved" | null>(null);
   const [error, setError] = useState("");
+  const fileText = useFileText(setText);
 
   async function summarizeText(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -65,7 +68,7 @@ export function SummarizeView() {
       <PageHeader
         eyebrow="Summaries"
         title="Summarize a medical report"
-        description="Paste the text of a lab report or prescription, or summarize the reports you have already uploaded."
+        description="Upload a photo or file of a lab report, paste its text, or summarize the reports you have already uploaded."
       />
 
       {!ready ? null : !session ? (
@@ -104,6 +107,7 @@ export function SummarizeView() {
                 ) : null}
               </div>
             </div>
+            <FileReader state={fileText.state} onPick={(file) => void fileText.read(file)} disabled={pending !== null} />
             <textarea
               id="report-text"
               value={text}

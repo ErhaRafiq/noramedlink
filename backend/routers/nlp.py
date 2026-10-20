@@ -1,11 +1,12 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from sqlalchemy.orm import Session
 
 from database import get_db
 from dependencies import get_current_user, require_patient
 from models import PatientReport, User
 from rate_limit import AI_LIMIT, limiter
-from schemas import SummarizeRequest, SummaryResponse
+from schemas import FileTextOut, SummarizeRequest, SummaryResponse
+from services.file_reader import read_upload_text
 from services.nlp_service import summarize_with_optional_llm
 from services.privacy import patient_identity_patterns
 from services.report_breakdown import build_breakdown
@@ -30,6 +31,13 @@ def _check_length(text: str) -> str:
             detail="Medical report text must be 20,000 characters or less.",
         )
     return text
+
+
+@router.post("/read-file", response_model=FileTextOut)
+@limiter.limit(AI_LIMIT)
+async def read_file(request: Request, file: UploadFile = File(...), current_user: User = Depends(get_current_user)):
+    """Reads a PDF, Word file or photo of a report and returns its text. The file is not stored."""
+    return await read_upload_text(file)
 
 
 @router.post("/summarize", response_model=SummaryResponse)

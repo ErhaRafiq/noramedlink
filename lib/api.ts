@@ -38,6 +38,7 @@ import type {
   HealthOptions,
   SymptomCheck,
   ReportExplanation,
+  FileText,
   AskAnswer,
   AskTurn,
   SymptomStats,
@@ -223,6 +224,11 @@ export const api = {
   },
   askAboutReport(reportId: number, payload: { question: string; topic?: string | null; history: AskTurn[] }) {
     return apiRequest<AskAnswer>(`/patient/reports/${reportId}/ask`, { method: "POST", body: JSON.stringify(payload) });
+  },
+  readFileText(file: File) {
+    const form = new FormData();
+    form.append("file", file);
+    return apiRequest<FileText>("/nlp/read-file", { method: "POST", body: form });
   },
   checkSymptoms(text: string) {
     return apiRequest<SymptomCheck>("/symptoms/check", { method: "POST", body: JSON.stringify({ text }) });

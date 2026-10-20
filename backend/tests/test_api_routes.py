@@ -117,6 +117,7 @@ ANY_SIGNED_IN_ROLE = {
     "/auth/me": "the caller's own account",
     "/api/auth/me": "the caller's own account",
     "/nlp/summarize": "summarises text the caller pastes; stores nothing",
+    "/nlp/read-file": "reads the text of a file the caller picks; stores nothing, any signed-in user",
     "/appointments": "lists the caller's own appointments (patients: booked by them; doctors: booked with them)",
     "/appointments/{appointment_id}": "owner, treating doctor or admin only (can_access_appointment); no payment status changes",
     "/payments": "the caller's own payments",
