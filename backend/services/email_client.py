@@ -10,16 +10,19 @@
 - Nothing is logged but the kind and the outcome: no address, no subject, no body (a body can hold a code).
 """
 
+import base64
 import logging
 from collections.abc import Callable
+from functools import lru_cache
 
 import httpx
 
-from config import settings
+from config import BACKEND_DIR, settings
 
 log = logging.getLogger("nora.email")
 
 RESEND_URL = "https://api.resend.com/emails"
+LOGO_CID = "nora-logo"  # the templates show the logo as <img src="cid:nora-logo">
 TIMEOUT_SECONDS = 10.0
 
 
@@ -31,6 +34,19 @@ class EmailError(Exception):
     def __init__(self, message: str, *, retryable: bool):
         super().__init__(message)
         self.retryable = retryable
+
+
+@lru_cache(maxsize=1)
+def _logo_attachment() -> dict:
+    """The logo, sent inside every email as an inline image. A link to our own site would not load in the
+    reader's mail app when the site is on localhost or behind a login, and Gmail blocks data: images."""
+    data = (BACKEND_DIR / "assets" / "email-logo.png").read_bytes()
+    return {
+        "filename": "nora-medlink.png",
+        "content": base64.b64encode(data).decode("ascii"),
+        "content_type": "image/png",
+        "content_id": LOGO_CID,
+    }
 
 
 def is_configured() -> bool:
@@ -57,6 +73,7 @@ def send(
         "html": html,
         "text": text,
         "tags": [{"name": "kind", "value": kind}],
+        "attachments": [_logo_attachment()],
     }
     if settings.email_reply_to:
         payload["reply_to"] = settings.email_reply_to
