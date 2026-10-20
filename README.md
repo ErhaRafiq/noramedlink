@@ -185,7 +185,7 @@ stripe login
 npm run dev:all
 ```
 
-Without `npm run dev:all`, run `stripe listen --forward-to localhost:8000/payments/stripe/webhook` yourself, put the
+Without `npm run dev:all`, run `stripe listen --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired,charge.refunded,refund.failed --forward-to localhost:8000/payments/stripe/webhook` yourself (newer CLI versions require `--events`), put the
 `whsec_...` it prints in `.env` as `STRIPE_WEBHOOK_SECRET` and restart the backend.
 
 Pay with the test card **4242 4242 4242 4242**, any future expiry date and any CVC. Without

@@ -47,7 +47,7 @@ if ($stripe) {
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$host.UI.RawUI.WindowTitle = 'Nora backend'; Set-Location '$root\backend'; $secretLine& '$python' -m uvicorn main:app --port 8000"
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$host.UI.RawUI.WindowTitle = 'Nora frontend'; Set-Location '$root'; npm run dev"
 if ($stripe) {
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$host.UI.RawUI.WindowTitle = 'Stripe webhooks'; stripe listen --forward-to localhost:8000/payments/stripe/webhook"
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "`$host.UI.RawUI.WindowTitle = 'Stripe webhooks'; stripe listen --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.async_payment_failed,checkout.session.expired,charge.refunded,refund.failed --forward-to localhost:8000/payments/stripe/webhook"
 }
 
 Write-Host ""
