@@ -20,7 +20,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from models import MedicineHistory, Prescription, User
-from services import health_record, knowledge
+from services import health_record, knowledge, pregnancy
 from services.icse.versions import gather
 from services.lab_rules import assess
 from services.mscie.engine import Med, PatientContext, resolve
@@ -123,6 +123,7 @@ def build_context(db: Session, patient: User, today: date | None = None) -> Pati
                         "source": _report_label(source),
                     }
     _add_structured_entries(db, patient, context)
+    context.pregnancy = pregnancy.state_for(patient.patient_profile, today).status
     if context.allergies:
         context.allergy_status = "listed"
     return context
@@ -171,4 +172,5 @@ def context_summary(context: PatientContext) -> dict[str, Any]:
         "allergy_status": context.allergy_status,
         "labs": [{"test": test, **lab} for test, lab in context.labs.items()],
         "previous": context.previous,
+        "pregnancy": context.pregnancy,
     }

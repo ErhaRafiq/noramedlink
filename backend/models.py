@@ -53,6 +53,7 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
         uselist=False,
+        foreign_keys="PatientProfile.user_id",  # the profile also points at users for who set the pregnancy status
     )
     doctor_profile: Mapped["DoctorProfile | None"] = relationship(
         back_populates="user",
@@ -107,6 +108,14 @@ class PatientProfile(Base):
     blood_group: Mapped[str | None] = mapped_column(String(3), nullable=True)
     emergency_contact_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     emergency_contact_phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Pregnancy status: "pregnant" or "not_pregnant"; null means not recorded. Set by the patient or by a doctor
+    # with an active grant; a "pregnant" status that is too old counts as not recorded (services/pregnancy.py).
+    pregnancy_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    pregnancy_status_set_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pregnancy_status_set_by_role: Mapped[str | None] = mapped_column(String(20), nullable=True)  # patient or doctor
+    pregnancy_status_set_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -114,7 +123,7 @@ class PatientProfile(Base):
         onupdate=func.now(),
     )
 
-    user: Mapped[User] = relationship(back_populates="patient_profile")
+    user: Mapped[User] = relationship(back_populates="patient_profile", foreign_keys=[user_id])
 
 
 class DoctorProfile(Base):

@@ -523,6 +523,7 @@ class PatientProfileOut(BaseModel):
     latest_weight_date: date | None = None
     latest_height_cm: float | None = None
     latest_height_date: date | None = None
+    pregnancy: "PregnancyStateOut | None" = None
 
 
 class DoctorProfileOut(BaseModel):
@@ -1106,8 +1107,25 @@ class DoctorBodySummaryOut(BodySummaryOut):
     bmi_category: str | None
     bmi_category_note: str | None
     bmi_asian_note: str | None
+    pregnancy: "PregnancyStateOut"
     weight_current: bool | None  # null when no weight; False: older than the app rule (demo) allows
     weight_max_age_days: int
     weight_change_flags: list[WeightChangeOut]
     change_since_previous: WeightChangeOut | None
     disclaimer: str
+
+
+class PregnancyStatusIn(BaseModel):
+    status: Literal["pregnant", "not_pregnant", "not_recorded"]  # not_recorded clears it
+
+
+class PregnancyStateOut(BaseModel):
+    status: str  # pregnant, not_pregnant or not_recorded: what the checks use
+    set_on: date | None  # when it was last set (also when it has expired)
+    set_by_role: str | None  # patient or doctor
+    expired: bool  # an old "pregnant" status counts as not recorded: ask for an update
+    max_months: int  # the app rule (demo) behind "old"
+
+
+PatientProfileOut.model_rebuild()
+DoctorBodySummaryOut.model_rebuild()

@@ -25,6 +25,7 @@ ACTIONS = {
     "body_measurement.add": "added a weight or height reading",
     "body_measurement.update": "changed a weight or height reading",
     "body_measurement.remove": "removed a weight or height reading",
+    "pregnancy_status.set": "set the pregnancy status",
     "prescription.confirm": "confirmed a prescription",
     "prescription.cancel": "cancelled a prescription",
     "safety.override": "overrode a medication safety alert",

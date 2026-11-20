@@ -18,9 +18,16 @@ def audit_calls(monkeypatch):
     return calls
 
 
-def row(by="patient", weight=70.0, height=170.0, on=date(2026, 1, 1)):
+def row(by="patient", weight=70.0, height=170.0, on=date(2026, 1, 1), added_by_id=None):
     return SimpleNamespace(
-        id=1, patient_id=5, weight_kg=weight, height_cm=height, measured_on=on, status="active", added_by_role=by
+        id=1,
+        patient_id=5,
+        weight_kg=weight,
+        height_cm=height,
+        measured_on=on,
+        status="active",
+        added_by_role=by,
+        added_by_id=added_by_id if added_by_id is not None else (5 if by == "patient" else 9),
     )
 
 
@@ -54,6 +61,17 @@ def test_a_doctor_cannot_change_or_remove_a_patients_reading():
     with pytest.raises(HTTPException) as error:
         body_record.remove(None, r, doctor, "doctor")
     assert error.value.status_code == 403 and r.status == "active"
+
+
+def test_a_second_doctor_cannot_change_or_remove_another_doctors_reading(audit_calls):
+    r = row(by="doctor", added_by_id=9)
+    other = SimpleNamespace(id=10)
+    with pytest.raises(HTTPException) as error:
+        body_record.update(None, r, other, "doctor", BodyMeasurementUpdate(weight=60))
+    assert error.value.status_code == 403 and "Add a new reading" in error.value.detail and r.weight_kg == 70.0
+    with pytest.raises(HTTPException) as error:
+        body_record.remove(None, r, other, "doctor")
+    assert error.value.status_code == 403 and r.status == "active" and audit_calls == []
 
 
 def test_a_doctor_changes_and_removes_a_doctors_reading(audit_calls):

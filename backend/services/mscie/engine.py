@@ -53,6 +53,9 @@ class PatientContext:
     allergies: list[dict] = field(default_factory=list)  # {"name", "generics", "classes", "source"}
     allergy_status: str = "not_recorded"  # listed | none_recorded | not_recorded
     labs: dict[str, dict] = field(default_factory=dict)  # test -> {"value", "unit", "date", "source"}
+    pregnancy: str = (
+        "not_recorded"  # pregnant | not_pregnant | not_recorded (services/pregnancy.py); no rule reads it yet
+    )
 
 
 @dataclass

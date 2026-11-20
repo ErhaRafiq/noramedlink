@@ -34,6 +34,7 @@ from routers import (
     notifications,
     patient_insights,
     payments,
+    pregnancy,
     profile,
     report_explain,
     reports,
@@ -128,6 +129,7 @@ app.include_router(payments.router)
 app.include_router(profile.router)
 app.include_router(health_record.router)
 app.include_router(body_measurements.router)
+app.include_router(pregnancy.router)
 app.include_router(audit.router)
 app.include_router(symptoms.router)
 app.include_router(notifications.router)

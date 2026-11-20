@@ -1,19 +1,21 @@
 """A patient's dated weight and height history (database side of services/body_measurements.py).
 
 The patient enters and corrects their own readings; a doctor with an active access grant can add readings
-and can change or remove the ones a doctor entered. Nobody can change a reading entered by the other role.
+and can change or remove only the ones that same doctor entered. Nobody can change a reading entered by
+someone else: they add a new reading, which becomes the latest.
 Nothing is hard-deleted ("removed" hides a reading). Every add, change and removal is written to the audit
 log with a label only ("weight", "height"), never the values.
 """
 
 from __future__ import annotations
 
+from dataclasses import asdict
 from typing import Any
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from models import BodyMeasurement, PatientHealthEntry, User
+from models import BodyMeasurement, User
 from schemas import (
     BodyMeasurementIn,
     BodyMeasurementOut,
@@ -21,9 +23,10 @@ from schemas import (
     BodySummaryOut,
     DoctorBodySummaryOut,
     LatestReadingOut,
+    PregnancyStateOut,
     WeightChangeOut,
 )
-from services import audit
+from services import audit, pregnancy
 from services import body_measurements as bm
 
 MAX_READINGS = 500
@@ -133,19 +136,26 @@ def get_row(db: Session, patient_id: int, row_id: int) -> BodyMeasurement:
     return row
 
 
-def _only_own(row: BodyMeasurement, role: str) -> None:
-    """A patient changes only readings a patient entered; a doctor only readings a doctor entered."""
+def _only_own(row: BodyMeasurement, role: str, actor: User) -> None:
+    """A patient changes only readings the patient entered. A doctor changes only a reading that same doctor
+    entered; to correct anyone else's figure a doctor adds a new reading (it becomes the latest and both stay)."""
     if row.added_by_role != role:
         who = "a doctor" if row.added_by_role == "doctor" else "the patient"
         raise HTTPException(
-            status.HTTP_403_FORBIDDEN, f"This reading was entered by {who}, so only {who} can change it."
+            status.HTTP_403_FORBIDDEN,
+            f"This reading was entered by {who}, so only {who} can change it. Add a new reading instead.",
+        )
+    if role == "doctor" and row.added_by_id != actor.id:
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Only the doctor who entered this reading can change it. Add a new reading instead.",
         )
 
 
 def update(
     db: Session, row: BodyMeasurement, actor: User, role: str, payload: BodyMeasurementUpdate
 ) -> BodyMeasurement:
-    _only_own(row, role)
+    _only_own(row, role, actor)
     sent = payload.model_fields_set
     weight = row.weight_kg
     height = row.height_cm
@@ -177,7 +187,7 @@ def update(
 
 
 def remove(db: Session, row: BodyMeasurement, actor: User, role: str) -> None:
-    _only_own(row, role)
+    _only_own(row, role, actor)
     row.status = "removed"
     audit.record(
         db, actor, "body_measurement.remove", patient_id=row.patient_id, target_type="body_measurement",
@@ -198,15 +208,6 @@ def latest_for_profile(db: Session, patient_id: int) -> dict[str, Any]:
         "latest_height_cm": height.value if height else None,
         "latest_height_date": height.measured_on if height else None,
     }
-
-
-def is_marked_pregnant(db: Session, patient_id: int) -> bool:
-    """The app has no pregnancy field: a patient or doctor marks it by adding "pregnancy" to the health
-    record (any active entry whose name contains "pregnan"). Without it the BMI category is not withheld."""
-    names = db.query(PatientHealthEntry.name).filter(
-        PatientHealthEntry.patient_id == patient_id, PatientHealthEntry.status == "active"
-    )
-    return any("pregnan" in (name or "").lower() for (name,) in names)
 
 
 def _latest_out(reading: bm.Reading | None) -> LatestReadingOut | None:
@@ -243,9 +244,8 @@ def doctor_summary(db: Session, patient: User, age: int | None) -> DoctorBodySum
     weights = bm.readings(rows, "weight_kg")
     weight = bm.latest(weights)
     height = bm.latest(bm.readings(rows, "height_cm"))
-    result = bm.bmi_result(
-        weight.value if weight else None, height.value if height else None, age, is_marked_pregnant(db, patient.id)
-    )
+    state = pregnancy.state_for(patient.patient_profile)
+    result = bm.bmi_result(weight.value if weight else None, height.value if height else None, age, state.pregnant)
     return DoctorBodySummaryOut(
         weight=_latest_out(weight),
         height=_latest_out(height),
@@ -254,6 +254,7 @@ def doctor_summary(db: Session, patient: User, age: int | None) -> DoctorBodySum
         bmi_category=result.category if result else None,
         bmi_category_note=result.category_note if result else None,
         bmi_asian_note=result.asian_note if result else None,
+        pregnancy=PregnancyStateOut(**asdict(state)),
         weight_current=bm.weight_is_current(weight.measured_on, age) if weight else None,
         weight_max_age_days=bm.weight_max_age_days(age),
         weight_change_flags=[_change_out(c) for c in bm.weight_change_flags(weights)],

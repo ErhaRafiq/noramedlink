@@ -80,6 +80,7 @@ DOCTOR_ROUTES = [
     ("POST", "/api/backend/doctor/patients/1/body-measurements"),
     ("PATCH", "/api/backend/doctor/patients/1/body-measurements/1"),
     ("DELETE", "/api/backend/doctor/patients/1/body-measurements/1"),
+    ("PUT", "/api/backend/doctor/patients/1/pregnancy-status"),
 ]
 PATIENT_ROUTES = [
 ]
@@ -95,6 +96,7 @@ FASTAPI_PATIENT_ROUTES = [
     ("POST", "/api/backend/patient/body-measurements"),
     ("PATCH", "/api/backend/patient/body-measurements/1"),
     ("DELETE", "/api/backend/patient/body-measurements/1"),
+    ("PUT", "/api/backend/patient/pregnancy-status"),
     ("GET", "/api/backend/patient/medications"),
     ("POST", "/api/backend/patient/medications"),
     ("POST", "/api/backend/patient/medicine-reminders"),
@@ -1541,10 +1543,90 @@ def run_tests() -> None:
     check("the patient is told when a doctor changes the record",
           scalar("select count(*) from notifications where user_id = :u and kind = 'record_changed'", u=patient_c) >= 1)
 
-    call("POST", "/api/backend/patient/health-record", tok_c, {"kind": "diagnosis", "name": "pregnancy"})
+    print("\n[17g] Pregnancy status: the patient's own, a doctor with a grant, expiry, no guessing from text")
+    ps = "/api/backend/patient/pregnancy-status"
+    dps = f"/api/backend/doctor/patients/{patient_c}/pregnancy-status"
+    check("pregnancy status without a token -> 401",
+          call("PUT", ps, None, {"status": "pregnant"}).status_code == 401 and call("PUT", dps, None, {"status": "pregnant"}).status_code == 401)
+    check("a doctor on the patient's route -> 403", call("PUT", ps, tok_doctor_c, {"status": "pregnant"}).status_code == 403)
+    check("a patient on the doctor's route -> 403", call("PUT", dps, tok_c, {"status": "pregnant"}).status_code == 403)
+    check("an unknown status -> 422", call("PUT", ps, tok_c, {"status": "expecting"}).status_code == 422)
+    check("a free-text word is not a status -> 422", call("PUT", ps, tok_c, {"status": "pregnancy test negative"}).status_code == 422)
+    check("a new patient's status is not recorded, not 'not pregnant'",
+          call("GET", "/api/backend/profile", tok_c).json()["patient"]["pregnancy"]["status"] == "not_recorded")
+
+    call("POST", "/api/backend/patient/health-record", tok_c, {"kind": "diagnosis", "name": "pregnancy test negative"})
+    call("POST", "/api/backend/patient/health-record", tok_c, {"kind": "diagnosis", "name": "not pregnant"})
     view = call("GET", dbm + "/summary", tok_doctor_c).json()
-    check("marked pregnant: the number stays, the category is withheld with its reason",
-          view.get("bmi") is not None and view.get("bmi_category") is None and "pregnant" in (view.get("bmi_category_note") or ""))
+    check("health-record words are never read as a pregnancy status (the category stays, the status is not recorded)",
+          view.get("bmi_category") == "normal range" and view["pregnancy"]["status"] == "not_recorded", f"got {view}")
+
+    response = call("PUT", ps, tok_c, {"status": "pregnant"})
+    state = response.json() if response.status_code == 200 else {}
+    check("C sets pregnant -> 200, dated today, set by the patient",
+          response.status_code == 200 and state.get("status") == "pregnant" and state.get("set_on") == today_s
+          and state.get("set_by_role") == "patient" and state.get("expired") is False and state.get("max_months") == 10, f"got {response.text[:150]}")
+    check("the profile shows it",
+          call("GET", "/api/backend/profile", tok_c).json()["patient"]["pregnancy"]["status"] == "pregnant")
+    response = call("PUT", ps, tok_a, {"status": "not_pregnant", "patient_id": patient_c, "userId": patient_c})
+    check("A sets A's own status; a patient id in the body is ignored -> C is unchanged",
+          response.status_code == 200 and scalar("select pregnancy_status from patient_profiles where user_id = :p", p=patient_a) == "not_pregnant"
+          and scalar("select pregnancy_status from patient_profiles where user_id = :p", p=patient_c) == "pregnant")
+    check("A has no way to reach C's status through the doctor route -> 403", call("PUT", dps, tok_a, {"status": "not_pregnant"}).status_code == 403)
+    check("a doctor with no grant cannot set it -> 403", call("PUT", dps, tok_doctor_2, {"status": "not_pregnant"}).status_code == 403
+          and scalar("select pregnancy_status from patient_profiles where user_id = :p", p=patient_c) == "pregnant")
+
+    view = call("GET", dbm + "/summary", tok_doctor_c).json()
+    check("pregnant: the BMI number stays, the category is withheld with its reason",
+          view.get("bmi") is not None and view.get("bmi_category") is None and "pregnant" in (view.get("bmi_category_note") or "")
+          and view["pregnancy"]["status"] == "pregnant")
+
+    response = call("PUT", dps, tok_doctor_c, {"status": "not_pregnant"})
+    check("the granted doctor changes it; the role and date are kept",
+          response.status_code == 200 and response.json().get("set_by_role") == "doctor" and response.json().get("set_on") == today_s)
+    check("and the category is back", call("GET", dbm + "/summary", tok_doctor_c).json().get("bmi_category") == "normal range")
+    check("the patient is told", scalar("select count(*) from notifications where user_id = :u and kind = 'record_changed' and body like '%pregnancy status%'", u=patient_c) >= 1)
+
+    call("PUT", ps, tok_c, {"status": "pregnant"})
+    with engine.begin() as conn:  # make the status 11 months old
+        conn.execute(text("update patient_profiles set pregnancy_status_set_at = now() - interval '335 days' where user_id = :p"), {"p": patient_c})
+    view = call("GET", dbm + "/summary", tok_doctor_c).json()
+    shown = call("GET", "/api/backend/profile", tok_c).json()["patient"]["pregnancy"]
+    check("an 11-month-old 'pregnant' counts as not recorded and the page is told to ask for an update",
+          view["pregnancy"]["status"] == "not_recorded" and view["pregnancy"]["expired"] is True and shown["expired"] is True
+          and shown["status"] == "not_recorded" and view.get("bmi_category") == "normal range", f"got {view['pregnancy']}")
+    with engine.begin() as conn:
+        conn.execute(text("update patient_profiles set pregnancy_status_set_at = now() - interval '280 days' where user_id = :p"), {"p": patient_c})
+    check("a 9-month-old one still counts", call("GET", dbm + "/summary", tok_doctor_c).json()["pregnancy"]["status"] == "pregnant")
+    check("not recorded clears it", call("PUT", ps, tok_c, {"status": "not_recorded"}).json().get("status") == "not_recorded"
+          and scalar("select pregnancy_status_set_at from patient_profiles where user_id = :p", p=patient_c) is None)
+
+    with engine.begin() as conn:
+        conn.execute(text("update patient_profiles set gender = 'male' where user_id = :p"), {"p": patient_b})
+    check("pregnant on a patient recorded as male -> 422", call("PUT", ps, tok_b, {"status": "pregnant"}).status_code == 422)
+    check("but 'not pregnant' is accepted", call("PUT", ps, tok_b, {"status": "not_pregnant"}).status_code == 200)
+
+    check("each change is in the audit log, as a label only",
+          scalar("select count(*) from audit_logs where action = 'pregnancy_status.set' and patient_id = :p", p=patient_c) == 4
+          and scalar("select count(*) from audit_logs where action = 'pregnancy_status.set' and detail <> 'pregnancy status'") == 0)
+
+    print("\n[17f-2] Doctor-entered readings: only the doctor who entered one can change it")
+    mine = call("POST", dbm, tok_doctor_c, {"weight": 74, "measured_on": today_s}).json()
+    create_grant(doctor_2, patient_c, expires_in=timedelta(hours=1))
+    check("another doctor with a grant cannot change it -> 403",
+          call("PATCH", f"{dbm}/{mine.get('id')}", tok_doctor_2, {"weight": 50}).status_code == 403)
+    check("or remove it -> 403", call("DELETE", f"{dbm}/{mine.get('id')}", tok_doctor_2).status_code == 403)
+    check("the reading is untouched and still active",
+          float(scalar("select weight_kg from patient_body_measurements where id = :i", i=mine.get("id"))) == 74.0
+          and scalar("select status from patient_body_measurements where id = :i", i=mine.get("id")) == "active")
+    theirs = call("POST", dbm, tok_doctor_2, {"weight": 75, "measured_on": today_s})
+    check("they add a new reading instead; it becomes the latest and both stay in the history",
+          theirs.status_code == 201 and call("GET", bm + "/summary", tok_c).json()["weight"]["value"] == 75.0
+          and {mine.get("id"), theirs.json().get("id")} <= {r["id"] for r in call("GET", bm, tok_c).json()["items"]})
+    check("the first doctor still changes their own", call("PATCH", f"{dbm}/{mine.get('id')}", tok_doctor_c, {"weight": 73}).status_code == 200)
+    check("the patient was notified of the doctors' changes",
+          scalar("select count(*) from notifications where user_id = :u and kind = 'record_changed'", u=patient_c) >= 3)
+    create_grant(doctor_2, patient_c, expires_in=timedelta(hours=-1))
 
     create_grant(doctor_c, patient_c, expires_in=timedelta(hours=-1))
     check("after the grant expires the doctor is refused again -> 403",

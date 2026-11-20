@@ -4,6 +4,7 @@ Identity is the verified token's user. Specialization and the PMDC number belong
 verification and are never changed here; the CNIC is shown masked.
 """
 
+from dataclasses import asdict
 from datetime import date
 
 from fastapi import HTTPException, status
@@ -19,9 +20,10 @@ from schemas import (
     DoctorProfileUpdate,
     PatientProfileOut,
     PatientProfileUpdate,
+    PregnancyStateOut,
     ProfileOut,
 )
-from services import body_record
+from services import body_record, pregnancy
 
 
 def age_on(born: date, today: date | None = None) -> int:
@@ -50,6 +52,7 @@ def patient_out(profile: PatientProfile, latest: dict | None = None) -> PatientP
         emergency_contact_name=profile.emergency_contact_name,
         emergency_contact_phone=profile.emergency_contact_phone,
         **(latest or {}),
+        pregnancy=PregnancyStateOut(**asdict(pregnancy.state_for(profile))),
     )
 
 

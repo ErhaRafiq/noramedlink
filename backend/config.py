@@ -109,6 +109,7 @@ class Settings:
     weight_max_age_days_adult: int = 90
     weight_max_age_days_child: int = 30  # under 18: children grow, so a reading goes out of date sooner
     creatinine_max_age_days: int = 90  # for the Cockcroft-Gault display
+    pregnancy_status_max_months: int = 10  # a "pregnant" status older than this counts as not recorded
 
     # Logging
     log_level: str = "INFO"
