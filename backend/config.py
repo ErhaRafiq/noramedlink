@@ -104,6 +104,12 @@ class Settings:
     email_reply_to: str = ""  # optional: where a reply goes (the from address is a no-reply)
     email_reminder_minutes: int = 5  # how long before an appointment the reminder email goes
 
+    # Body weight in the clinical modules (services/body_measurements.py). These are app rules (demo), not
+    # clinical standards: how old a weight or creatinine may be before a check that needs it is skipped.
+    weight_max_age_days_adult: int = 90
+    weight_max_age_days_child: int = 30  # under 18: children grow, so a reading goes out of date sooner
+    creatinine_max_age_days: int = 90  # for the Cockcroft-Gault display
+
     # Logging
     log_level: str = "INFO"
 

@@ -1019,3 +1019,33 @@ class AskAnswerOut(BaseModel):
     topics: list[str]
     followups: list[str]
     disclaimer: str
+
+
+# --- body weight and height (services/body_measurements.py) ---------------------------------------------
+
+
+class BodyMeasurementIn(BaseModel):
+    """Weight in kg or lb (converted and stored in kg) and/or height in cm. Nothing is filled in for a
+    missing value, and the ranges are checked in services/body_measurements.py."""
+
+    weight: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    weight_unit: Literal["kg", "lb"] = "kg"
+    height_cm: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    measured_on: date | None = None  # defaults to today
+
+    @field_validator("measured_on")
+    @classmethod
+    def not_in_future(cls, value: date | None) -> date | None:
+        if value is not None and value > date.today():
+            raise ValueError("The date cannot be in the future.")
+        return value
+
+
+class BodyMeasurementOut(BaseModel):
+    id: int
+    weight_kg: float | None
+    height_cm: float | None
+    measured_on: date
+    added_by_role: str  # patient or doctor
+    added_by_name: str | None  # the doctor's name, when a doctor entered it
+    created_at: datetime
