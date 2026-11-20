@@ -32,7 +32,7 @@ import secrets
 import shutil
 import sys
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 import httpx
@@ -75,6 +75,11 @@ DOCTOR_ROUTES = [
     ("POST", "/api/backend/doctor/patients/1/prescriptions"),
     ("GET", "/api/backend/doctor/patients/1/prescriptions"),
     ("POST", "/api/backend/doctor/patients/1/prescriptions/1/cancel"),
+    ("GET", "/api/backend/doctor/patients/1/body-measurements"),
+    ("GET", "/api/backend/doctor/patients/1/body-measurements/summary"),
+    ("POST", "/api/backend/doctor/patients/1/body-measurements"),
+    ("PATCH", "/api/backend/doctor/patients/1/body-measurements/1"),
+    ("DELETE", "/api/backend/doctor/patients/1/body-measurements/1"),
 ]
 PATIENT_ROUTES = [
 ]
@@ -85,6 +90,11 @@ FASTAPI_PATIENT_ROUTES = [
     ("POST", "/api/backend/patient/vitals/basic"),
     ("GET", "/api/backend/patient/vitals/basic"),
     ("GET", "/api/backend/patient/vitals/today"),
+    ("GET", "/api/backend/patient/body-measurements"),
+    ("GET", "/api/backend/patient/body-measurements/summary"),
+    ("POST", "/api/backend/patient/body-measurements"),
+    ("PATCH", "/api/backend/patient/body-measurements/1"),
+    ("DELETE", "/api/backend/patient/body-measurements/1"),
     ("GET", "/api/backend/patient/medications"),
     ("POST", "/api/backend/patient/medications"),
     ("POST", "/api/backend/patient/medicine-reminders"),
@@ -132,6 +142,7 @@ USER_OWNED_ROWS = [
     ("email_outbox", "user_id"),
     ("auth_tokens", "user_id"),
     ("patient_health_entries", "patient_id"),
+    ("patient_body_measurements", "patient_id"),
     ("audit_logs", "actor_id"),
     ("audit_logs", "patient_id"),
     ("symptom_sessions", "user_id"),
@@ -1413,6 +1424,131 @@ def run_tests() -> None:
           call("GET", "/api/backend/patient/access-history", tok_a).json()["total"]
           == scalar("select count(*) from audit_logs where patient_id = :a and actor_role <> 'patient'", a=patient_a))
     create_grant(doctor_c, patient_c, expires_in=timedelta(hours=-1))
+
+    print("\n[17f] Body weight and height: own history only, a grant for doctors, who may change a reading")
+    bm = "/api/backend/patient/body-measurements"
+    dbm = f"/api/backend/doctor/patients/{patient_c}/body-measurements"
+    check("body measurements without a token -> 401",
+          all(call(m, p).status_code == 401 for m, p in (("GET", bm), ("POST", bm), ("GET", dbm), ("POST", dbm))))
+    check("a doctor on the patient's history -> 403", call("GET", bm, tok_doctor_c).status_code == 403)
+    check("a patient on the doctor's history -> 403", call("GET", dbm, tok_c).status_code == 403)
+    today_s = date.today().isoformat()
+    ten_days = (date.today() - timedelta(days=10)).isoformat()
+
+    response = call("POST", bm, tok_c, {"weight": 154, "weight_unit": "lb", "height_cm": 172, "measured_on": ten_days})
+    first = response.json() if response.status_code == 201 else {}
+    check("C records 154 lb and 172 cm -> 201, stored in kg, entered by the patient",
+          response.status_code == 201 and first.get("weight_kg") == 69.85 and first.get("height_cm") == 172.0
+          and first.get("added_by_role") == "patient", f"got {response.status_code} {response.text[:120]}")
+    for label, body in (("zero weight", {"weight": 0}), ("900 kg", {"weight": 900}), ("nothing at all", {}),
+                        ("a future date", {"weight": 70, "measured_on": "2999-01-01"}),
+                        ("an unknown unit", {"weight": 70, "weight_unit": "stone"}), ("a 20 cm height", {"height_cm": 20}),
+                        ("1000 lb", {"weight": 1000, "weight_unit": "lb"})):
+        check(f"{label} -> 422 and nothing is stored", call("POST", bm, tok_c, body).status_code == 422)
+    check("only the one valid reading is stored", scalar("select count(*) from patient_body_measurements where patient_id = :p", p=patient_c) == 1)
+    response = call("POST", bm, tok_c, {"weight": 72, "measured_on": today_s})
+    second = response.json() if response.status_code == 201 else {}
+    check("a second weight, unit defaults to kg -> 201 with no height (nothing is filled in)",
+          response.status_code == 201 and second.get("weight_kg") == 72.0 and second.get("height_cm") is None)
+    listed = call("GET", bm, tok_c).json()
+    check("the history is a page, newest first, both readings kept",
+          listed.get("total") == 2 and [r["id"] for r in listed["items"]] == [second.get("id"), first.get("id")], f"got {listed}")
+    summary = call("GET", bm + "/summary", tok_c).json()
+    check("the latest weight and height come from different readings; the BMI is a number",
+          summary["weight"]["value"] == 72.0 and summary["height"]["value"] == 172.0 and summary["bmi"] == 24.3, f"got {summary}")
+    check("the patient's view has no category and no flags (neutral wording)",
+          "bmi_category" not in summary and "weight_change_flags" not in summary and "verdict" in (summary.get("bmi_note") or ""))
+    profile = call("GET", "/api/backend/profile", tok_c).json()["patient"]
+    check("the profile shows the latest weight and height with their dates",
+          profile["latest_weight_kg"] == 72.0 and profile["latest_weight_date"] == today_s
+          and profile["latest_height_cm"] == 172.0 and profile["latest_height_date"] == ten_days, f"got {profile}")
+    check("a patient with no readings has an honest empty summary",
+          call("GET", bm + "/summary", tok_b).json() == {"weight": None, "height": None, "bmi": None, "bmi_note": None})
+    check("and a null profile weight", call("GET", "/api/backend/profile", tok_b).json()["patient"]["latest_weight_kg"] is None)
+
+    one_path = f"{bm}/{first.get('id')}"
+    check("A cannot see C's readings", all(r["id"] not in (first.get("id"), second.get("id")) for r in call("GET", bm, tok_a).json()["items"]))
+    check("A cannot change C's reading -> 404", call("PATCH", one_path, tok_a, {"weight": 50}).status_code == 404)
+    check("A cannot remove C's reading -> 404", call("DELETE", one_path, tok_a).status_code == 404)
+    check("C's reading is untouched", float(scalar("select weight_kg from patient_body_measurements where id = :i", i=first.get("id"))) == 69.85)
+    own_a = call("POST", bm, tok_a, {"weight": 55}).json()
+    check("A's own reading never appears for C", all(r["id"] != own_a.get("id") for r in call("GET", bm, tok_c).json()["items"]))
+    check("C cannot change A's reading -> 404", call("PATCH", f"{bm}/{own_a.get('id')}", tok_c, {"weight": 1}).status_code == 404)
+
+    check("a doctor with no grant cannot read -> 403", call("GET", dbm, tok_doctor_2).status_code == 403)
+    check("or read the summary -> 403", call("GET", dbm + "/summary", tok_doctor_2).status_code == 403)
+    check("or add -> 403", call("POST", dbm, tok_doctor_2, {"weight": 70}).status_code == 403)
+    check("or change -> 403", call("PATCH", f"{dbm}/{first.get('id')}", tok_doctor_2, {"weight": 70}).status_code == 403)
+    check("or remove -> 403", call("DELETE", f"{dbm}/{first.get('id')}", tok_doctor_2).status_code == 403)
+    check("nothing was written by the refused doctor",
+          scalar("select count(*) from patient_body_measurements where patient_id = :p", p=patient_c) == 2)
+
+    create_grant(doctor_c, patient_c, expires_in=timedelta(hours=1))
+    listed = call("GET", dbm, tok_doctor_c)
+    check("with an active grant the doctor reads the history", listed.status_code == 200 and listed.json()["total"] == 2)
+    view = call("GET", dbm + "/summary", tok_doctor_c).json()
+    check("the doctor's summary has the category, the Asian-population note and the advisory wording",
+          view.get("bmi") == 24.3 and view.get("bmi_category") == "normal range" and "27.5" in (view.get("bmi_asian_note") or "")
+          and "physician review" in view.get("disclaimer", ""), f"got {view}")
+    check("the freshness limit is reported as a setting, and the weight is current",
+          view.get("weight_current") is True and view.get("weight_max_age_days") == 90)
+    check("a 3.1 % change between the two readings is not flagged", view.get("weight_change_flags") == []
+          and view["change_since_previous"]["percent"] == 3.1, f"got {view.get('change_since_previous')}")
+
+    response = call("POST", dbm, tok_doctor_c, {"weight": 76, "measured_on": today_s})
+    entered = response.json() if response.status_code == 201 else {}
+    check("the doctor adds a weight: marked as a doctor's, with their name",
+          response.status_code == 201 and entered.get("added_by_role") == "doctor" and entered.get("added_by_name"), f"got {response.status_code}")
+    check("two readings on the same day: the one entered last is the latest, both stay in the history",
+          call("GET", bm + "/summary", tok_c).json()["weight"]["value"] == 76.0 and call("GET", bm, tok_c).json()["total"] == 3)
+    view = call("GET", dbm + "/summary", tok_doctor_c).json()
+    check("a 8.8 % gain in 10 days is flagged for review, with the app-rule label and no 'malnutrition'",
+          view["weight_change_flags"] and view["weight_change_flags"][0]["wording"] == "significant weight gain, for physician review"
+          and "app rule (demo)" in view["weight_change_flags"][0]["basis"] and "malnutrition" not in str(view).lower(), f"got {view['weight_change_flags']}")
+    check("the patient sees the doctor's reading and who entered it",
+          any(r["id"] == entered.get("id") and r["added_by_role"] == "doctor" for r in call("GET", bm, tok_c).json()["items"]))
+
+    check("the patient cannot change the doctor's reading -> 403", call("PATCH", f"{bm}/{entered.get('id')}", tok_c, {"weight": 60}).status_code == 403)
+    check("or remove it -> 403", call("DELETE", f"{bm}/{entered.get('id')}", tok_c).status_code == 403)
+    check("the doctor cannot change the patient's reading -> 403", call("PATCH", f"{dbm}/{first.get('id')}", tok_doctor_c, {"weight": 60}).status_code == 403)
+    check("or remove it -> 403", call("DELETE", f"{dbm}/{first.get('id')}", tok_doctor_c).status_code == 403)
+    check("a doctor cannot reach another patient's reading through this patient's path -> 404",
+          call("PATCH", f"{dbm}/{own_a.get('id')}", tok_doctor_c, {"weight": 60}).status_code == 404)
+    check("an impossible correction -> 422",
+          call("PATCH", f"{dbm}/{entered.get('id')}", tok_doctor_c, {"weight": 900}).status_code == 422)
+    changed = call("PATCH", f"{dbm}/{entered.get('id')}", tok_doctor_c, {"weight": 168, "weight_unit": "lb"})
+    check("the doctor corrects their own reading (lb converted)", changed.status_code == 200 and changed.json().get("weight_kg") == 76.2, f"got {changed.text[:100]}")
+    check("the patient corrects their own reading",
+          call("PATCH", f"{bm}/{second.get('id')}", tok_c, {"weight": 73}).json().get("weight_kg") == 73.0)
+    check("a correction cannot leave a reading empty -> 422",
+          call("PATCH", f"{bm}/{first.get('id')}", tok_c, {"weight": None, "height_cm": None}).status_code == 422)
+    check("the doctor removes their own reading", call("DELETE", f"{dbm}/{entered.get('id')}", tok_doctor_c).status_code == 200
+          and all(r["id"] != entered.get("id") for r in call("GET", bm, tok_c).json()["items"]))
+    check("the patient removes their own reading; the row is kept, hidden",
+          call("DELETE", f"{bm}/{second.get('id')}", tok_c).status_code == 200
+          and scalar("select status from patient_body_measurements where id = :i", i=second.get("id")) == "removed")
+    check("a removed reading cannot be changed -> 404", call("PATCH", f"{bm}/{second.get('id')}", tok_c, {"weight": 1}).status_code == 404)
+
+    added = scalar("select count(*) from audit_logs where patient_id = :p and action = 'body_measurement.add'", p=patient_c)
+    check("adds are in the audit log (patient and doctor)", added == 3, f"got {added}")
+    check("changes and removals are too",
+          scalar("select count(*) from audit_logs where patient_id = :p and action = 'body_measurement.update'", p=patient_c) >= 2
+          and scalar("select count(*) from audit_logs where patient_id = :p and action = 'body_measurement.remove'", p=patient_c) == 2)
+    check("the audit log holds labels only, never a value",
+          scalar("select count(*) from audit_logs where action like 'body_measurement.%' and detail ~ '[0-9]'") == 0)
+    check("the doctor's views of the history are in the audit log",
+          scalar("select count(*) from audit_logs where actor_id = :d and action = 'record.view' and detail = 'body measurements'", d=doctor_c) == 1)
+    check("the patient is told when a doctor changes the record",
+          scalar("select count(*) from notifications where user_id = :u and kind = 'record_changed'", u=patient_c) >= 1)
+
+    call("POST", "/api/backend/patient/health-record", tok_c, {"kind": "diagnosis", "name": "pregnancy"})
+    view = call("GET", dbm + "/summary", tok_doctor_c).json()
+    check("marked pregnant: the number stays, the category is withheld with its reason",
+          view.get("bmi") is not None and view.get("bmi_category") is None and "pregnant" in (view.get("bmi_category_note") or ""))
+
+    create_grant(doctor_c, patient_c, expires_in=timedelta(hours=-1))
+    check("after the grant expires the doctor is refused again -> 403",
+          call("GET", dbm, tok_doctor_c).status_code == 403 and call("POST", dbm, tok_doctor_c, {"weight": 70}).status_code == 403)
 
     print("\n[17c] Doctor PMDC verification: the format at signup, the admin's check, the badge")
     signup_path = "/api/auth/signup"

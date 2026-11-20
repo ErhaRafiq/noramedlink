@@ -20,6 +20,7 @@ from routers import (
     appointments,
     audit,
     auth,
+    body_measurements,
     clinical_summary,
     dashboard_access,
     doctor,
@@ -126,6 +127,7 @@ app.include_router(appointments.router)
 app.include_router(payments.router)
 app.include_router(profile.router)
 app.include_router(health_record.router)
+app.include_router(body_measurements.router)
 app.include_router(audit.router)
 app.include_router(symptoms.router)
 app.include_router(notifications.router)

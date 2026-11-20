@@ -518,6 +518,11 @@ class PatientProfileOut(BaseModel):
     blood_group: str | None
     emergency_contact_name: str | None
     emergency_contact_phone: str | None
+    # The newest weight and height on the body-measurement history (null when none is recorded).
+    latest_weight_kg: float | None = None
+    latest_weight_date: date | None = None
+    latest_height_cm: float | None = None
+    latest_height_date: date | None = None
 
 
 class DoctorProfileOut(BaseModel):
@@ -1049,3 +1054,60 @@ class BodyMeasurementOut(BaseModel):
     added_by_role: str  # patient or doctor
     added_by_name: str | None  # the doctor's name, when a doctor entered it
     created_at: datetime
+
+
+class BodyMeasurementUpdate(BaseModel):
+    """Only the fields that are sent change; `null` clears the weight or the height. What is left must
+    still hold a weight or a height."""
+
+    weight: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    weight_unit: Literal["kg", "lb"] = "kg"
+    height_cm: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    measured_on: date | None = None
+
+    @field_validator("measured_on")
+    @classmethod
+    def not_in_future(cls, value: date | None) -> date | None:
+        if value is not None and value > date.today():
+            raise ValueError("The date cannot be in the future.")
+        return value
+
+
+class LatestReadingOut(BaseModel):
+    value: float
+    measured_on: date
+    added_by_role: str  # patient or doctor
+
+
+class WeightChangeOut(BaseModel):
+    percent: float  # negative for a loss
+    from_kg: float
+    from_date: date
+    to_kg: float
+    to_date: date
+    window_days: int
+    threshold_percent: float
+    wording: str  # "significant weight loss, for physician review"
+    basis: str
+
+
+class BodySummaryOut(BaseModel):
+    """What the patient sees: the latest values and the BMI as a number, with neutral wording."""
+
+    weight: LatestReadingOut | None
+    height: LatestReadingOut | None
+    bmi: float | None
+    bmi_note: str | None  # neutral: the number is not a verdict
+
+
+class DoctorBodySummaryOut(BodySummaryOut):
+    """What the doctor sees: the category (or why there is none) and the weight-change flags."""
+
+    bmi_category: str | None
+    bmi_category_note: str | None
+    bmi_asian_note: str | None
+    weight_current: bool | None  # null when no weight; False: older than the app rule (demo) allows
+    weight_max_age_days: int
+    weight_change_flags: list[WeightChangeOut]
+    change_since_previous: WeightChangeOut | None
+    disclaimer: str

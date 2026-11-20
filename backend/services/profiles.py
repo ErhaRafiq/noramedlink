@@ -21,6 +21,7 @@ from schemas import (
     PatientProfileUpdate,
     ProfileOut,
 )
+from services import body_record
 
 
 def age_on(born: date, today: date | None = None) -> int:
@@ -37,7 +38,7 @@ def split_list(value: str | None) -> list[str]:
     return [part.strip() for part in (value or "").split(",") if part.strip()]
 
 
-def patient_out(profile: PatientProfile) -> PatientProfileOut:
+def patient_out(profile: PatientProfile, latest: dict | None = None) -> PatientProfileOut:
     return PatientProfileOut(
         date_of_birth=profile.date_of_birth,
         age=age_on(profile.date_of_birth),
@@ -48,6 +49,7 @@ def patient_out(profile: PatientProfile) -> PatientProfileOut:
         blood_group=profile.blood_group,
         emergency_contact_name=profile.emergency_contact_name,
         emergency_contact_phone=profile.emergency_contact_phone,
+        **(latest or {}),
     )
 
 
@@ -114,7 +116,9 @@ def profile_out(db: Session, user: User) -> ProfileOut:
             email_verified=user.is_email_verified,
             email_reminders=user.email_reminders,
         ),
-        patient=patient_out(user.patient_profile) if user.patient_profile else None,
+        patient=patient_out(user.patient_profile, body_record.latest_for_profile(db, user.id))
+        if user.patient_profile
+        else None,
         doctor=doctor_out(user.doctor_profile) if user.doctor_profile else None,
         activity=activity_for(db, user),
     )
