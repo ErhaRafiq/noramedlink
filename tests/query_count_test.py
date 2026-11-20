@@ -58,6 +58,14 @@ def seed(patient, doctor, count, tag):
                 text("insert into vitals (user_id, blood_pressure, sugar_level, created_at) values (:u, '120/80', '90', now())"),
                 {"u": patient},
             )
+            conn.execute(  # alternate patient- and doctor-entered readings: the doctor's name is looked up once
+                text(
+                    "insert into patient_body_measurements (patient_id, weight_kg, height_cm, measured_on, added_by_id, added_by_role) "
+                    "values (:p, :w, 170, current_date - :d, :by, :role)"
+                ),
+                {"p": patient, "w": 70 + i * 0.1, "d": i + (0 if tag == "a" else 100), "by": doctor if i % 2 else patient,
+                 "role": "doctor" if i % 2 else "patient"},
+            )
     from database import SessionLocal
 
     db = SessionLocal()
@@ -84,6 +92,11 @@ ENDPOINTS = [
     ("patient", "get", "/patient/vitals/basic"),
     ("patient", "get", "/patient/access-history"),
     ("patient", "get", "/patient/health-record"),
+    ("patient", "get", "/patient/body-measurements"),
+    ("patient", "get", "/patient/body-measurements/summary"),
+    ("patient", "get", "/profile"),
+    ("doctor", "get", "/doctor/patients/{patient}/body-measurements"),
+    ("doctor", "get", "/doctor/patients/{patient}/body-measurements/summary"),
     ("doctor", "get", "/doctor/overview"),
     ("doctor", "get", "/appointments"),
     ("doctor", "get", "/notifications"),
@@ -103,7 +116,7 @@ try:
     for size, tag in ((3, "a"), (15, "b")):
         seed(patient, doctor, size if tag == "a" else size - 3, tag)
         for role, method, path in [*ENDPOINTS, DIRECTORY]:
-            results.setdefault((role, path), []).append(measure(path, method, path, tokens[role]))
+            results.setdefault((role, path), []).append(measure(path, method, path.replace("{patient}", str(patient)), tokens[role]))
     print(f"{'endpoint':42} {'3 rows':>7} {'15 rows':>8}  status")
     failures = []
     for (role, path), ((n1, s1), (n2, s2)) in results.items():
