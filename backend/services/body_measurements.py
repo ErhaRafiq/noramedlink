@@ -109,11 +109,18 @@ def bmi(weight_kg: float | None, height_cm: float | None) -> float | None:
     return round(weight_kg / (height_cm / 100) ** 2, 1)
 
 
-def bmi_category(value: float | None, age: int | None) -> str | None:
-    """The WHO adult band (shown to the doctor only). None for under 18 or an unknown age: children need an
-    age and sex specific growth chart, which this app does not have. Cut-offs 18.5, 25 and 30 are the
-    WHO international ones (TRS 894); they are not adjusted for South Asian populations."""
-    if value is None or age is None or age < ADULT_AGE:
+ASIAN_BMI_NOTE = (
+    "For Asian populations, WHO identifies increased risk from 23.0 and high risk from 27.5 kg/m2 "
+    "(WHO Expert Consultation. Appropriate body-mass index for Asian populations and its implications for "
+    "policy and intervention strategies. Lancet. 2004;363(9403):157-163. doi:10.1016/S0140-6736(03)15268-3)."
+)
+
+
+def bmi_category(value: float | None, age: int | None, pregnant: bool = False) -> str | None:
+    """The WHO international adult band (cut-offs 18.5, 25 and 30; TRS 894), shown to the doctor only.
+    None when it does not apply: no BMI, under 18 or an unknown age (children need BMI-for-age, which this
+    app does not have) and pregnancy (a pregnant woman's weight is not read against adult bands)."""
+    if value is None or age is None or age < ADULT_AGE or pregnant:
         return None
     if value < 18.5:
         return "underweight"
@@ -124,14 +131,51 @@ def bmi_category(value: float | None, age: int | None) -> str | None:
     return "obesity"
 
 
+def bmi_category_note(age: int | None, pregnant: bool = False) -> str | None:
+    """Why there is no category, in words for the doctor; None when a category applies."""
+    if pregnant:
+        return "category not applicable (marked pregnant)"
+    if age is None:
+        return "category not applicable (age not known)"
+    if age < ADULT_AGE:
+        return "category not applicable (under 18: needs BMI-for-age)"
+    return None
+
+
+@dataclass(frozen=True)
+class BmiResult:
+    value: float
+    category: str | None
+    category_note: str | None  # set when the category does not apply
+    asian_note: str | None  # set when a category applies: the doctor reads both scales
+
+
+def bmi_result(
+    weight_kg: float | None, height_cm: float | None, age: int | None, pregnant: bool = False
+) -> BmiResult | None:
+    """The BMI with its category for the doctor's view; None when weight or height is missing."""
+    value = bmi(weight_kg, height_cm)
+    if value is None:
+        return None
+    category = bmi_category(value, age, pregnant)
+    return BmiResult(
+        value, category, bmi_category_note(age, pregnant), ASIAN_BMI_NOTE if category is not None else None
+    )
+
+
 # --- weight change -----------------------------------------------------------------------------------------
 
-# (window in days, percent). Source for losses: Blackburn GL et al., JPEN 1977;1:11-22, as adopted in the
-# AND/ASPEN malnutrition consensus (White JV et al., JPEN 2012;36:275-283): 5 % in 1 month, 7.5 % in
-# 3 months, 10 % in 6 months. The same figures are applied to a gain as an app rule (demo): fluid build-up
-# can look like a gain. The team should check these figures against the papers before the demo.
-CHANGE_WINDOWS: tuple[tuple[int, float], ...] = ((30, 5.0), (90, 7.5), (180, 10.0))
-LOSS_BASIS = "Blackburn 1977; AND/ASPEN consensus (White 2012)"
+# (window in days, percent): the chronic-illness criteria of White JV, Guenter P, Jensen G, Malone A,
+# Schofield M. Consensus statement: Academy of Nutrition and Dietetics and ASPEN: characteristics recommended
+# for the identification and documentation of adult malnutrition (undernutrition). JPEN J Parenter Enteral
+# Nutr. 2012;36(3):275-283. doi:10.1177/0148607112440285 -- 5 % in 1 month, 7.5 % in 3 months, 10 % in
+# 6 months, 20 % in 1 year. These are one criterion among several in that paper: a flag here is only
+# "significant weight loss, for physician review" and never says malnutrition. The same figures are applied to
+# a gain as an app rule (demo).
+CHANGE_WINDOWS: tuple[tuple[int, float], ...] = ((30, 5.0), (90, 7.5), (180, 10.0), (365, 20.0))
+LOSS_BASIS = "White 2012, AND/ASPEN consensus (chronic-illness criteria)"
+LOSS_WORDING = "significant weight loss, for physician review"
+GAIN_WORDING = "significant weight gain, for physician review"
 
 
 @dataclass(frozen=True)
@@ -144,6 +188,10 @@ class WeightChange:
     window_days: int
     threshold_percent: float
     basis: str
+
+    @property
+    def wording(self) -> str:
+        return LOSS_WORDING if self.percent < 0 else GAIN_WORDING
 
 
 def percent_change(old: float, new: float) -> float:
@@ -168,7 +216,7 @@ def weight_change_flags(history: list[Reading]) -> list[WeightChange]:
         start = min(inside, key=lambda r: r.measured_on)
         pct = percent_change(start.value, end.value)
         if abs(pct) >= threshold:
-            basis = LOSS_BASIS if pct < 0 else f"{APP_RULE_LABEL}, same figures"
+            basis = LOSS_BASIS if pct < 0 else f"{APP_RULE_LABEL}, same figures as the loss criteria"
             flagged.append(
                 WeightChange(pct, start.value, start.measured_on, end.value, end.measured_on, days, threshold, basis)
             )

@@ -141,6 +141,30 @@ def test_the_who_adult_bands(value, word):
     assert bm.bmi_category(value, 40) == word
 
 
+def test_no_band_when_marked_pregnant():
+    assert bm.bmi_category(22.0, 30, pregnant=True) is None
+    result = bm.bmi_result(70, 170, 30, pregnant=True)
+    assert result.value == 24.2 and result.category is None and "pregnant" in result.category_note
+    assert result.asian_note is None
+
+
+def test_the_doctor_view_has_the_asian_population_note_with_its_citation():
+    result = bm.bmi_result(70, 175, 40)
+    assert (result.value, result.category, result.category_note) == (22.9, "normal range", None)
+    assert "23.0" in result.asian_note and "27.5" in result.asian_note
+    assert (
+        "Lancet. 2004;363(9403):157-163" in result.asian_note and "10.1016/S0140-6736(03)15268-3" in result.asian_note
+    )
+
+
+def test_a_child_gets_the_number_and_category_not_applicable():
+    result = bm.bmi_result(30, 130, 9)
+    assert result.value == 17.8 and result.category is None
+    assert result.category_note == "category not applicable (under 18: needs BMI-for-age)"
+    assert bm.bmi_result(None, 130, 9) is None
+    assert bm.bmi_result(30, 130, None).category_note == "category not applicable (age not known)"
+
+
 def test_no_band_for_a_child_an_unknown_age_or_no_bmi():
     assert bm.bmi_category(22.0, 12) is None
     assert bm.bmi_category(22.0, 17) is None
@@ -165,7 +189,7 @@ def test_percent_change():
 def test_five_percent_loss_in_a_month_is_flagged_and_just_under_is_not():
     flagged = bm.weight_change_flags(history((20, 80.0), (0, 76.0)))
     assert len(flagged) == 1
-    assert flagged[0].percent == -5.0 and flagged[0].window_days == 30 and "Blackburn" in flagged[0].basis
+    assert flagged[0].percent == -5.0 and flagged[0].window_days == 30 and "White 2012" in flagged[0].basis
     assert bm.weight_change_flags(history((20, 80.0), (0, 76.1))) == []
 
 
@@ -175,6 +199,20 @@ def test_a_slow_loss_is_judged_against_the_longer_windows():
     assert [f.window_days for f in flagged] == [90]
     # 6 % over 80 days passes no window
     assert bm.weight_change_flags(history((80, 100.0), (0, 94.0))) == []
+
+
+def test_twenty_percent_in_a_year():
+    flagged = bm.weight_change_flags(history((300, 100.0), (0, 80.0)))
+    assert [f.window_days for f in flagged] == [365]
+    assert bm.weight_change_flags(history((300, 100.0), (0, 80.1))) == []
+
+
+def test_the_wording_never_says_malnutrition_and_names_the_direction():
+    loss = bm.weight_change_flags(history((20, 80.0), (0, 76.0)))[0]
+    gain = bm.weight_change_flags(history((10, 60.0), (0, 63.0)))[0]
+    assert loss.wording == "significant weight loss, for physician review"
+    assert gain.wording == "significant weight gain, for physician review"
+    assert "malnutrition" not in loss.wording + gain.wording
 
 
 def test_ten_percent_in_six_months():
