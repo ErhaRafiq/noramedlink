@@ -17,6 +17,7 @@ from services import knowledge
 from services.knowledge.tables import records
 from services.mscie import ddinter
 from services.mscie.doses import dose_mg, times_per_day
+from services.mscie.weight_doses import weight_dose_alerts
 
 LEVEL = {"contraindicated": "HIGH_RISK", "major": "HIGH_RISK", "moderate": "CAUTION", "minor": "INFO", "info": "INFO"}
 RANK = {"info": 0, "minor": 1, "moderate": 2, "major": 3, "contraindicated": 4}
@@ -53,6 +54,9 @@ class PatientContext:
     allergies: list[dict] = field(default_factory=list)  # {"name", "generics", "classes", "source"}
     allergy_status: str = "not_recorded"  # listed | none_recorded | not_recorded
     labs: dict[str, dict] = field(default_factory=dict)  # test -> {"value", "unit", "date", "source"}
+    age: int | None = None  # from the profile's date of birth
+    sex: str | None = None  # "male" or "female" from the profile; None for other or blank
+    weight: dict | None = None  # {"value", "date", "entered_by", "current", "max_age_days"}; never assumed
     pregnancy: str = (
         "not_recorded"  # pregnant | not_pregnant | not_recorded (services/pregnancy.py); no rule reads it yet
     )
@@ -293,6 +297,7 @@ def check_item(item: Med, proposed: Proposed, others: list[Med], context: Patien
         *_duplicate_alerts(item, others),
         *_contraindication_alerts(item, context),
         *_dose_alerts(item, proposed),
+        *weight_dose_alerts(item, proposed, context, _alert),
         *_previous_alerts(item, context),
     ]
     if item.interactions_only:

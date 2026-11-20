@@ -22,6 +22,7 @@ with pandera.
 | `contraindications.csv` | 19 | a drug or class vs a condition or a lab threshold | MSCIE |
 | `allergy_cross_reactivity.csv` | 10 | an allergy class → a drug or class it affects | MSCIE |
 | `dose_limits.csv` | 23 | a medicine's usual maximum single and daily dose | MSCIE |
+| `dose_limits_per_kg.csv` | 0 (empty until the team has verified every row) | a medicine's per-kg limit, the ages and weights it applies to, and its adult maximum | MSCIE |
 | `duplicate_classes.csv` | 10 | a class where two medicines together is a duplicate | MSCIE |
 | `alternatives.csv` | 24 | a safer candidate for the same use | MSCIE |
 | `ranking_weights.csv` | 4 | a ranking factor and its weight (sums to 1) | MSCIE |
@@ -101,6 +102,7 @@ medicines has); the schema tests reject any reference that does not exist. Sever
   practice parameter (penicillin-cephalosporin cross-reactivity is uncommon: a caution).
 - **dose_limits.csv**: usual adult maximum single and daily doses (mg) from FDA labels and the EMA;
   no paediatric, weight-based or renal dosing (renal rules are in contraindications.csv).
+- **dose_limits_per_kg.csv** (`generic`, `applies_under_age`, `applies_under_kg`, `max_single_mg_per_kg`, `max_daily_mg_per_kg`, `max_single_mg`, `max_daily_mg`, `indication_note`, `source`): weight-based limits, checked against the patient's recorded weight and never above the row's adult maximum (`services/mscie/weight_doses.py`). **Empty on purpose: no row is enabled until two team members have checked it against its cited source.** Demo knowledge base, not clinically reviewed. A weight that is missing or older than the app rule (demo) in `config.py` gives "weight needed for dose check" or "weight is out of date, re-measure before dose check" and the per-kg check is skipped; a weight is never assumed.
 - **duplicate_classes.csv**: classes where two medicines together duplicate the effect.
 - **alternatives.csv**: candidates for the same use, each re-checked against the patient before it
   is shown; a contraindicated candidate is never suggested. Choosing among them is clinical.

@@ -249,6 +249,20 @@ MSCIE_SCHEMAS = {
         },
         strict=True,
     ),
+    "dose_limits_per_kg": pa.DataFrameSchema(
+        {
+            "generic": pa.Column(str, pa.Check.isin(sorted(GENERICS)), unique=True),
+            "applies_under_age": pa.Column(str, pa.Check.str_matches(r"^\d{1,2}$")),
+            "applies_under_kg": pa.Column(str, pa.Check.str_matches(r"^\d{1,3}$")),
+            "max_single_mg_per_kg": pa.Column(str, pa.Check.str_matches(r"^(\d+(\.\d+)?)?$")),
+            "max_daily_mg_per_kg": pa.Column(str, pa.Check.str_matches(r"^(\d+(\.\d+)?)?$")),
+            "max_single_mg": pa.Column(str, pa.Check.str_matches(r"^\d+(\.\d+)?$")),  # the adult maximum is required
+            "max_daily_mg": pa.Column(str, pa.Check.str_matches(r"^\d+(\.\d+)?$")),
+            "indication_note": pa.Column(str, NON_EMPTY),
+            "source": pa.Column(str, pa.Check(cites)),
+        },
+        strict=True,
+    ),
     "duplicate_classes": pa.DataFrameSchema(
         {
             "class": pa.Column(str, pa.Check.isin(sorted(CLASSES)), unique=True),
@@ -292,3 +306,12 @@ def test_dose_limits_single_never_exceeds_daily():
     frame = raw("dose_limits")
     with_single = frame[frame["max_single_mg"] != ""]
     assert (pd.to_numeric(with_single["max_single_mg"]) <= pd.to_numeric(with_single["max_daily_mg"])).all()
+
+
+def test_per_kg_dose_limits_are_consistent_and_never_above_the_adult_maximum():
+    frame = raw("dose_limits_per_kg")
+    for row in frame.to_dict("records"):
+        assert row["max_single_mg_per_kg"] or row["max_daily_mg_per_kg"], f"{row['generic']}: no per-kg limit"
+        assert float(row["max_single_mg"]) <= float(row["max_daily_mg"]), f"{row['generic']}: single above daily"
+        if row["max_single_mg_per_kg"] and row["max_daily_mg_per_kg"]:
+            assert float(row["max_single_mg_per_kg"]) <= float(row["max_daily_mg_per_kg"]), row["generic"]

@@ -20,7 +20,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from models import MedicineHistory, Prescription, User
-from services import health_record, knowledge, pregnancy
+from services import body_measurements, body_record, health_record, knowledge, pregnancy
 from services.icse.versions import gather
 from services.lab_rules import assess
 from services.mscie.engine import Med, PatientContext, resolve
@@ -124,9 +124,29 @@ def build_context(db: Session, patient: User, today: date | None = None) -> Pati
                     }
     _add_structured_entries(db, patient, context)
     context.pregnancy = pregnancy.state_for(patient.patient_profile, today).status
+    _add_body(db, patient, context, today)
     if context.allergies:
         context.allergy_status = "listed"
     return context
+
+
+def _add_body(db: Session, patient: User, context: PatientContext, today: date) -> None:
+    """Age, sex and the latest recorded weight (with its date and who entered it). A weight is only ever one the
+    record holds; `current` says whether it is recent enough to dose by (an app rule (demo), set in config.py)."""
+    profile = patient.patient_profile
+    if profile is not None:
+        born = profile.date_of_birth
+        context.age = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+        context.sex = body_measurements.sex_for_formula(profile.gender)
+    latest = body_measurements.latest(body_measurements.readings(body_record.rows_for(db, patient.id), "weight_kg"))
+    if latest is not None:
+        context.weight = {
+            "value": latest.value,
+            "date": latest.measured_on.isoformat(),
+            "entered_by": "the patient" if latest.added_by_role == "patient" else "a doctor",
+            "current": body_measurements.weight_is_current(latest.measured_on, context.age, today),
+            "max_age_days": body_measurements.weight_max_age_days(context.age),
+        }
 
 
 def _entry_source(entry) -> str:
@@ -160,6 +180,25 @@ def _add_structured_entries(db: Session, patient: User, context: PatientContext)
                 context.conditions.append({"name": name, "source": _entry_source(entry)})
 
 
+def _creatinine_clearance(context: PatientContext) -> dict[str, Any]:
+    """Cockcroft-Gault next to eGFR, for information only: it never raises or changes an alert (renal rules use
+    eGFR). With a missing input it names what is missing."""
+    creatinine = context.labs.get("Creatinine")
+    weight = (
+        body_measurements.Reading(context.weight["value"], date.fromisoformat(context.weight["date"]))
+        if context.weight
+        else None
+    )
+    result = body_measurements.creatinine_clearance(
+        age=context.age,
+        gender=context.sex,
+        weight=weight,
+        creatinine_mg_dl=creatinine["value"] if creatinine else None,
+        creatinine_date=date.fromisoformat(creatinine["date"]) if creatinine and creatinine.get("date") else None,
+    )
+    return {"value": result.value, "missing": result.missing, "inputs": result.inputs, "note": result.note}
+
+
 def context_summary(context: PatientContext) -> dict[str, Any]:
     """The context as the physician sees it next to the alerts (FE-5: what the check used)."""
     return {
@@ -173,4 +212,7 @@ def context_summary(context: PatientContext) -> dict[str, Any]:
         "labs": [{"test": test, **lab} for test, lab in context.labs.items()],
         "previous": context.previous,
         "pregnancy": context.pregnancy,
+        "age": context.age,
+        "weight": context.weight,
+        "creatinine_clearance": _creatinine_clearance(context),
     }

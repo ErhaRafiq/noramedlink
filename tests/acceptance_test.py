@@ -1626,6 +1626,19 @@ def run_tests() -> None:
     check("the first doctor still changes their own", call("PATCH", f"{dbm}/{mine.get('id')}", tok_doctor_c, {"weight": 73}).status_code == 200)
     check("the patient was notified of the doctors' changes",
           scalar("select count(*) from notifications where user_id = :u and kind = 'record_changed'", u=patient_c) >= 3)
+    rx = call("POST", f"/api/backend/doctor/patients/{patient_c}/medication-check", tok_doctor_c,
+              {"items": [{"medicine": "paracetamol", "dose": "5000 mg", "frequency": "TDS"}]})
+    context = rx.json().get("context", {}) if rx.status_code == 200 else {}
+    weight_ctx = context.get("weight") or {}
+    check("the medication check's context carries the latest recorded weight, its date and who entered it",
+          weight_ctx.get("value") == 75.0 and weight_ctx.get("date") == today_s and weight_ctx.get("entered_by") == "a doctor"
+          and weight_ctx.get("current") is True and weight_ctx.get("max_age_days") == 90 and isinstance(context.get("age"), int), f"got {context.get('weight')}")
+    panel = context.get("creatinine_clearance") or {}
+    check("Cockcroft-Gault is shown with what is missing (no creatinine, sex not recorded) and never as a number",
+          panel.get("value") is None and "serum creatinine" in panel.get("missing", []) and "eGFR" in panel.get("note", ""), f"got {panel}")
+    rules = {a["rule_id"] for it in rx.json().get("items", []) for a in it["alerts"]}
+    check("no weight-based dose rule is enabled until the team verifies the table (the adult rule still fires)",
+          "DOSE-SINGLE" in rules and not {r for r in rules if r.startswith(("DOSE-KG", "DOSE-ABS", "WEIGHT"))}, f"got {rules}")
     create_grant(doctor_2, patient_c, expires_in=timedelta(hours=-1))
 
     create_grant(doctor_c, patient_c, expires_in=timedelta(hours=-1))
