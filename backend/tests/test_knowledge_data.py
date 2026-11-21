@@ -262,7 +262,9 @@ MSCIE_SCHEMAS = {
             "max_daily_mg_per_kg": pa.Column(str, pa.Check.str_matches(r"^(\d+(\.\d+)?)?$")),
             "max_single_mg": pa.Column(str, pa.Check.str_matches(r"^(\d+(\.\d+)?)?$")),
             "max_daily_mg": pa.Column(str, pa.Check.str_matches(r"^(\d+(\.\d+)?)?$")),
+            "caution_single_mg": pa.Column(str, pa.Check.str_matches(r"^(\d+(\.\d+)?)?$")),
             "severity": pa.Column(str, pa.Check.isin(["", "moderate", "major"])),
+            "caution_note": pa.Column(str),
             "over_note": pa.Column(str),
             "within_note": pa.Column(str),
             "source": pa.Column(str, pa.Check(cites)),
@@ -332,6 +334,11 @@ def test_per_kg_tiers_are_consistent():
             assert float(row["max_single_mg_per_kg"]) <= float(row["max_daily_mg_per_kg"]), name
         if row["age_to_months"]:
             assert int(row["age_from_months"]) <= int(row["age_to_months"]), name
+        if row["caution_single_mg"]:
+            assert row["max_single_mg"] and float(row["caution_single_mg"]) < float(row["max_single_mg"]), name
+            assert row["caution_note"], f"{name}: a caution band needs its note"
+        else:
+            assert not row["caution_note"], name
 
 
 def test_per_kg_tiers_of_one_medicine_do_not_overlap_and_leave_no_gap_above_the_minimum_age():
@@ -343,7 +350,7 @@ def test_per_kg_tiers_of_one_medicine_do_not_overlap_and_leave_no_gap_above_the_
                 high = int(row["age_to_months"]) if row["age_to_months"] else 10_000
                 if int(row["age_from_months"]) <= months <= high:
                     matching.append(row)
-            assert matching or (generic in {"ibuprofen"} and months >= 216), f"{generic}: no tier at {months} months"
+            assert matching or (generic == "ibuprofen" and months >= 24), f"{generic}: no tier at {months} months"
             for kg in (3, 10, 30, 44.9, 45.0, 45.05, 45.1, 49.9, 50, 80, 200):
                 hits = [
                     r["tier"]

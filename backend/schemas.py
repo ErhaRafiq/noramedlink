@@ -3,6 +3,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from services import clock
+
 Role = Literal["patient", "doctor", "admin"]
 
 
@@ -1042,7 +1044,7 @@ class BodyMeasurementIn(BaseModel):
     @field_validator("measured_on")
     @classmethod
     def not_in_future(cls, value: date | None) -> date | None:
-        if value is not None and value > date.today():
+        if value is not None and value > clock.today():
             raise ValueError("The date cannot be in the future.")
         return value
 
@@ -1069,7 +1071,7 @@ class BodyMeasurementUpdate(BaseModel):
     @field_validator("measured_on")
     @classmethod
     def not_in_future(cls, value: date | None) -> date | None:
-        if value is not None and value > date.today():
+        if value is not None and value > clock.today():
             raise ValueError("The date cannot be in the future.")
         return value
 

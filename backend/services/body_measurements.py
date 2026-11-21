@@ -13,6 +13,7 @@ from datetime import date
 from typing import Any
 
 from config import settings
+from services import clock
 
 APP_RULE_LABEL = "app rule (demo)"
 
@@ -65,7 +66,7 @@ def validate_input(
 ) -> tuple[float | None, float | None, date]:
     """(weight_kg, height_cm, measured_on) ready to store. At least one of weight and height is needed;
     nothing is defaulted, and the date cannot be in the future."""
-    today = today or date.today()
+    today = today or clock.today()
     if weight is None and height_cm is None:
         raise MeasurementError("Enter a weight, a height, or both.")
     when = measured_on or today
@@ -252,7 +253,7 @@ def weight_max_age_days(age: int | None) -> int:
 
 
 def weight_is_current(measured_on: date, age: int | None, today: date | None = None) -> bool:
-    return ((today or date.today()) - measured_on).days <= weight_max_age_days(age)
+    return ((today or clock.today()) - measured_on).days <= weight_max_age_days(age)
 
 
 # --- creatinine clearance (Cockcroft-Gault) ----------------------------------------------------------------
@@ -298,7 +299,7 @@ def creatinine_clearance(
     today: date | None = None,
 ) -> CreatinineClearance:
     """The estimate when weight, age, sex and a recent creatinine are all known; otherwise `missing` says which."""
-    today = today or date.today()
+    today = today or clock.today()
     missing: list[str] = []
     sex = sex_for_formula(gender)
     if age is None:

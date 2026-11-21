@@ -111,6 +111,9 @@ class Settings:
     creatinine_max_age_days: int = 90  # for the Cockcroft-Gault display
     pregnancy_status_max_months: int = 10  # a "pregnant" status older than this counts as not recorded
 
+    # The patient's local calendar for date-only values (services/clock.py). Timestamps stay in UTC.
+    app_timezone: str = "Asia/Karachi"
+
     # Logging
     log_level: str = "INFO"
 
@@ -136,6 +139,7 @@ def load_settings() -> Settings:
         resend_api_key=env_str("RESEND_API_KEY", strip_quotes=True),
         email_from=env_str("EMAIL_FROM", Settings.email_from),
         email_reply_to=env_str("EMAIL_REPLY_TO"),
+        app_timezone=env_str("APP_TIMEZONE", Settings.app_timezone),
     )
 
 

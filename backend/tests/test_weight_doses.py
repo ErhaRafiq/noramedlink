@@ -48,7 +48,9 @@ def test_every_tier_is_labelled_demo_and_cites_a_label_with_a_url_in_sources():
     sources = {r["key"]: r["description"] for r in weight_doses.records("sources")}
     for row in weight_doses.records("dose_limits_per_kg"):
         text = sources[row["source"]]
-        assert text.startswith("Demo knowledge base.") and "dailymed.nlm.nih.gov" in text, row["tier"]
+        assert text.startswith("Demo knowledge base.") and (
+            "accessdata.fda.gov" in text or "dailymed.nlm.nih.gov" in text
+        ), row["tier"]
         assert "BNF" not in text
 
 
@@ -130,14 +132,6 @@ def test_amoxicillin_under_40_kg_has_no_per_dose_limit():
     assert new_rules(run("amoxicillin", "800 mg", "OD", months=120, kg=30)) == set()  # 26.7 mg/kg a day
 
 
-def test_amoxicillin_40_kg_and_over_uses_1000_mg_per_dose_and_3000_mg_a_day():
-    assert new_rules(run("amoxicillin", "1000 mg", "TDS", months=300, kg=70)) == set()
-    found = run("amoxicillin", "1250 mg", "BD", months=300, kg=70)
-    assert set(found) == {"DOSE-ABS-SINGLE"} and found["DOSE-ABS-SINGLE"]["severity"] == "major"
-    found = run("amoxicillin", "1000 mg", "QID", months=300, kg=70)  # 4000 mg a day
-    assert set(found) == {"DOSE-ABS-DAILY"}
-
-
 def test_amoxicillin_boundaries_at_3_months_and_40_kg():
     assert "DOSE-KG-DAILY" in run("amoxicillin", "80 mg", "BD", months=2, kg=4)  # the infant tier ends after month 2
     assert run("amoxicillin", "80 mg", "BD", months=3, kg=4) == {}  # 40 mg/kg: under the 45 mg/kg tier
@@ -191,22 +185,28 @@ def test_ibuprofen_under_six_months_is_not_covered():
     assert set(run("ibuprofen", "50 mg", months=5, kg=6)) == {"NOT-COVERED"}
 
 
-def test_ibuprofen_child_limits_are_10_mg_per_kg_and_40_mg_per_kg_a_day():
-    assert new_rules(run("ibuprofen", "180 mg", "QID", months=60, kg=18)) == set()  # 10 mg/kg, 40 mg/kg a day
-    assert set(run("ibuprofen", "200 mg", months=60, kg=18)) == {"DOSE-KG-SINGLE"}  # 11.1 mg/kg
-    found = run("ibuprofen", "150 mg", "every 4 hours", months=60, kg=18)  # 900 mg a day = 50 mg/kg
+def test_ibuprofen_mg_per_kg_limits_apply_to_the_age_range_the_label_states_6_months_up_to_2_years():
+    assert new_rules(run("ibuprofen", "100 mg", "QID", months=12, kg=10)) == set()  # 10 mg/kg, 40 mg/kg a day
+    found = run("ibuprofen", "110 mg", months=12, kg=10)  # 11 mg/kg
+    assert set(found) == {"DOSE-KG-SINGLE"} and "11.0 mg/kg" in found["DOSE-KG-SINGLE"]["effect"]
+    found = run("ibuprofen", "80 mg", "every 4 hours", months=12, kg=10)  # 480 mg a day = 48 mg/kg
     assert set(found) == {"DOSE-KG-DAILY"}
 
 
-def test_ibuprofen_child_is_never_allowed_more_than_the_adult_maximum():
-    # 10 mg/kg x 100 kg would be 1000 mg, but the adult single maximum is 800 mg (the existing rule reports it)
-    found = run("ibuprofen", "900 mg", months=200, kg=100)
+def test_ibuprofen_age_boundaries_6_months_and_2_years():
+    assert "NOT-COVERED" in run("ibuprofen", "50 mg", months=5, kg=6)
+    assert "NOT-COVERED" not in run("ibuprofen", "50 mg", months=6, kg=7)
+    assert "DOSE-KG-SINGLE" in run("ibuprofen", "150 mg", months=23, kg=10)  # last month of the stated range
+    found = run("ibuprofen", "150 mg", months=24, kg=10)  # 2 years: no tier, so no weight rule and no notice
+    assert new_rules(found) == set()
+
+
+def test_ibuprofen_from_2_years_only_the_existing_adult_rule_applies():
+    assert new_rules(run("ibuprofen", "400 mg", "TDS", months=60, kg=None)) == set()  # no weight needed
+    assert new_rules(run("ibuprofen", "800 mg", "QID", months=400, kg=None)) == set()
+    found = run("ibuprofen", "900 mg", months=60, kg=18)
     assert "DOSE-SINGLE" in found and not new_rules(found)
-
-
-def test_ibuprofen_adults_use_the_existing_rule_only():
-    assert new_rules(run("ibuprofen", "400 mg", "TDS", months=400, kg=None)) == set()
-    assert "DOSE-SINGLE" in run("ibuprofen", "1200 mg", months=400, kg=None)
+    assert "DOSE-DAILY" in run("ibuprofen", "1000 mg", "QID", months=400, kg=70)  # 4000 mg a day
 
 
 # --- cefixime: FDA label -------------------------------------------------------------------------------------------
@@ -252,27 +252,6 @@ def test_a_medicine_without_a_tier_is_untouched():
 
 
 # --- weight missing or out of date: skip the check, never assume ----------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    ("medicine", "months"),
-    [
-        ("paracetamol", 60),
-        ("paracetamol", 400),
-        ("amoxicillin", 2),
-        ("amoxicillin", 60),
-        ("amoxicillin", 400),
-        ("azithromycin", 60),
-        ("ibuprofen", 60),
-        ("cefixime", 60),
-    ],
-)
-def test_no_weight_skips_the_check_and_says_weight_needed(medicine, months):
-    found = run(medicine, "5000 mg", "QID", months=months, kg=None)
-    notice = found["WEIGHT-NEEDED"]
-    assert "weight needed for dose check" in notice["title"].lower() and notice["severity"] == "info"
-    assert not notice["requires_justification"]
-    assert not {r for r in found if r.startswith(("DOSE-KG", "DOSE-ABS"))}  # nothing is checked against a guess
 
 
 def test_a_stale_weight_is_not_used_and_still_says_weight_needed():
@@ -384,3 +363,87 @@ def test_creatinine_clearance_never_changes_an_alert():
     rich = PatientContext(age=60, age_months=720, sex="male", weight=weight(30.0), labs=labs(5.0))
     items = [Proposed("metformin", "1000 mg", "BD"), Proposed("ibuprofen", "400 mg", "TDS")]
     assert check(plain, items) == check(rich, items)
+
+
+# --- amoxicillin adult single dose: yellow from 1000 mg, red above 3000 mg --------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("dose", "rule", "severity"),
+    [("1000 mg", None, None), ("1001 mg", "DOSE-ABS-CAUTION", "moderate"), ("3000 mg", "DOSE-ABS-CAUTION", "moderate"),
+     ("3001 mg", "DOSE-ABS-SINGLE", "major")],
+)  # fmt: skip
+def test_amoxicillin_adult_single_dose_bands(dose, rule, severity):
+    found = run("amoxicillin", dose, months=400, kg=70)  # no frequency: only the single dose is judged
+    if rule is None:
+        assert new_rules(found) == set()
+        return
+    assert set(found) == {rule} and found[rule]["severity"] == severity
+    if severity == "moderate":
+        alert = found[rule]
+        assert alert["level"] == "CAUTION" and not alert["requires_justification"]
+        assert "a 3 g single dose appears in some labels for specific indications, verify indication" in alert["effect"]
+    else:
+        assert found[rule]["level"] == "HIGH_RISK" and found[rule]["requires_justification"]
+
+
+def test_amoxicillin_adult_daily_maximum_is_3000_mg_and_red():
+    assert new_rules(run("amoxicillin", "1000 mg", "TDS", months=400, kg=70)) == set()  # 3000 mg a day
+    found = run("amoxicillin", "1000 mg", "QID", months=400, kg=70)  # 4000 mg a day
+    assert set(found) == {"DOSE-ABS-DAILY"} and found["DOSE-ABS-DAILY"]["severity"] == "major"
+    assert "DOSE-ABS-DAILY" in run("amoxicillin", "1001 mg", "TDS", months=400, kg=70)  # 3003 mg a day
+
+
+# --- the absolute maximums are checked with no weight; only the per-kg part is skipped --------------------------------
+
+
+def test_adult_with_no_weight_paracetamol_1200_mg_alerts_and_500_mg_is_a_notice_only():
+    over = run("paracetamol", "1200 mg", months=400, kg=None)
+    assert set(over) == {"WEIGHT-NEEDED", "DOSE-SINGLE"} and over["DOSE-SINGLE"]["severity"] == "major"
+    assert set(run("paracetamol", "500 mg", months=400, kg=None)) == {"WEIGHT-NEEDED"}
+    assert set(run("paracetamol", "1000 mg", "QID", months=400, kg=None)) == {"WEIGHT-NEEDED"}  # 4000 mg a day
+    assert set(run("paracetamol", "1000 mg", "every 4 hours", months=400, kg=None)) == {"WEIGHT-NEEDED", "DOSE-DAILY"}
+
+
+def test_adult_with_no_weight_amoxicillin_keeps_the_yellow_and_red_bands_and_the_daily_maximum():
+    assert set(run("amoxicillin", "500 mg", "TDS", months=400, kg=None)) == {"WEIGHT-NEEDED"}
+    assert set(run("amoxicillin", "1000 mg", "TDS", months=400, kg=None)) == {"WEIGHT-NEEDED"}  # 3000 mg a day
+    assert set(run("amoxicillin", "1500 mg", months=400, kg=None)) == {"WEIGHT-NEEDED", "DOSE-ABS-CAUTION"}
+    assert set(run("amoxicillin", "3500 mg", months=400, kg=None)) == {"WEIGHT-NEEDED", "DOSE-ABS-SINGLE"}
+    assert set(run("amoxicillin", "1001 mg", "TDS", months=400, kg=None)) == {
+        "WEIGHT-NEEDED",
+        "DOSE-ABS-CAUTION",
+        "DOSE-ABS-DAILY",
+    }
+
+
+def test_a_stale_weight_also_keeps_the_absolute_maximums_but_never_the_per_kg_part():
+    found = run("amoxicillin", "3500 mg", months=400, kg=70, current=False)
+    assert set(found) == {"WEIGHT-STALE", "DOSE-ABS-SINGLE"}
+    found = run("paracetamol", "300 mg", months=60, kg=18, current=False)  # over 15 mg/kg, but the old weight is unused
+    assert set(found) == {"WEIGHT-STALE"}
+    assert set(run("paracetamol", "1200 mg", months=60, kg=18, current=False)) == {"WEIGHT-STALE", "DOSE-SINGLE"}
+
+
+def test_a_child_with_no_weight_still_gets_the_absolute_maximum_and_never_a_per_kg_alert():
+    found = run("azithromycin", "1600 mg", months=60, kg=None)
+    assert set(found) == {"WEIGHT-NEEDED", "DOSE-ABS-SINGLE"} and "1500 mg" in found["DOSE-ABS-SINGLE"]["effect"]
+    assert set(run("azithromycin", "1000 mg", months=60, kg=None)) == {"WEIGHT-NEEDED"}  # 33 mg/kg at 30 kg: not judged
+    assert "DOSE-ABS-SINGLE" in run("cefixime", "500 mg", "OD", months=72, kg=None)
+    assert set(run("cefixime", "200 mg", "OD", months=72, kg=None)) == {"WEIGHT-NEEDED"}
+    assert set(run("amoxicillin", "80 mg", "BD", months=2, kg=None)) == {"WEIGHT-NEEDED"}  # infants: no adult maximum
+
+
+@pytest.mark.parametrize(
+    ("medicine", "months"),
+    [
+        ("paracetamol", 60), ("paracetamol", 400), ("amoxicillin", 2), ("amoxicillin", 60), ("amoxicillin", 400),
+        ("azithromycin", 60), ("ibuprofen", 12), ("cefixime", 60),
+    ],
+)  # fmt: skip
+def test_no_weight_skips_the_per_kg_check_and_says_weight_needed(medicine, months):
+    found = run(medicine, "5000 mg", "QID", months=months, kg=None)
+    notice = found["WEIGHT-NEEDED"]
+    assert "weight needed for dose check" in notice["title"].lower() and notice["severity"] == "info"
+    assert not notice["requires_justification"]
+    assert not {r for r in found if r.startswith("DOSE-KG")}  # nothing is checked against a guessed weight

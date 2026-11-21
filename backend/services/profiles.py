@@ -23,11 +23,11 @@ from schemas import (
     PregnancyStateOut,
     ProfileOut,
 )
-from services import body_record, pregnancy
+from services import body_record, clock, pregnancy
 
 
 def age_on(born: date, today: date | None = None) -> int:
-    today = today or date.today()
+    today = today or clock.today()
     return today.year - born.year - ((today.month, today.day) < (born.month, born.day))
 
 

@@ -11,14 +11,14 @@ from __future__ import annotations
 
 import calendar
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import date, datetime
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from config import settings
 from models import PatientProfile, User
-from services import audit
+from services import audit, clock
 
 PREGNANT = "pregnant"
 NOT_PREGNANT = "not_pregnant"
@@ -55,9 +55,9 @@ def effective(
     max_months: int | None = None,
 ) -> PregnancyState:
     """The status the checks use. Anything other than a stored "pregnant" or "not_pregnant" is not recorded."""
-    today = today or date.today()
+    today = today or clock.today()
     months = settings.pregnancy_status_max_months if max_months is None else max_months
-    set_on = set_at.date() if isinstance(set_at, datetime) else set_at
+    set_on = clock.local_date(set_at)  # a stored timestamp is UTC; the date is the patient's local one
     if stored not in (PREGNANT, NOT_PREGNANT):
         return PregnancyState(NOT_RECORDED, None, None, False, months)
     if stored == PREGNANT and (set_on is None or today > add_months(set_on, months)):
@@ -92,7 +92,7 @@ def set_status(db: Session, patient: User, actor: User, new: str) -> PatientProf
         profile.pregnancy_status_set_by_id = None
     else:
         profile.pregnancy_status = new
-        profile.pregnancy_status_set_at = datetime.now(UTC)
+        profile.pregnancy_status_set_at = clock.now()
         profile.pregnancy_status_set_by_role = role
         profile.pregnancy_status_set_by_id = actor.id
     audit.record(

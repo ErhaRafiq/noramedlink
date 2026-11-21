@@ -20,7 +20,7 @@ from typing import Any
 from sqlalchemy.orm import Session
 
 from models import MedicineHistory, Prescription, User
-from services import body_measurements, body_record, health_record, knowledge, pregnancy
+from services import body_measurements, body_record, clock, health_record, knowledge, pregnancy
 from services.icse.versions import gather
 from services.lab_rules import assess
 from services.mscie.engine import Med, PatientContext, resolve
@@ -34,7 +34,7 @@ def _report_label(source: dict) -> str:
 
 
 def build_context(db: Session, patient: User, today: date | None = None) -> PatientContext:
-    today = today or date.today()
+    today = today or clock.today()
     inputs = gather(db, patient)
     sources = inputs["sources"]  # oldest first
     context = PatientContext()
