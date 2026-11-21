@@ -584,7 +584,7 @@ class PatientProfileUpdate(BaseModel):
     @field_validator("date_of_birth")
     @classmethod
     def plausible_birth_date(cls, value: date) -> date:
-        today = date.today()
+        today = clock.today()
         if value > today or (today.year - value.year) > 120:
             raise ValueError("Enter a real date of birth.")
         return value
@@ -787,7 +787,7 @@ class HealthEntryIn(BaseModel):
     @field_validator("since")
     @classmethod
     def not_in_future(cls, value: date | None) -> date | None:
-        if value is not None and value > date.today():
+        if value is not None and value > clock.today():
             raise ValueError("The date cannot be in the future.")
         return value
 
@@ -809,7 +809,7 @@ class HealthEntryUpdate(BaseModel):
     @field_validator("since")
     @classmethod
     def not_in_future(cls, value: date | None) -> date | None:
-        if value is not None and value > date.today():
+        if value is not None and value > clock.today():
             raise ValueError("The date cannot be in the future.")
         return value
 

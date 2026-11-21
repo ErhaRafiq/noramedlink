@@ -16,13 +16,14 @@ report's content or the reason for a visit: only who, what happened and when. Em
 (services/email_outbox.py); this is what the person sees inside the app.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Query, Session
 
 from models import Appointment, Notification, Payment, User
+from services import clock
 from services.scheduling import CLINIC_TZ, as_utc
 
 REMINDER_LEADS = (timedelta(hours=24), timedelta(hours=1), timedelta(minutes=5))
@@ -129,7 +130,7 @@ def add(
 
 def schedule_reminders(db: Session, appointment: Appointment, patient_name: str, doctor_name: str) -> None:
     """Reminders 24 hours, 1 hour and 5 minutes before, for both people, for the ones still in the future."""
-    start, now = as_utc(appointment.date), datetime.now(UTC)
+    start, now = as_utc(appointment.date), clock.now()
     text = when_text(start)
     for lead in REMINDER_LEADS:
         due = start - lead
@@ -148,7 +149,7 @@ def clear_reminders(db: Session, appointment_id: int) -> None:
     db.query(Notification).filter(
         Notification.appointment_id == appointment_id,
         Notification.kind == "appointment_reminder",
-        Notification.scheduled_for > datetime.now(UTC),
+        Notification.scheduled_for > clock.now(),
     ).delete(synchronize_session=False)
 
 
@@ -314,7 +315,7 @@ def new_doctor_for_review(db: Session, doctor: User, specialization: str) -> Non
 
 def due_for(db: Session, user_id: int) -> Query:
     """Notifications the user can see now: not scheduled for later."""
-    now = datetime.now(UTC)
+    now = clock.now()
     return db.query(Notification).filter(
         Notification.user_id == user_id, or_(Notification.scheduled_for.is_(None), Notification.scheduled_for <= now)
     )
@@ -333,7 +334,7 @@ def shown_at(row: Notification) -> datetime:
 
 def purge_old(db: Session) -> int:
     """Clear read notifications after 90 days (and anything over a year old). Returns how many."""
-    now = datetime.now(UTC)
+    now = clock.now()
     deleted = (
         db.query(Notification)
         .filter(

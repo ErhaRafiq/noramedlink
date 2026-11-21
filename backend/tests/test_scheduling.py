@@ -12,7 +12,7 @@ from database import Base
 from models import Appointment, DoctorAvailability, DoctorProfile, Notification, PatientProfile, User
 from routers.appointments import doctor_to_out, filter_doctors
 from services import appointments as booking
-from services import notifications, scheduling
+from services import clock, notifications, scheduling
 from services.scheduling import CLINIC_TZ, WindowInput
 
 # A Monday far from "now", so the test never depends on today's date.
@@ -28,9 +28,7 @@ def clinic(day: date, hour: int, minute: int = 0) -> datetime:
 def db(monkeypatch):
     engine = create_engine("sqlite://")
     Base.metadata.create_all(engine)
-    monkeypatch.setattr(scheduling, "now_utc", lambda: NOW)
-    monkeypatch.setattr(booking, "datetime", type("D", (datetime,), {"now": staticmethod(lambda tz=None: NOW)}))
-    monkeypatch.setattr(notifications, "datetime", type("D", (datetime,), {"now": staticmethod(lambda tz=None: NOW)}))
+    monkeypatch.setattr(clock, "now", lambda: NOW)  # the one clock for scheduling, bookings and notifications
     with sessionmaker(bind=engine)() as session:
         yield session
 
@@ -284,6 +282,39 @@ def test_a_patient_cannot_cancel_a_visit_that_has_started(db, doctor, patient):
     with pytest.raises(HTTPException):
         booking.cancel(db, appointment, patient, by_doctor=False)
     assert booking.cancel(db, appointment, patient, by_doctor=True).status == "CANCELLED"  # the doctor still can
+
+
+# --- 00:30 in Pakistan: still the previous day in UTC --------------------------------------------
+
+
+AFTER_MIDNIGHT = datetime(2030, 1, 6, 19, 30, tzinfo=UTC)  # 00:30 Monday 7 January in Pakistan, Sunday in UTC
+
+
+def test_just_after_midnight_in_pakistan_the_clinic_date_is_already_monday(monkeypatch, db, doctor):
+    monkeypatch.setattr(clock, "now", lambda: AFTER_MIDNIGHT)
+    assert AFTER_MIDNIGHT.date() == date(2030, 1, 6)  # UTC is still Sunday
+    assert scheduling.clinic_date(scheduling.now_utc()) == MONDAY
+    [(day, slots)] = scheduling.slots_range(db, doctor.id, scheduling.clinic_date(scheduling.now_utc()), 1)
+    assert day == MONDAY and [s.available for s in slots] == [True] * 4  # today's slots are open, not skipped
+
+
+def test_at_00_30_a_slot_that_started_earlier_today_is_in_the_past(monkeypatch, db, doctor, patient):
+    monkeypatch.setattr(clock, "now", lambda: clinic(MONDAY, 9, 40))  # Monday 09:40 in Pakistan
+    with pytest.raises(HTTPException) as caught:
+        booking.create(db, patient, doctor, clinic(MONDAY, 9), "in_clinic", None, None)
+    assert caught.value.status_code in (409, 422)
+
+
+def test_at_00_30_cancelling_uses_the_real_moment_not_the_utc_date(monkeypatch, db, doctor, patient):
+    first = booking.create(db, patient, doctor, clinic(MONDAY, 9), "in_clinic", None, None)
+    monkeypatch.setattr(clock, "now", lambda: AFTER_MIDNIGHT)  # 8.5 hours before the visit
+    assert booking.cancel(db, first, patient, by_doctor=False).status == "CANCELLED"
+    second = booking.create(db, patient, doctor, clinic(MONDAY, 10), "in_clinic", None, None)
+    monkeypatch.setattr(clock, "now", lambda: clinic(MONDAY, 10, 5))  # the visit started 5 minutes ago
+    with pytest.raises(HTTPException):
+        booking.cancel(db, second, patient, by_doctor=False)
+    with pytest.raises(HTTPException):
+        booking.reschedule(db, second, clinic(MONDAY, 10, 30), patient)
 
 
 # --- reviews and directory ----------------------------------------------------------------------
