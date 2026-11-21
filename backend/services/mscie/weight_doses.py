@@ -6,7 +6,8 @@ splits by weight, by the recorded weight:
 - a `not_covered` tier (below the label's minimum age) gives "verify dose: not covered by demo table";
 - a `limit` tier checks the prescribed dose against its per-kg limit times the weight, never above the tier's
   absolute maximum. Above the maximum the alert has the tier's severity (red for major). A tier may also have a
-  `caution_single_mg`: a single dose above it but within the maximum is a yellow caution, not red;
+  `caution_single_mg` (mg), `caution_single_mg_per_kg` or `caution_daily_mg_per_kg`: a dose above it but within
+  the maximum is a yellow caution, not red;
 - the per-kg part needs a weight. With none, or one older than the app rule (demo) allows, the per-kg check is
   skipped with "weight needed for dose check": an old weight is never used and no weight is ever assumed. The
   absolute maximums are still checked (the widest tier for the patient's age), because they do not depend on weight;
@@ -51,7 +52,11 @@ def _weight_matches(tier: dict, kg: float) -> bool:
 
 
 def _uses_weight(tier: dict) -> bool:
-    return any(tier[c] != "" for c in ("weight_from_kg", "weight_to_kg", "max_single_mg_per_kg", "max_daily_mg_per_kg"))
+    columns = (
+        "weight_from_kg", "weight_to_kg", "max_single_mg_per_kg", "max_daily_mg_per_kg",
+        "caution_single_mg_per_kg", "caution_daily_mg_per_kg",
+    )  # fmt: skip
+    return any(tier[c] != "" for c in columns)
 
 
 def _weight_line(weight: dict) -> str:
@@ -120,6 +125,16 @@ def _tier_alerts(
             "DOSE-ABS-CAUTION", "dose", "moderate", item, f"{item.label}: above the usual single dose",
             f"{proposed.dose} is more than {caution:g} mg (demo knowledge base). {tier['caution_note']}",
             "Check the indication and the dose.", evidence, tier["source"], "abs-caution"))  # fmt: skip
+    elif (
+        kg is not None
+        and _number(tier["caution_single_mg_per_kg"]) is not None
+        and single > _number(tier["caution_single_mg_per_kg"]) * kg
+    ):
+        alerts.append(make(
+            "DOSE-KG-CAUTION", "dose", "moderate", item, f"{item.label}: above the usual single dose per kg",
+            f"{proposed.dose} is {single / kg:.1f} mg/kg for {kg:g} kg; the usual limit is "
+            f"{_number(tier['caution_single_mg_per_kg']):g} mg/kg (demo knowledge base). {tier['caution_note']}",
+            "Check the dose against the patient's weight.", evidence, tier["source"], "kg-caution"))  # fmt: skip
     if per_day:
         cap, by_kg = limit(tier["max_daily_mg_per_kg"], tier["max_daily_mg"])
         total = single * per_day
@@ -136,6 +151,17 @@ def _tier_alerts(
                 f"{item.label}: daily dose above the {'per-kg' if by_kg else 'adult'} limit",
                 f"{proposed.dose} {proposed.frequency} is {what} (demo knowledge base).{note}",
                 "Check the dose and frequency.", evidence, tier["source"], "kg-daily" if by_kg else "abs-daily"))  # fmt: skip
+        elif (
+            kg is not None
+            and _number(tier["caution_daily_mg_per_kg"]) is not None
+            and total > _number(tier["caution_daily_mg_per_kg"]) * kg
+        ):
+            alerts.append(make(
+                "DOSE-KG-CAUTION", "dose", "moderate", item, f"{item.label}: above the usual daily dose per kg",
+                f"{proposed.dose} {proposed.frequency} is {total:g} mg a day, {total / kg:.1f} mg/kg for {kg:g} kg; "
+                f"the usual limit is {_number(tier['caution_daily_mg_per_kg']):g} mg/kg a day (demo knowledge base). "
+                f"{tier['caution_note']}",
+                "Check the dose and frequency.", evidence, tier["source"], "kg-daily-caution"))  # fmt: skip
     return alerts
 
 

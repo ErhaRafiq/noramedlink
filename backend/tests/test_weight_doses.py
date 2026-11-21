@@ -185,27 +185,55 @@ def test_ibuprofen_under_six_months_is_not_covered():
     assert set(run("ibuprofen", "50 mg", months=5, kg=6)) == {"NOT-COVERED"}
 
 
-def test_ibuprofen_mg_per_kg_limits_apply_to_the_age_range_the_label_states_6_months_up_to_2_years():
+def test_ibuprofen_per_kg_limits_apply_from_6_months_up_to_12_years():
     assert new_rules(run("ibuprofen", "100 mg", "QID", months=12, kg=10)) == set()  # 10 mg/kg, 40 mg/kg a day
-    found = run("ibuprofen", "110 mg", months=12, kg=10)  # 11 mg/kg
-    assert set(found) == {"DOSE-KG-SINGLE"} and "11.0 mg/kg" in found["DOSE-KG-SINGLE"]["effect"]
-    found = run("ibuprofen", "80 mg", "every 4 hours", months=12, kg=10)  # 480 mg a day = 48 mg/kg
-    assert set(found) == {"DOSE-KG-DAILY"}
+    found = run("ibuprofen", "110 mg", months=12, kg=10)  # 11 mg/kg a dose
+    assert set(found) == {"DOSE-KG-CAUTION"} and "11.0 mg/kg" in found["DOSE-KG-CAUTION"]["effect"]
+    assert found["DOSE-KG-CAUTION"]["severity"] == "moderate" and not found["DOSE-KG-CAUTION"]["requires_justification"]
 
 
-def test_ibuprofen_age_boundaries_6_months_and_2_years():
-    assert "NOT-COVERED" in run("ibuprofen", "50 mg", months=5, kg=6)
-    assert "NOT-COVERED" not in run("ibuprofen", "50 mg", months=6, kg=7)
-    assert "DOSE-KG-SINGLE" in run("ibuprofen", "150 mg", months=23, kg=10)  # last month of the stated range
-    found = run("ibuprofen", "150 mg", months=24, kg=10)  # 2 years: no tier, so no weight rule and no notice
-    assert new_rules(found) == set()
+def test_ibuprofen_age_boundaries_6_months_and_12_years():
+    assert "NOT-COVERED" in run("ibuprofen", "50 mg", months=5, kg=6)  # 5 months
+    assert "NOT-COVERED" not in run("ibuprofen", "50 mg", months=6, kg=7)  # 6 months
+    assert "DOSE-KG-CAUTION" in run("ibuprofen", "110 mg", months=143, kg=10)  # 11 years 11 months: per-kg applies
+    assert new_rules(run("ibuprofen", "110 mg", months=144, kg=10)) == set()  # 12 years: the adult rule only
 
 
-def test_ibuprofen_from_2_years_only_the_existing_adult_rule_applies():
-    assert new_rules(run("ibuprofen", "400 mg", "TDS", months=60, kg=None)) == set()  # no weight needed
+def test_ibuprofen_single_dose_10_0_and_10_1_mg_per_kg():
+    assert new_rules(run("ibuprofen", "300 mg", months=60, kg=30)) == set()  # exactly 10.0 mg/kg
+    found = run("ibuprofen", "303 mg", months=60, kg=30)  # 10.1 mg/kg
+    assert set(found) == {"DOSE-KG-CAUTION"}
+
+
+def test_ibuprofen_daily_40_0_and_40_1_mg_per_kg_a_day():
+    assert new_rules(run("ibuprofen", "200 mg", "every 4 hours", months=60, kg=30)) == set()  # 1200 mg, 40.0 mg/kg
+    found = run("ibuprofen", "200.5 mg", "every 4 hours", months=60, kg=30)  # 1203 mg, 40.1 mg/kg
+    assert set(found) == {"DOSE-KG-CAUTION"} and "40.1 mg/kg" in found["DOSE-KG-CAUTION"]["effect"]
+    assert found["DOSE-KG-CAUTION"]["severity"] == "moderate"
+
+
+def test_ibuprofen_daily_50_0_and_50_1_mg_per_kg_a_day_is_red_above_50():
+    found = run("ibuprofen", "250 mg", "every 4 hours", months=60, kg=30)  # 1500 mg, 50.0 mg/kg: caution only
+    assert set(found) == {"DOSE-KG-CAUTION"}
+    found = run("ibuprofen", "250.5 mg", "every 4 hours", months=60, kg=30)  # 1503 mg, 50.1 mg/kg
+    assert set(found) == {"DOSE-KG-DAILY"} and found["DOSE-KG-DAILY"]["severity"] == "major"
+    assert found["DOSE-KG-DAILY"]["requires_justification"]
+    assert "40 mg/kg" in found["DOSE-KG-DAILY"]["effect"]  # the label's note on serious adverse events
+
+
+def test_ibuprofen_never_above_the_adult_maximum_even_for_a_child():
+    found = run("ibuprofen", "900 mg", months=120, kg=90)  # 10 mg/kg, but over 800 mg: the existing red rule
+    assert "DOSE-SINGLE" in found and found["DOSE-SINGLE"]["severity"] == "major"
+
+
+def test_ibuprofen_child_without_weight_gets_the_notice_and_the_adult_maximum_only():
+    found = run("ibuprofen", "400 mg", "TDS", months=60, kg=None)
+    assert set(new_rules(found)) == {"WEIGHT-NEEDED"}
+    assert "DOSE-SINGLE" in run("ibuprofen", "900 mg", months=60, kg=None)
+
+
+def test_ibuprofen_adult_only_the_existing_rule_applies():
     assert new_rules(run("ibuprofen", "800 mg", "QID", months=400, kg=None)) == set()
-    found = run("ibuprofen", "900 mg", months=60, kg=18)
-    assert "DOSE-SINGLE" in found and not new_rules(found)
     assert "DOSE-DAILY" in run("ibuprofen", "1000 mg", "QID", months=400, kg=70)  # 4000 mg a day
 
 
