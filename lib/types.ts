@@ -595,7 +595,7 @@ export type ClinicalSource = {
   title?: string | null;
   date?: string | null;
   date_source?: string | null;
-  kind?: "report" | "vitals" | string;
+  kind?: "report" | "vitals" | "body" | string;
   printed?: string;
   medicine?: string;
   dose?: string | null;
@@ -622,6 +622,43 @@ export type ClinicalCondition = {
   sources: ClinicalSource[];
 };
 
+/** One weight or height reading in the summary, with its date and who entered it. */
+export type ClinicalBodyReading = { value: number; date: string; entered_by: string; source: string };
+
+export type ClinicalWeightChange = {
+  percent: number;
+  from_kg: number;
+  from_date: string;
+  to_kg: number;
+  to_date: string;
+  window_days: number;
+  threshold_percent: number;
+  wording: string;
+  basis: string;
+};
+
+/** The body measurements section (backend/services/icse/body.py); null when the summary was built without it. */
+export type ClinicalBody = {
+  source: string;
+  weight: ClinicalBodyReading | null;
+  height: ClinicalBodyReading | null;
+  weight_current: boolean | null;
+  weight_max_age_days: number;
+  app_rule: string;
+  bmi: {
+    value: number;
+    band: string | null;
+    band_note: string | null;
+    asian_note: string | null;
+    weight_date: string;
+    height_date: string;
+  } | null;
+  weight_history: { date: string; value: number; entered_by: string }[];
+  weight_change_flags: ClinicalWeightChange[];
+  change_since_previous: ClinicalWeightChange | null;
+  pregnancy: { status: "pregnant" | "not_pregnant" | "not_recorded"; set_on: string | null; set_by_role: string | null; expired: boolean; max_months: number };
+};
+
 /** The sections of a clinical summary (backend/services/icse/summary.py). */
 export type ClinicalSummaryContent = {
   section_limit?: number;
@@ -635,6 +672,7 @@ export type ClinicalSummaryContent = {
     stopped_in_reports: string[];
   };
   allergies: { status: "listed" | "none_recorded" | "not_recorded"; items: { name: string; sources: ClinicalSource[] }[]; no_known_allergies_in: ClinicalSource[] };
+  body?: ClinicalBody | null;
   flags: ClinicalFlag[];
   check_original: ClinicalFlag[];
   missing_data: string[];

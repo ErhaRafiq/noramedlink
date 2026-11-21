@@ -32,6 +32,7 @@ import secrets
 import shutil
 import sys
 import time
+from zoneinfo import ZoneInfo
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -1434,8 +1435,9 @@ def run_tests() -> None:
           all(call(m, p).status_code == 401 for m, p in (("GET", bm), ("POST", bm), ("GET", dbm), ("POST", dbm))))
     check("a doctor on the patient's history -> 403", call("GET", bm, tok_doctor_c).status_code == 403)
     check("a patient on the doctor's history -> 403", call("GET", dbm, tok_c).status_code == 403)
-    today_s = date.today().isoformat()
-    ten_days = (date.today() - timedelta(days=10)).isoformat()
+    local_today = datetime.now(ZoneInfo(os.environ.get("APP_TIMEZONE") or "Asia/Karachi")).date()  # the app's calendar
+    today_s = local_today.isoformat()
+    ten_days = (local_today - timedelta(days=10)).isoformat()
 
     response = call("POST", bm, tok_c, {"weight": 154, "weight_unit": "lb", "height_cm": 172, "measured_on": ten_days})
     first = response.json() if response.status_code == 201 else {}
@@ -1545,7 +1547,7 @@ def run_tests() -> None:
 
     print("\n[17g] Pregnancy status: the patient's own, a doctor with a grant, expiry, no guessing from text")
     ps = "/api/backend/patient/pregnancy-status"
-    utc_today_s = datetime.now(timezone.utc).date().isoformat()  # the status date is stored in UTC
+    utc_today_s = today_s  # the status date is the patient's local date (timestamps are UTC)
     dps = f"/api/backend/doctor/patients/{patient_c}/pregnancy-status"
     check("pregnancy status without a token -> 401",
           call("PUT", ps, None, {"status": "pregnant"}).status_code == 401 and call("PUT", dps, None, {"status": "pregnant"}).status_code == 401)
@@ -1640,17 +1642,65 @@ def run_tests() -> None:
     rules = {a["rule_id"] for it in rx.json().get("items", []) for a in it["alerts"]}
     check("a 75 kg adult is dosed by the adult rule: reported once, with no weight or age notice",
           "DOSE-SINGLE" in rules and not {r for r in rules if r.startswith(("DOSE-KG", "DOSE-ABS", "WEIGHT", "AGE", "NOT-COVERED"))}, f"got {rules}")
-    rx = call("POST", f"/api/backend/doctor/patients/{patient_c}/medication-check", tok_doctor_c,
-              {"items": [{"medicine": "amoxicillin", "dose": "1500 mg", "frequency": "BD"}]})
-    found = {a["rule_id"]: a for it in rx.json().get("items", []) for a in it["alerts"]} if rx.status_code == 200 else {}
-    check("amoxicillin 1500 mg for a 75 kg adult: above the 1000 mg label tier, red, justification required, with the weight as evidence",
-          found.get("DOSE-ABS-SINGLE", {}).get("severity") == "major" and found["DOSE-ABS-SINGLE"]["requires_justification"]
-          and any("Weight 75 kg" in e for e in found["DOSE-ABS-SINGLE"]["evidence"]), f"got {list(found)}")
+    for dose, severity, needs in (("1500 mg", "moderate", False), ("3500 mg", "major", True)):
+        rx = call("POST", f"/api/backend/doctor/patients/{patient_c}/medication-check", tok_doctor_c,
+                  {"items": [{"medicine": "amoxicillin", "dose": dose, "frequency": "OD"}]})
+        found = {a["rule_id"]: a for it in rx.json().get("items", []) for a in it["alerts"]} if rx.status_code == 200 else {}
+        rule = "DOSE-ABS-CAUTION" if severity == "moderate" else "DOSE-ABS-SINGLE"
+        check(f"amoxicillin {dose} for a 75 kg adult: {'yellow, no justification' if severity == 'moderate' else 'red, justification required'}, with the weight as evidence",
+              found.get(rule, {}).get("severity") == severity and found[rule]["requires_justification"] is needs
+              and any("Weight 75 kg" in e for e in found[rule]["evidence"]), f"got {list(found)}")
     create_grant(doctor_2, patient_c, expires_in=timedelta(hours=-1))
 
     create_grant(doctor_c, patient_c, expires_in=timedelta(hours=-1))
     check("after the grant expires the doctor is refused again -> 403",
           call("GET", dbm, tok_doctor_c).status_code == 403 and call("POST", dbm, tok_doctor_c, {"weight": 70}).status_code == 403)
+
+    print("\n[17h] Clinical summary (ICSE): weight, BMI and trend with dates; weight not recorded; a new reading makes it out of date")
+    sc = f"/api/backend/doctor/patients/{patient_c}/clinical-summary"
+    create_grant(doctor_c, patient_c, expires_in=timedelta(hours=1))
+    response = call("POST", sc + "/regenerate", tok_doctor_c)
+    version = response.json().get("summary", {}) if response.status_code == 200 else {}
+    body_section = (version.get("content") or {}).get("body") or {}
+    check("the summary has a body measurements section with the latest weight, its date and who entered it",
+          response.status_code == 200 and body_section.get("weight", {}).get("value") == 75.0
+          and body_section["weight"].get("date") == today_s and body_section["weight"].get("entered_by") == "a doctor"
+          and body_section["height"]["value"] == 172.0, f"got {response.status_code} {str(body_section)[:200]}")
+    check("with the BMI, its WHO band and the Asian-population note",
+          body_section.get("bmi", {}).get("value") == 25.4 and "WHO adult band" in (body_section["bmi"].get("band") or "")
+          and "27.5" in (body_section["bmi"].get("asian_note") or ""), f"got {body_section.get('bmi')}")
+    flags = [f for f in (version.get("content") or {}).get("flags", []) if f.get("kind") == "weight_change"]
+    check("a gain of 7 % or more in 30 days is flagged for physician review, with its rule and source",
+          flags and "significant weight gain, for physician review" in flags[0]["message"] and "app rule (demo)" in flags[0]["rule"]
+          and flags[0]["sources"][0]["kind"] == "body", f"got {flags}")
+    summary_text = version.get("summary_text", "")
+    check("the text version lists the section, and never says normal, safe or malnutrition",
+          "Body measurements" in summary_text and "Weight: 75 kg on" in summary_text
+          and "normal" not in summary_text.lower().replace("abnormal", "")
+          and " safe" not in summary_text.lower() and "malnutrition" not in summary_text.lower())
+    check("no AI is used in a test run, so the key findings are rule-built and mention the flag",
+          version.get("source") == "rule_based" and "weight change(s) flagged" in version["content"]["key_findings"]["text"])
+    check("the freshly built summary is current", call("GET", sc, tok_doctor_c).json().get("out_of_date") is False)
+
+    check("a new weight reading makes it out of date, and the trigger says what changed",
+          call("POST", dbm, tok_doctor_c, {"weight": 76, "measured_on": today_s}).status_code == 201
+          and call("GET", sc, tok_doctor_c).json().get("out_of_date") is True
+          and "weight, height or pregnancy status changed" in (call("GET", sc, tok_doctor_c).json().get("pending_change") or ""))
+    again = call("POST", sc + "/regenerate", tok_doctor_c)
+    check("regenerating adds a new version with the new weight and keeps the old one",
+          again.status_code == 200 and again.json().get("created") is True
+          and again.json()["summary"]["content"]["body"]["weight"]["value"] == 76.0
+          and call("GET", sc + "/versions", tok_doctor_c).json().get("total", 0) >= 2)
+
+    create_grant(doctor_c, patient_b, expires_in=timedelta(hours=1))
+    empty = call("POST", f"/api/backend/doctor/patients/{patient_b}/clinical-summary/regenerate", tok_doctor_c)
+    content_b = empty.json().get("summary", {}).get("content", {}) if empty.status_code == 200 else {}
+    check("a patient with no readings: 'Weight not recorded' and 'Height not recorded' under missing data, no BMI, nothing invented",
+          "Weight not recorded." in content_b.get("missing_data", []) and "Height not recorded." in content_b.get("missing_data", [])
+          and content_b["body"]["weight"] is None and content_b["body"]["bmi"] is None, f"got {content_b.get('missing_data')}")
+    create_grant(doctor_c, patient_b, expires_in=timedelta(hours=-1))
+    create_grant(doctor_c, patient_c, expires_in=timedelta(hours=-1))
+    check("without a grant the summary is refused again -> 403", call("GET", sc, tok_doctor_c).status_code == 403)
 
     print("\n[17c] Doctor PMDC verification: the format at signup, the admin's check, the badge")
     signup_path = "/api/auth/signup"
