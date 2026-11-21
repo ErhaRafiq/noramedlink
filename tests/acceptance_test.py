@@ -1545,6 +1545,7 @@ def run_tests() -> None:
 
     print("\n[17g] Pregnancy status: the patient's own, a doctor with a grant, expiry, no guessing from text")
     ps = "/api/backend/patient/pregnancy-status"
+    utc_today_s = datetime.now(timezone.utc).date().isoformat()  # the status date is stored in UTC
     dps = f"/api/backend/doctor/patients/{patient_c}/pregnancy-status"
     check("pregnancy status without a token -> 401",
           call("PUT", ps, None, {"status": "pregnant"}).status_code == 401 and call("PUT", dps, None, {"status": "pregnant"}).status_code == 401)
@@ -1564,7 +1565,7 @@ def run_tests() -> None:
     response = call("PUT", ps, tok_c, {"status": "pregnant"})
     state = response.json() if response.status_code == 200 else {}
     check("C sets pregnant -> 200, dated today, set by the patient",
-          response.status_code == 200 and state.get("status") == "pregnant" and state.get("set_on") == today_s
+          response.status_code == 200 and state.get("status") == "pregnant" and state.get("set_on") == utc_today_s
           and state.get("set_by_role") == "patient" and state.get("expired") is False and state.get("max_months") == 10, f"got {response.text[:150]}")
     check("the profile shows it",
           call("GET", "/api/backend/profile", tok_c).json()["patient"]["pregnancy"]["status"] == "pregnant")
@@ -1583,7 +1584,7 @@ def run_tests() -> None:
 
     response = call("PUT", dps, tok_doctor_c, {"status": "not_pregnant"})
     check("the granted doctor changes it; the role and date are kept",
-          response.status_code == 200 and response.json().get("set_by_role") == "doctor" and response.json().get("set_on") == today_s)
+          response.status_code == 200 and response.json().get("set_by_role") == "doctor" and response.json().get("set_on") == utc_today_s)
     check("and the category is back", call("GET", dbm + "/summary", tok_doctor_c).json().get("bmi_category") == "normal range")
     check("the patient is told", scalar("select count(*) from notifications where user_id = :u and kind = 'record_changed' and body like '%pregnancy status%'", u=patient_c) >= 1)
 
@@ -1637,8 +1638,14 @@ def run_tests() -> None:
     check("Cockcroft-Gault is shown with what is missing (no creatinine, sex not recorded) and never as a number",
           panel.get("value") is None and "serum creatinine" in panel.get("missing", []) and "eGFR" in panel.get("note", ""), f"got {panel}")
     rules = {a["rule_id"] for it in rx.json().get("items", []) for a in it["alerts"]}
-    check("no weight-based dose rule is enabled until the team verifies the table (the adult rule still fires)",
-          "DOSE-SINGLE" in rules and not {r for r in rules if r.startswith(("DOSE-KG", "DOSE-ABS", "WEIGHT"))}, f"got {rules}")
+    check("a 75 kg adult is dosed by the adult rule: reported once, with no weight or age notice",
+          "DOSE-SINGLE" in rules and not {r for r in rules if r.startswith(("DOSE-KG", "DOSE-ABS", "WEIGHT", "AGE", "NOT-COVERED"))}, f"got {rules}")
+    rx = call("POST", f"/api/backend/doctor/patients/{patient_c}/medication-check", tok_doctor_c,
+              {"items": [{"medicine": "amoxicillin", "dose": "1500 mg", "frequency": "BD"}]})
+    found = {a["rule_id"]: a for it in rx.json().get("items", []) for a in it["alerts"]} if rx.status_code == 200 else {}
+    check("amoxicillin 1500 mg for a 75 kg adult: above the 1000 mg label tier, red, justification required, with the weight as evidence",
+          found.get("DOSE-ABS-SINGLE", {}).get("severity") == "major" and found["DOSE-ABS-SINGLE"]["requires_justification"]
+          and any("Weight 75 kg" in e for e in found["DOSE-ABS-SINGLE"]["evidence"]), f"got {list(found)}")
     create_grant(doctor_2, patient_c, expires_in=timedelta(hours=-1))
 
     create_grant(doctor_c, patient_c, expires_in=timedelta(hours=-1))

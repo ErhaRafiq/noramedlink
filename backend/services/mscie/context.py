@@ -137,6 +137,7 @@ def _add_body(db: Session, patient: User, context: PatientContext, today: date) 
     if profile is not None:
         born = profile.date_of_birth
         context.age = today.year - born.year - ((today.month, today.day) < (born.month, born.day))
+        context.age_months = (today.year - born.year) * 12 + today.month - born.month - (today.day < born.day)
         context.sex = body_measurements.sex_for_formula(profile.gender)
     latest = body_measurements.latest(body_measurements.readings(body_record.rows_for(db, patient.id), "weight_kg"))
     if latest is not None:

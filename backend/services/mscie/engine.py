@@ -54,6 +54,7 @@ class PatientContext:
     allergies: list[dict] = field(default_factory=list)  # {"name", "generics", "classes", "source"}
     allergy_status: str = "not_recorded"  # listed | none_recorded | not_recorded
     labs: dict[str, dict] = field(default_factory=dict)  # test -> {"value", "unit", "date", "source"}
+    age_months: int | None = None  # whole months old; label tiers start at months (3 months, 6 months, 2 years)
     age: int | None = None  # from the profile's date of birth
     sex: str | None = None  # "male" or "female" from the profile; None for other or blank
     weight: dict | None = None  # {"value", "date", "entered_by", "current", "max_age_days"}; never assumed

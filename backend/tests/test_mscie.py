@@ -26,6 +26,11 @@ def ctx(medicines=(), conditions=(), allergies=(), labs=None, previous=()):
         ],
         labs={k: {"value": v, "unit": "", "date": "2026-03-01", "source": "report 1"} for k, v in (labs or {}).items()},
         previous=list(previous),
+        # An adult with a current weight, so the adult dose rules are what these tests exercise. The weight-based
+        # tiers have their own tests in test_weight_doses.py.
+        age=40,
+        age_months=480,
+        weight={"value": 70.0, "date": "2026-03-01", "entered_by": "the patient", "current": True, "max_age_days": 90},
     )
 
 
