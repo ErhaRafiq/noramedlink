@@ -15,6 +15,7 @@ import { HoursBanner } from "./doctor/HoursBanner";
 import { useAuthGuard } from "@/hooks/use-auth-guard";
 import { useDoctorDashboard } from "@/hooks/doctor/use-doctor-dashboard";
 import { ClinicalSummaryCard } from "./doctor/clinical-summary/ClinicalSummaryCard";
+import { BodyMeasurementsCard } from "./doctor/BodyMeasurementsCard";
 import { HealthRecordCard } from "./doctor/HealthRecordCard";
 import { PrescribeCard } from "./doctor/prescribe/PrescribeCard";
 import { DoctorAppointmentsCard } from "./doctor/DoctorAppointmentsCard";
@@ -133,6 +134,12 @@ export function DoctorDashboard() {
             <>
               <ClinicalSummaryCard key={activePatient.id} patientId={activePatient.id} patientName={activePatient.name} />
               <HealthRecordCard key={`hr-${activePatient.id}`} patientId={activePatient.id} patientName={activePatient.name} />
+              <BodyMeasurementsCard
+                key={`bm-${activePatient.id}`}
+                patientId={activePatient.id}
+                patientName={activePatient.name}
+                doctorName={auth.user.full_name}
+              />
               <PrescribeCard
                 key={`rx-${activePatient.id}`}
                 patientId={activePatient.id}

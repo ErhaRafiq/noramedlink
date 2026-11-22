@@ -73,12 +73,16 @@ test.describe("clinical summary for the doctor", () => {
     await expect(abnormal).toContainText("Source:");
     await expect(card.getByRole("region", { name: "Conditions mentioned in reports" })).toContainText("diabetes mellitus");
     await expect(card.getByText("Built by fixed rules from the patient's records.", { exact: true })).toBeVisible();
+    const body = card.getByRole("region", { name: "Body measurements" });
+    await expect(body).toContainText("Weight:");
+    await expect(body).toContainText("Pregnancy status:");
 
-    // Nothing changed: regenerating keeps the same version.
+    // Nothing changed: regenerating keeps the same version (other tests may have added weight readings first).
+    const version = await card.getByLabel("Version").inputValue();
     await card.getByRole("button", { name: "Regenerate" }).click();
     await expect(card.getByText("Up to date")).toBeVisible();
-    await expect(card.getByText(/^Version 1 ·/)).toBeVisible();
-    await expect(card.getByLabel("Version")).toHaveValue("1");
+    await expect(card.getByText(new RegExp(`^Version ${version} ·`))).toBeVisible();
+    await expect(card.getByLabel("Version")).toHaveValue(version);
   });
 
   test("the clinical summary fits a phone screen @mobile", async ({ page }) => {
