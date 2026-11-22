@@ -1,0 +1,17 @@
+specialty,home_visit,suitability,note,source
+General Physician,yes,1.0,"Common everyday illness that needs a look but not equipment or tests on the spot.",HOME-DEMO
+Pediatrician,yes,0.9,"A child with a mild illness who is easier to see at home.",HOME-DEMO
+Dermatologist,yes,0.6,"Skin problems that can be judged by looking.",HOME-DEMO
+Endocrinologist,yes,0.6,"Follow-up of diabetes or thyroid care at home.",HOME-DEMO
+Gastroenterologist,yes,0.6,"Mild stomach upset that does not need a scope or a scan.",HOME-DEMO
+Psychiatrist,yes,0.5,"A calm talk about mood, worry or sleep.",HOME-DEMO
+Cardiologist,no,0,"Heart problems need a monitor and tests: book a clinic visit.",HOME-DEMO
+Neurologist,no,0,"Nerve and brain problems need an examination and tests: book a clinic visit.",HOME-DEMO
+Pulmonologist,no,0,"Breathing problems need tests and oxygen checks: book a clinic visit, or call 1122 if breathing is hard.",HOME-DEMO
+Orthopedic Specialist,no,0,"Bone and joint problems usually need an X-ray: book a clinic visit.",HOME-DEMO
+ENT Specialist,no,0,"Ear, nose and throat care needs special instruments: book a clinic visit.",HOME-DEMO
+Eye Specialist,no,0,"Eye care needs special instruments: book a clinic visit.",HOME-DEMO
+Gynecologist,no,0,"Women's health care needs an examination room: book a clinic visit.",HOME-DEMO
+Urologist,no,0,"Needs an examination and tests: book a clinic visit.",HOME-DEMO
+Nephrologist,no,0,"Kidney care needs blood and urine tests: book a clinic visit.",HOME-DEMO
+Dentist,no,0,"Dental care needs a dental chair: book a clinic visit.",HOME-DEMO

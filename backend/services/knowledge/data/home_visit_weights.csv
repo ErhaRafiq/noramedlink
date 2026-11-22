@@ -1,0 +1,5 @@
+factor,weight,description
+proximity,0.4,"Straight-line distance from the doctor's base to the patient: 1.0 at the same place, falling evenly to 0 at 25 km. Not road distance or travel time."
+specialty,0.25,"1.0 when the doctor's specialty is the one the reason points to, 0.5 for a General Physician, no other doctor is offered."
+availability,0.2,"1.0 when the doctor's own weekly hours cover this moment, 0.5 when they start within the next 2 hours; a doctor with neither is not offered."
+suitability,0.15,"The home-visit suitability of the doctor's specialty (home_visit_suitability.csv)."

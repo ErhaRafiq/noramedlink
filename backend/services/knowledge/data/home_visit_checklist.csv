@@ -1,0 +1,12 @@
+id,question,source
+HC-01,"Is anyone having chest pain, chest pressure or a racing or irregular heartbeat with feeling faint?",HOME-DEMO
+HC-02,"Is anyone struggling to breathe, gasping, or turning blue around the lips?",HOME-DEMO
+HC-03,"Has anyone fainted, collapsed, or is hard to wake or confused?",HOME-DEMO
+HC-04,"Is there heavy bleeding that will not stop, or has anyone vomited or coughed up blood?",HOME-DEMO
+HC-05,"Is there sudden weakness or numbness on one side, a drooping face, slurred speech or sudden loss of vision?",HOME-DEMO
+HC-06,"Is anyone having a seizure now, or had one that has just stopped?",HOME-DEMO
+HC-07,"Is there swelling of the face, lips or throat, or a severe allergic reaction?",HOME-DEMO
+HC-08,"Is it a serious injury, such as a broken bone, a deep wound, a head injury, a burn or a poisoning?",HOME-DEMO
+HC-09,"Is it a baby under 3 months old with a fever or poor feeding?",HOME-DEMO
+HC-10,"Is anyone thinking of harming themselves or someone else?",HOME-DEMO
+HC-11,"Is a woman who is pregnant or has just given birth bleeding, in severe pain or having fits?",HOME-DEMO

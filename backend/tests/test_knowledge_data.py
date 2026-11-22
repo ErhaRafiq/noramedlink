@@ -156,6 +156,56 @@ def test_the_general_physician_exists_as_the_fallback():
     assert "General Physician" in set(table("specialties")["name"])
 
 
+HOME_VISIT_SCHEMAS = {
+    "home_visit_suitability": pa.DataFrameSchema(
+        {
+            "specialty": pa.Column(str, pa.Check(lambda s: s.isin(set(table("specialties")["name"]))), unique=True),
+            "home_visit": pa.Column(str, pa.Check.isin(["yes", "no"])),
+            "suitability": pa.Column(str, pa.Check.str_matches(r"^(0|0\.\d+|1|1\.0)$")),
+            "note": pa.Column(str, NON_EMPTY),
+            "source": pa.Column(str, pa.Check.isin(sorted(SOURCES))),
+        },
+        strict=True,
+    ),
+    "home_visit_weights": pa.DataFrameSchema(
+        {
+            "factor": pa.Column(
+                str, pa.Check.isin(["proximity", "specialty", "availability", "suitability"]), unique=True
+            ),
+            "weight": pa.Column(str, pa.Check.str_matches(r"^0\.\d+$")),
+            "description": pa.Column(str, NON_EMPTY),
+        },
+        strict=True,
+    ),
+    "home_visit_checklist": pa.DataFrameSchema(
+        {
+            "id": pa.Column(str, pa.Check.str_matches(r"^HC-\d{2}$"), unique=True),
+            "question": pa.Column(str, NON_EMPTY, unique=True),
+            "source": pa.Column(str, pa.Check.isin(sorted(SOURCES))),
+        },
+        strict=True,
+    ),
+}
+
+
+@pytest.mark.parametrize("name", sorted(HOME_VISIT_SCHEMAS))
+def test_every_home_visit_table_matches_its_schema(name):
+    HOME_VISIT_SCHEMAS[name].validate(pd.read_csv(DATA / f"{name}.csv", dtype=str, keep_default_na=False), lazy=True)
+
+
+def test_home_visit_weights_sum_to_one():
+    weights = pd.to_numeric(pd.read_csv(DATA / "home_visit_weights.csv", dtype=str)["weight"])
+    assert len(weights) == 4 and abs(weights.sum() - 1.0) < 1e-9
+
+
+def test_home_visit_suitability_covers_every_specialty_and_is_consistent():
+    frame = pd.read_csv(DATA / "home_visit_suitability.csv", dtype=str)
+    assert set(frame["specialty"]) == set(table("specialties")["name"])
+    values = pd.to_numeric(frame["suitability"])
+    assert (values[frame["home_visit"] == "yes"] > 0).all() and (values[frame["home_visit"] == "no"] == 0).all()
+    assert frame.loc[frame["specialty"] == "General Physician", "home_visit"].item() == "yes"
+
+
 def test_every_brand_maps_to_known_generics():
     generics = set(table("medicines")["generic"])
     unknown = {g for row in table("brands")["generics"] for g in row} - generics

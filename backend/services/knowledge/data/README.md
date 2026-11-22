@@ -26,6 +26,9 @@ with pandera.
 | `duplicate_classes.csv` | 10 | a class where two medicines together is a duplicate | MSCIE |
 | `alternatives.csv` | 24 | a safer candidate for the same use | MSCIE |
 | `ranking_weights.csv` | 4 | a ranking factor and its weight (sums to 1) | MSCIE |
+| `home_visit_suitability.csv` | 16 | a specialty: can it see a patient at home, and how well | home visits |
+| `home_visit_weights.csv` | 4 | a doctor-ranking factor and its weight (sums to 1) | home visits |
+| `home_visit_checklist.csv` | 11 | a fixed emergency question the patient answers first | home visits |
 | `ddinter_interactions.csv.gz` | 160,235 | a drug pair and DDInter's level (CC BY-NC-SA 4.0) | MSCIE, behind `interactions.csv` |
 | `ddinter_names.csv` | 57 | a curated medicine → its DDInter name(s) | MSCIE |
 | `sources.csv` | 15 | a source cited by the rows above | all tables |
@@ -149,3 +152,15 @@ medicines has); the schema tests reject any reference that does not exist. Sever
   words before a phrase ("no", "never", "without", "denies"...), cut at a comma or full stop.
   The mapping is the authors' demo mapping (`DEMO-MAP`), **not clinically reviewed**.
 
+## Home visits (home_visit_suitability.csv, home_visit_weights.csv, home_visit_checklist.csv)
+
+- **home_visit_suitability.csv** (`specialty`, `home_visit`, `suitability`, `note`, `source`): one row for each of the
+  16 specialties. `home_visit` says whether that kind of doctor can sensibly see a patient at home;
+  `suitability` (0 to 1, always 0 for a "no") is one of the four ranking factors. A reason that points to a
+  "no" specialty is not matched to a home visit: the patient is told to book a clinic appointment.
+- **home_visit_weights.csv** (`factor`, `weight`, `description`): proximity 0.4, specialty 0.25, availability
+  0.2, suitability 0.15 (sum 1). Proximity falls evenly from 1 at the same place to 0 at 25 km, straight line.
+- **home_visit_checklist.csv** (`id`, `question`, `source`): 11 emergency questions every request must answer.
+  One "yes" blocks the request with the 1122 notice; nothing is saved and no doctor is shown.
+- **Limitations:** the authors' own demo rules (`HOME-DEMO`), **not clinically reviewed**. They only decide
+  whom a request is offered to and never diagnose.

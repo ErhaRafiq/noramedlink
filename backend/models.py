@@ -159,6 +159,15 @@ class DoctorProfile(Base):
     pmdc_register_status: Mapped[str | None] = mapped_column(String(40), nullable=True)  # ACTIVE or In Active
     pmdc_checked_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     pmdc_note: Mapped[str | None] = mapped_column(String(300), nullable=True)  # the reason for a manual decision
+    # Home visits (services/home_visits): off until the doctor switches it on. The base location is typed or
+    # taken from the browser by the doctor; the radius is how far they travel. Coordinates are never shown
+    # to patients; a doctor sees the patient's only as a rounded straight-line distance before accepting.
+    home_visits_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default=expression.false(), nullable=False
+    )
+    service_radius_km: Mapped[float | None] = mapped_column(Float, nullable=True)
+    base_latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    base_longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -261,6 +270,93 @@ class EmergencyBooking(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+
+
+class HomeVisitRequest(Base):
+    """One on-demand home visit (Module 6). Replaces the old emergency_bookings, which stay read-only.
+
+    `status` moves only through services/home_visits/states.py; each step stamps its own column. The reason
+    and the written address are shown to the matched doctor only after they accept; the coordinates stay on
+    the server. Never used for emergencies: those are refused before a row is written.
+    """
+
+    __tablename__ = "home_visit_requests"
+    __table_args__ = (
+        CheckConstraint("latitude >= -90 AND latitude <= 90", name="home_visit_latitude_range"),
+        CheckConstraint("longitude >= -180 AND longitude <= 180", name="home_visit_longitude_range"),
+        CheckConstraint("match_mode IN ('auto', 'choose')", name="home_visit_match_mode"),
+        Index("home_visit_requests_patient_idx", "patient_id", "created_at"),
+        Index("home_visit_requests_doctor_idx", "doctor_id", "status"),
+        # A doctor is on at most one visit at a time.
+        Index(
+            "home_visit_one_active_per_doctor_uq",
+            "doctor_id",
+            unique=True,
+            postgresql_where=text("status IN ('accepted', 'en_route', 'arrived')"),
+            sqlite_where=text("status IN ('accepted', 'en_route', 'arrived')"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    doctor_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), default="offered", server_default="offered", nullable=False)
+    match_mode: Mapped[str] = mapped_column(String(10), nullable=False)  # auto or choose
+    reason: Mapped[str] = mapped_column(Text, nullable=False)
+    specialty: Mapped[str] = mapped_column(String(80), nullable=False)  # what the reason points to
+    contact_phone: Mapped[str] = mapped_column(String(40), nullable=False)
+    address_text: Mapped[str] = mapped_column(Text, nullable=False)  # typed in words, never geocoded
+    latitude: Mapped[float] = mapped_column(Float, nullable=False)
+    longitude: Mapped[float] = mapped_column(Float, nullable=False)
+    accuracy_m: Mapped[float | None] = mapped_column(Float, nullable=True)  # None when typed by hand
+    location_source: Mapped[str] = mapped_column(String(10), nullable=False)  # device or manual
+    eta_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)  # only what the doctor typed
+    visit_findings: Mapped[str | None] = mapped_column(Text, nullable=True)
+    visit_advice: Mapped[str | None] = mapped_column(Text, nullable=True)
+    visit_follow_up: Mapped[str | None] = mapped_column(Text, nullable=True)
+    ended_reason: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    en_route_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    arrived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    closed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
+
+class HomeVisitOffer(Base):
+    """One offer of a request to one doctor, with its window. The first accept wins (see the partial index)."""
+
+    __tablename__ = "home_visit_offers"
+    __table_args__ = (
+        UniqueConstraint("request_id", "doctor_id", name="home_visit_offer_once_per_doctor"),
+        CheckConstraint(
+            "outcome IN ('pending', 'accepted', 'declined', 'expired', 'withdrawn')", name="home_visit_offer_outcome"
+        ),
+        Index("home_visit_offers_doctor_idx", "doctor_id", "outcome"),
+        # One live offer per request at a time.
+        Index(
+            "home_visit_one_pending_offer_uq",
+            "request_id",
+            unique=True,
+            postgresql_where=text("outcome = 'pending'"),
+            sqlite_where=text("outcome = 'pending'"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    request_id: Mapped[int] = mapped_column(ForeignKey("home_visit_requests.id", ondelete="CASCADE"), nullable=False)
+    doctor_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)  # 1 = best match
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    distance_km: Mapped[float] = mapped_column(Float, nullable=False)  # exact; doctors see it rounded
+    outcome: Mapped[str] = mapped_column(String(10), default="pending", server_default="pending", nullable=False)
+    offered_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    responded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class Payment(Base):
