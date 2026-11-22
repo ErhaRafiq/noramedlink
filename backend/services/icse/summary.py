@@ -9,6 +9,8 @@ source (report id, title and date, or "entered in the app").
 - Abnormal results: result, persistent and trend flags (services/icse/flags.py).
 - Conditions, allergies and medicines: as mentioned in reports ("mentioned in report", never a
   confirmed diagnosis), and medicines as entered in the app.
+- Body measurements (services/icse/body.py): the latest weight and height with dates and who entered them, the BMI,
+  the weight trend and its flags; "Weight not recorded" under missing data when there is none.
 - Flags, values to check against the original report, and missing data.
 
 Nothing here says a value is normal or a medicine is safe; when there is no data it says so.
@@ -19,9 +21,10 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
+from services.icse.body import body_flags, body_section, missing_lines, text_lines
 from services.icse.flags import build_flags
 
-SUMMARY_VERSION = 1
+SUMMARY_VERSION = 2  # 2: the body measurements section
 SECTION_LIMIT = 5  # items shown per section before "show more"
 RESULT_KINDS = ("result", "persistent", "trend")
 
@@ -134,7 +137,9 @@ def _missing(sources: list[dict], unreadable: list[dict], flags: dict, allergies
     return missing
 
 
-def _key_findings(abnormal: list[dict], conditions: list[dict], medicines: dict, allergies: dict, checks: int) -> str:
+def _key_findings(
+    abnormal: list[dict], conditions: list[dict], medicines: dict, allergies: dict, checks: int, weight_flags: int = 0
+) -> str:
     parts = []
     high_risk = sum(1 for f in abnormal if f["severity"] == "HIGH_RISK")
     results = sum(1 for f in abnormal if f["kind"] == "result")
@@ -158,19 +163,26 @@ def _key_findings(abnormal: list[dict], conditions: list[dict], medicines: dict,
         parts.append(f"allergies mentioned: {', '.join(a['name'] for a in allergies['items'][:4])}")
     if checks:
         parts.append(f"{checks} value(s) to check against the original report")
+    if weight_flags:
+        parts.append(f"{weight_flags} weight change(s) flagged")
     if not parts:
         return "No rule alerts and no conditions, medicines or allergies found in the available records."
     text = "; ".join(parts)
     return text[0].upper() + text[1:] + ". For physician review."
 
 
-def build_content(sources: list[dict], medications: list[dict], unreadable: list[dict], today: date) -> dict[str, Any]:
+def build_content(
+    sources: list[dict], medications: list[dict], unreadable: list[dict], today: date, body: dict | None = None
+) -> dict[str, Any]:
     """`sources`: oldest first, each {"report_id", "title", "kind" ("report"/"vitals"), "date",
     "date_source", "entities"}; `medications`: medicine lists entered in the app; `unreadable`:
-    reports with no usable text."""
+    reports with no usable text; `body`: the weights, heights, age and pregnancy status (versions.gather), or None."""
     flags = build_flags(sources)
     abnormal = [f for f in flags["flags"] if f["kind"] in RESULT_KINDS]
     other_flags = [f for f in flags["flags"] if f["kind"] not in RESULT_KINDS]
+    section = body_section(body, today) if body is not None else None
+    weight_flags = body_flags(section) if section else []
+    other_flags += weight_flags
     conditions, family = _conditions(sources)
     allergies = _allergies(sources)
     treatment = next((f for f in flags["flags"] if f["kind"] == "ongoing_treatment"), None)
@@ -191,7 +203,9 @@ def build_content(sources: list[dict], medications: list[dict], unreadable: list
         "summary_version": SUMMARY_VERSION,
         "section_limit": SECTION_LIMIT,
         "key_findings": {
-            "text": _key_findings(abnormal, conditions, medicines, allergies, len(flags["check_original"])),
+            "text": _key_findings(
+                abnormal, conditions, medicines, allergies, len(flags["check_original"]), len(weight_flags)
+            ),
             "source": "rule_based",
         },
         "abnormal_results": abnormal,
@@ -199,9 +213,11 @@ def build_content(sources: list[dict], medications: list[dict], unreadable: list
         "family_history": family,
         "medications": medicines,
         "allergies": allergies,
+        "body": section,
         "flags": other_flags,
         "check_original": flags["check_original"],
-        "missing_data": _missing(sources, unreadable, flags, allergies, medicines),
+        "missing_data": _missing(sources, unreadable, flags, allergies, medicines)
+        + (missing_lines(section) if section else []),
         "notes": flags["notes"],
         "sources": [_ref(s) for s in sources if s.get("kind", "report") == "report"],
         "unreadable_reports": unreadable,
@@ -240,6 +256,8 @@ def render_text(content: dict[str, Any]) -> str:
         + (["No known allergies (mentioned in report)"] if allergies["no_known_allergies_in"] else []),
         "Not recorded.",
     )
+    if content.get("body"):
+        section("Body measurements", text_lines(content["body"]), "Not recorded.")
     section("Flags", [f["message"] for f in content["flags"]], "None.")
     section("Check against the original report", [c["message"] for c in content["check_original"]], "None.")
     section("Missing data", content["missing_data"], "None.")

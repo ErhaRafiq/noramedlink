@@ -22,12 +22,14 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from models import ClinicalSummary, Medication, MedicineHistory, PatientReport, PatientVital, User, Vitals
+from services import body_measurements, body_record, clock, pregnancy
 from services.icse.entities import ENTITIES_VERSION, extract_entities
 from services.icse.flags import printed_date
 from services.icse.summary import SUMMARY_VERSION, build_content, render_text
 from services.icse.wording import reword_key_findings
 from services.lab_rules import LAB_RULES_VERSION
 from services.privacy import patient_identity_patterns, redact_identifiers
+from services.profiles import age_on
 
 
 def _hash(value: Any) -> str:
@@ -88,6 +90,33 @@ def _vitals_source(key: str, recorded: datetime | None, text: str) -> dict[str, 
     }
 
 
+def _body_input(db: Session, patient: User) -> dict[str, Any]:
+    """The weights and heights on the record (oldest first), the age and the pregnancy status: everything the
+    body measurements section is built from, and what changes its fingerprint."""
+    rows = body_record.rows_for(db, patient.id)
+    profile = patient.patient_profile
+    state = pregnancy.state_for(profile)
+
+    def items(attribute: str) -> list[dict[str, Any]]:
+        return [
+            {"value": r.value, "date": r.measured_on.isoformat(), "added_by_role": r.added_by_role}
+            for r in body_measurements.readings(rows, attribute)
+        ]
+
+    return {
+        "weights": items("weight_kg"),
+        "heights": items("height_cm"),
+        "age": age_on(profile.date_of_birth) if profile else None,
+        "pregnancy": {
+            "status": state.status,
+            "set_on": state.set_on.isoformat() if state.set_on else None,
+            "set_by_role": state.set_by_role,
+            "expired": state.expired,
+            "max_months": state.max_months,
+        },
+    }
+
+
 def gather(db: Session, patient: User) -> dict[str, Any]:
     """Everything the summary is built from, and the manifest its fingerprint is taken over."""
     identity = patient_identity_patterns(patient)
@@ -131,16 +160,19 @@ def gather(db: Session, patient: User) -> dict[str, Any]:
         for m in db.query(MedicineHistory).filter(MedicineHistory.patient_id == patient.id).all()
     ]  # fmt: skip
 
+    body = _body_input(db, patient)
     manifest = {
         "versions": {"summary": SUMMARY_VERSION, "entities": ENTITIES_VERSION, "lab_rules": LAB_RULES_VERSION},
         "reports": manifest_reports,
         "vitals": _hash(sorted((s["report_id"], s["date"], s["entities"]) for s in sources if s["kind"] == "vitals")),
         "medications": _hash(sorted(medications, key=lambda m: json.dumps(m, sort_keys=True))),
+        "body": _hash(body),
     }
     return {
         "sources": sources,
         "unreadable": unreadable,
         "medications": medications,
+        "body": body,
         "manifest": manifest,
         "fingerprint": _hash(manifest),
         "rebuilt_reports": rebuilt,
@@ -164,6 +196,8 @@ def describe_change(previous: dict | None, current: dict) -> str:
         changes.append(f"{len(removed)} report(s) deleted")
     if previous.get("vitals") != current["vitals"]:
         changes.append("vitals changed")
+    if previous.get("body") != current.get("body"):
+        changes.append("weight, height or pregnancy status changed")
     if previous.get("medications") != current["medications"]:
         changes.append("medicines changed")
     if previous.get("versions") != current["versions"]:
@@ -203,7 +237,9 @@ async def regenerate(
     existing = current_version(db, patient.id)
     if existing and existing.input_fingerprint == inputs["fingerprint"]:
         return existing, False
-    content = build_content(inputs["sources"], inputs["medications"], inputs["unreadable"], today or date.today())
+    content = build_content(
+        inputs["sources"], inputs["medications"], inputs["unreadable"], today or clock.today(), inputs["body"]
+    )
     previous = (existing.content_json or {}).get("inputs", {}).get("manifest") if existing else None
     ai_text, provider, ai_note = await reword_key_findings(content, patient_identity_patterns(patient))
     if ai_text:

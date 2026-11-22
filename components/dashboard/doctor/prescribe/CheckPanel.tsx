@@ -132,8 +132,38 @@ function LabelText({ generic }: { generic: string }) {
 }
 
 /** The record the check used, so the physician can see what each alert is based on (FE-5). */
+const PREGNANCY_WORDS = { pregnant: "pregnant", not_pregnant: "not pregnant", not_recorded: "not recorded" } as const;
+
+/** Cockcroft-Gault next to the labs: information only, never an alert. A missing input is named, not guessed. */
+function CreatinineClearance({ value }: { value: MedicationCheck["context"]["creatinine_clearance"] }) {
+  const { inputs } = value;
+  return (
+    <div className="mt-3 rounded-control border border-line bg-white p-3" aria-label="Creatinine clearance (Cockcroft-Gault)">
+      <p className="text-sm font-semibold text-ink">
+        Creatinine clearance (Cockcroft-Gault): {value.value !== null ? `${value.value} mL/min` : "cannot be estimated"}
+      </p>
+      {value.value !== null ? (
+        <p className="mt-0.5 break-words text-xs">
+          From age {inputs.age}, {inputs.sex}, weight {inputs.weight_kg} kg ({inputs.weight_date}), creatinine {inputs.creatinine_mg_dl} mg/dL (
+          {inputs.creatinine_date}).
+        </p>
+      ) : (
+        <p className="mt-0.5 break-words text-xs">Missing: {value.missing.join("; ")}.</p>
+      )}
+      <p className="mt-0.5 break-words text-xs opacity-80">{value.note}</p>
+    </div>
+  );
+}
+
 export function ContextSummary({ context }: { context: MedicationCheck["context"] }) {
+  const weight = context.weight;
   const parts = [
+    `Weight: ${
+      weight
+        ? `${weight.value} kg on ${weight.date} (entered by ${weight.entered_by})${weight.current ? "" : `: older than ${weight.max_age_days} days (app rule (demo)), not used for the per-kg dose check`}`
+        : "not recorded (weight needed for dose check)"
+    }`,
+    `Pregnancy status: ${PREGNANCY_WORDS[context.pregnancy]}`,
     `Current medicines: ${context.medicines.map((m) => m.name).join(", ") || "none recorded"}`,
     `Conditions: ${context.conditions.map((c) => c.name).join(", ") || "none mentioned"}`,
     `Allergies: ${context.allergies.map((a) => a.name).join(", ") || (context.allergy_status === "none_recorded" ? "no known allergies (report)" : "not recorded")}`,
@@ -149,6 +179,7 @@ export function ContextSummary({ context }: { context: MedicationCheck["context"
           </li>
         ))}
       </ul>
+      <CreatinineClearance value={context.creatinine_clearance} />
     </details>
   );
 }

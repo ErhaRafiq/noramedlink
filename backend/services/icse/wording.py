@@ -13,6 +13,7 @@ from typing import Any
 
 from services.ai_client import generate_text
 from services.ai_guard import numbers_not_in_source
+from services.icse.body import facts_lines
 from services.privacy import redact_identifiers
 
 logger = logging.getLogger("nora.icse")
@@ -23,7 +24,8 @@ INSTRUCTIONS = (
     "minute to read it.\n"
     "Use only the facts given. Do not add values, dates, diagnoses or advice that are not in them. "
     "Keep every number exactly as written. Do not change or soften any severity: high-risk findings "
-    "come first. Conditions are 'mentioned in reports', not confirmed diagnoses.\n"
+    "come first. Conditions are 'mentioned in reports', not confirmed diagnoses. Mention weight, height or BMI only "
+    "as given; do not interpret them.\n"
     f"Plain clinical English, one paragraph, at most {MAX_WORDS} words, no markdown, no lists."
 )
 
@@ -32,6 +34,8 @@ def facts(content: dict[str, Any]) -> str:
     """The summary's facts as plain lines: no report titles, no source references."""
     lines = [f"- [{f['severity']}] {f['message']}" for f in content.get("abnormal_results", [])]
     lines += [f"- [{f['severity']}] {f['message']}" for f in content.get("flags", [])]
+    if content.get("body"):
+        lines += facts_lines(content["body"])
     conditions = [c["name"] + (" (long-term)" if c.get("chronic") else "") for c in content.get("conditions", [])]
     if conditions:
         lines.append("- Conditions mentioned in reports: " + ", ".join(conditions))

@@ -1,10 +1,12 @@
 "use client";
 
+import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { SelectField, TextField } from "@/components/ui/field";
+import { localToday } from "@/lib/datetime";
 import type { SaveResult } from "@/hooks/profile/use-profile";
 import type { PatientProfile, PatientProfileInput } from "@/lib/types";
 import { Notice, type NoticeState } from "./Notice";
@@ -31,7 +33,7 @@ export function PatientForm({
   const [contactPhone, setContactPhone] = useState(patient.emergency_contact_phone ?? "");
   const [errors, setErrors] = useState<{ birthDate?: string; contactPhone?: string }>({});
   const [notice, setNotice] = useState<NoticeState>(null);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = localToday();
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -58,6 +60,29 @@ export function PatientForm({
         title={<span id="patient-title">Personal details</span>}
         description={`Age ${patient.age}. Your CNIC (${patient.cnic_masked}) was recorded at sign-up and is never shown in full.`}
       />
+      <section aria-label="Weight and height" className="mb-5 rounded-control border border-line bg-surface-soft p-4 text-sm">
+        <p className="font-semibold text-ink">Weight and height</p>
+        <dl className="mt-2 grid gap-x-6 gap-y-1 sm:grid-cols-2">
+          <div className="min-w-0">
+            <dt className="inline text-ink-muted">Latest weight: </dt>
+            <dd className="inline break-words font-medium text-ink">
+              {patient.latest_weight_kg !== null ? `${patient.latest_weight_kg} kg (${patient.latest_weight_date})` : "Not recorded"}
+            </dd>
+          </div>
+          <div className="min-w-0">
+            <dt className="inline text-ink-muted">Latest height: </dt>
+            <dd className="inline break-words font-medium text-ink">
+              {patient.latest_height_cm !== null ? `${patient.latest_height_cm} cm (${patient.latest_height_date})` : "Not recorded"}
+            </dd>
+          </div>
+        </dl>
+        <p className="mt-2 text-xs text-ink-muted">
+          Readings are kept as a dated history.{" "}
+          <Link href="/dashboard/patient#body-measurements" className="font-semibold text-brand-blue hover:underline">
+            Add or correct a reading
+          </Link>
+        </p>
+      </section>
       <form className="grid gap-4 sm:grid-cols-2" onSubmit={submit} noValidate>
         <TextField label="Date of birth" type="date" max={today} value={birthDate} onChange={(e) => setBirthDate(e.target.value)} error={errors.birthDate} />
         <SelectField label="Gender" value={gender} onChange={(e) => setGender(e.target.value)}>

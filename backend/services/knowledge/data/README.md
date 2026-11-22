@@ -22,6 +22,7 @@ with pandera.
 | `contraindications.csv` | 19 | a drug or class vs a condition or a lab threshold | MSCIE |
 | `allergy_cross_reactivity.csv` | 10 | an allergy class → a drug or class it affects | MSCIE |
 | `dose_limits.csv` | 23 | a medicine's usual maximum single and daily dose | MSCIE |
+| `dose_limits_per_kg.csv` | 15 | a label tier (age in months, weight) of a medicine's dose limits: per-kg and absolute | MSCIE |
 | `duplicate_classes.csv` | 10 | a class where two medicines together is a duplicate | MSCIE |
 | `alternatives.csv` | 24 | a safer candidate for the same use | MSCIE |
 | `ranking_weights.csv` | 4 | a ranking factor and its weight (sums to 1) | MSCIE |
@@ -101,6 +102,7 @@ medicines has); the schema tests reject any reference that does not exist. Sever
   practice parameter (penicillin-cephalosporin cross-reactivity is uncommon: a caution).
 - **dose_limits.csv**: usual adult maximum single and daily doses (mg) from FDA labels and the EMA;
   no paediatric, weight-based or renal dosing (renal rules are in contraindications.csv).
+- **dose_limits_per_kg.csv** (`generic`, `tier`, `kind`, `age_from_months`, `age_to_months`, `weight_from_kg`, `weight_to_kg`, `max_single_mg_per_kg`, `max_daily_mg_per_kg`, `max_single_mg`, `max_daily_mg`, `caution_single_mg`, `caution_single_mg_per_kg`, `caution_daily_mg_per_kg`, `severity`, `caution_note`, `over_note`, `within_note`, `source`): one row per tier of an FDA label, for paracetamol (the acetaminophen injection label), amoxicillin, azithromycin, ibuprofen and cefixime. A tier is chosen by the patient's age in months (both ends inclusive) and, where the label splits by weight, by the recorded weight (from inclusive, to exclusive). The dose is checked against the per-kg limit times the weight, never above the tier's absolute maximum (`services/mscie/weight_doses.py`). `not_covered` tiers (below a label's minimum age) say "verify dose: not covered by demo table". With no weight, or one older than the app rule (demo) in `config.py` (90 days adults, 30 days under 18), the check is skipped and "weight needed for dose check" is shown; a weight is never assumed. Amoxicillin above 45 mg/kg/day is a yellow note (moderate), not a red alert. Sources are FDA labels only, listed with set id, URL and date in `sources.csv`. Figures were checked by two team members against the labels. Not yet covered: amoxicillin-clavulanate (strengths such as "500/125" are not parsed yet), indication-specific limits (the prescription form has no indication field) and paracetamol from other products taken at the same time. Demo knowledge base, not clinically reviewed.
 - **duplicate_classes.csv**: classes where two medicines together duplicate the effect.
 - **alternatives.csv**: candidates for the same use, each re-checked against the patient before it
   is shown; a contraindicated candidate is never suggested. Choosing among them is clinical.

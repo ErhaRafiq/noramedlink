@@ -3,12 +3,14 @@ from datetime import date, datetime, time
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     Float,
     ForeignKey,
     Index,
     Integer,
+    Numeric,
     String,
     Text,
     Time,
@@ -51,6 +53,7 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
         uselist=False,
+        foreign_keys="PatientProfile.user_id",  # the profile also points at users for who set the pregnancy status
     )
     doctor_profile: Mapped["DoctorProfile | None"] = relationship(
         back_populates="user",
@@ -105,6 +108,14 @@ class PatientProfile(Base):
     blood_group: Mapped[str | None] = mapped_column(String(3), nullable=True)
     emergency_contact_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
     emergency_contact_phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    # Pregnancy status: "pregnant" or "not_pregnant"; null means not recorded. Set by the patient or by a doctor
+    # with an active grant; a "pregnant" status that is too old counts as not recorded (services/pregnancy.py).
+    pregnancy_status: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    pregnancy_status_set_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    pregnancy_status_set_by_role: Mapped[str | None] = mapped_column(String(20), nullable=True)  # patient or doctor
+    pregnancy_status_set_by_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
@@ -112,7 +123,7 @@ class PatientProfile(Base):
         onupdate=func.now(),
     )
 
-    user: Mapped[User] = relationship(back_populates="patient_profile")
+    user: Mapped[User] = relationship(back_populates="patient_profile", foreign_keys=[user_id])
 
 
 class DoctorProfile(Base):
@@ -928,6 +939,30 @@ class PatientHealthEntry(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
+
+
+class BodyMeasurement(Base):
+    """One dated weight and/or height reading on a patient's record, entered by the patient or by a doctor
+    with an active access grant. A history, never overwritten: a mistaken entry is hidden ("removed"), not
+    deleted. The latest active value is what the profile, the summary and the dose check use."""
+
+    __tablename__ = "patient_body_measurements"
+    __table_args__ = (
+        Index("patient_body_measurements_patient_date_idx", "patient_id", "measured_on"),
+        CheckConstraint("weight_kg IS NOT NULL OR height_cm IS NOT NULL", name="body_measurement_has_a_value"),
+        CheckConstraint("weight_kg IS NULL OR (weight_kg >= 2 AND weight_kg <= 350)", name="body_weight_range"),
+        CheckConstraint("height_cm IS NULL OR (height_cm >= 40 AND height_cm <= 250)", name="body_height_range"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    weight_kg: Mapped[float | None] = mapped_column(Numeric(5, 2, asdecimal=False), nullable=True)
+    height_cm: Mapped[float | None] = mapped_column(Numeric(4, 1, asdecimal=False), nullable=True)
+    measured_on: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), default="active", server_default="active", nullable=False)
+    added_by_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
+    added_by_role: Mapped[str] = mapped_column(String(20), nullable=False)  # patient or doctor
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
 
 
 class AuditLog(Base):

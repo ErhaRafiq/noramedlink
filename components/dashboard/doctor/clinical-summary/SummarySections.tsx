@@ -6,6 +6,7 @@ import { AlertOctagon, AlertTriangle, Info } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/cn";
 import type { ClinicalFlag, ClinicalSource, ClinicalSummaryContent } from "@/lib/types";
+import { BodySection } from "./BodySection";
 
 const TONE: Record<ClinicalFlag["severity"], { box: string; icon: typeof Info; iconClass: string; label: string }> = {
   HIGH_RISK: { box: "border-rose-300 bg-rose-50 text-rose-950", icon: AlertOctagon, iconClass: "text-rose-600", label: "High risk" },
@@ -97,6 +98,12 @@ export function SummarySections({ content }: { content: ClinicalSummaryContent }
           </p>
         </div>
       </Section>
+
+      {content.body ? (
+        <Section title="Body measurements">
+          <BodySection body={content.body} />
+        </Section>
+      ) : null}
 
       <Section title="Abnormal results" count={content.abnormal_results.length}>
         <FlagList flags={content.abnormal_results} limit={limit} empty="No rule alerts on the latest results." />

@@ -3,6 +3,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+from services import clock
+
 Role = Literal["patient", "doctor", "admin"]
 
 
@@ -518,6 +520,12 @@ class PatientProfileOut(BaseModel):
     blood_group: str | None
     emergency_contact_name: str | None
     emergency_contact_phone: str | None
+    # The newest weight and height on the body-measurement history (null when none is recorded).
+    latest_weight_kg: float | None = None
+    latest_weight_date: date | None = None
+    latest_height_cm: float | None = None
+    latest_height_date: date | None = None
+    pregnancy: "PregnancyStateOut | None" = None
 
 
 class DoctorProfileOut(BaseModel):
@@ -576,7 +584,7 @@ class PatientProfileUpdate(BaseModel):
     @field_validator("date_of_birth")
     @classmethod
     def plausible_birth_date(cls, value: date) -> date:
-        today = date.today()
+        today = clock.today()
         if value > today or (today.year - value.year) > 120:
             raise ValueError("Enter a real date of birth.")
         return value
@@ -779,7 +787,7 @@ class HealthEntryIn(BaseModel):
     @field_validator("since")
     @classmethod
     def not_in_future(cls, value: date | None) -> date | None:
-        if value is not None and value > date.today():
+        if value is not None and value > clock.today():
             raise ValueError("The date cannot be in the future.")
         return value
 
@@ -801,7 +809,7 @@ class HealthEntryUpdate(BaseModel):
     @field_validator("since")
     @classmethod
     def not_in_future(cls, value: date | None) -> date | None:
-        if value is not None and value > date.today():
+        if value is not None and value > clock.today():
             raise ValueError("The date cannot be in the future.")
         return value
 
@@ -1019,3 +1027,107 @@ class AskAnswerOut(BaseModel):
     topics: list[str]
     followups: list[str]
     disclaimer: str
+
+
+# --- body weight and height (services/body_measurements.py) ---------------------------------------------
+
+
+class BodyMeasurementIn(BaseModel):
+    """Weight in kg or lb (converted and stored in kg) and/or height in cm. Nothing is filled in for a
+    missing value, and the ranges are checked in services/body_measurements.py."""
+
+    weight: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    weight_unit: Literal["kg", "lb"] = "kg"
+    height_cm: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    measured_on: date | None = None  # defaults to today
+
+    @field_validator("measured_on")
+    @classmethod
+    def not_in_future(cls, value: date | None) -> date | None:
+        if value is not None and value > clock.today():
+            raise ValueError("The date cannot be in the future.")
+        return value
+
+
+class BodyMeasurementOut(BaseModel):
+    id: int
+    weight_kg: float | None
+    height_cm: float | None
+    measured_on: date
+    added_by_role: str  # patient or doctor
+    added_by_name: str | None  # the doctor's name, when a doctor entered it
+    created_at: datetime
+
+
+class BodyMeasurementUpdate(BaseModel):
+    """Only the fields that are sent change; `null` clears the weight or the height. What is left must
+    still hold a weight or a height."""
+
+    weight: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    weight_unit: Literal["kg", "lb"] = "kg"
+    height_cm: float | None = Field(default=None, gt=0, allow_inf_nan=False)
+    measured_on: date | None = None
+
+    @field_validator("measured_on")
+    @classmethod
+    def not_in_future(cls, value: date | None) -> date | None:
+        if value is not None and value > clock.today():
+            raise ValueError("The date cannot be in the future.")
+        return value
+
+
+class LatestReadingOut(BaseModel):
+    value: float
+    measured_on: date
+    added_by_role: str  # patient or doctor
+
+
+class WeightChangeOut(BaseModel):
+    percent: float  # negative for a loss
+    from_kg: float
+    from_date: date
+    to_kg: float
+    to_date: date
+    window_days: int
+    threshold_percent: float
+    wording: str  # "significant weight loss, for physician review"
+    basis: str
+
+
+class BodySummaryOut(BaseModel):
+    """What the patient sees: the latest values and the BMI as a number, with neutral wording."""
+
+    weight: LatestReadingOut | None
+    height: LatestReadingOut | None
+    bmi: float | None
+    bmi_note: str | None  # neutral: the number is not a verdict
+
+
+class DoctorBodySummaryOut(BodySummaryOut):
+    """What the doctor sees: the category (or why there is none) and the weight-change flags."""
+
+    bmi_category: str | None
+    bmi_category_note: str | None
+    bmi_asian_note: str | None
+    pregnancy: "PregnancyStateOut"
+    weight_current: bool | None  # null when no weight; False: older than the app rule (demo) allows
+    weight_max_age_days: int
+    weight_change_flags: list[WeightChangeOut]
+    change_since_previous: WeightChangeOut | None
+    disclaimer: str
+
+
+class PregnancyStatusIn(BaseModel):
+    status: Literal["pregnant", "not_pregnant", "not_recorded"]  # not_recorded clears it
+
+
+class PregnancyStateOut(BaseModel):
+    status: str  # pregnant, not_pregnant or not_recorded: what the checks use
+    set_on: date | None  # when it was last set (also when it has expired)
+    set_by_role: str | None  # patient or doctor
+    expired: bool  # an old "pregnant" status counts as not recorded: ask for an update
+    max_months: int  # the app rule (demo) behind "old"
+
+
+PatientProfileOut.model_rebuild()
+DoctorBodySummaryOut.model_rebuild()

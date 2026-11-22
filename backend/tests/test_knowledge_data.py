@@ -249,6 +249,30 @@ MSCIE_SCHEMAS = {
         },
         strict=True,
     ),
+    "dose_limits_per_kg": pa.DataFrameSchema(
+        {
+            "generic": pa.Column(str, pa.Check.isin(sorted(GENERICS))),
+            "tier": pa.Column(str, pa.Check.str_matches(r"^[A-Z0-9-]+$"), unique=True),
+            "kind": pa.Column(str, pa.Check.isin(["limit", "not_covered"])),
+            "age_from_months": pa.Column(str, pa.Check.str_matches(r"^\d{1,3}$")),
+            "age_to_months": pa.Column(str, pa.Check.str_matches(r"^(\d{1,3})?$")),
+            "weight_from_kg": pa.Column(str, pa.Check.str_matches(r"^(\d+(\.\d+)?)?$")),
+            "weight_to_kg": pa.Column(str, pa.Check.str_matches(r"^(\d+(\.\d+)?)?$")),
+            "max_single_mg_per_kg": pa.Column(str, pa.Check.str_matches(r"^(\d+(\.\d+)?)?$")),
+            "max_daily_mg_per_kg": pa.Column(str, pa.Check.str_matches(r"^(\d+(\.\d+)?)?$")),
+            "max_single_mg": pa.Column(str, pa.Check.str_matches(r"^(\d+(\.\d+)?)?$")),
+            "max_daily_mg": pa.Column(str, pa.Check.str_matches(r"^(\d+(\.\d+)?)?$")),
+            "caution_single_mg": pa.Column(str, pa.Check.str_matches(r"^(\d+(\.\d+)?)?$")),
+            "caution_single_mg_per_kg": pa.Column(str, pa.Check.str_matches(r"^(\d+(\.\d+)?)?$")),
+            "caution_daily_mg_per_kg": pa.Column(str, pa.Check.str_matches(r"^(\d+(\.\d+)?)?$")),
+            "severity": pa.Column(str, pa.Check.isin(["", "moderate", "major"])),
+            "caution_note": pa.Column(str),
+            "over_note": pa.Column(str),
+            "within_note": pa.Column(str),
+            "source": pa.Column(str, pa.Check(cites)),
+        },
+        strict=True,
+    ),
     "duplicate_classes": pa.DataFrameSchema(
         {
             "class": pa.Column(str, pa.Check.isin(sorted(CLASSES)), unique=True),
@@ -292,3 +316,57 @@ def test_dose_limits_single_never_exceeds_daily():
     frame = raw("dose_limits")
     with_single = frame[frame["max_single_mg"] != ""]
     assert (pd.to_numeric(with_single["max_single_mg"]) <= pd.to_numeric(with_single["max_daily_mg"])).all()
+
+
+def test_per_kg_tiers_are_consistent():
+    frame = raw("dose_limits_per_kg")
+    for row in frame.to_dict("records"):
+        name = row["tier"]
+        if row["kind"] == "not_covered":
+            assert row["over_note"].startswith("Verify dose: not covered by demo table"), name
+            assert not any(
+                row[c] for c in ("max_single_mg", "max_daily_mg", "max_single_mg_per_kg", "max_daily_mg_per_kg")
+            ), name
+            continue
+        limits = [row[c] for c in ("max_single_mg", "max_daily_mg", "max_single_mg_per_kg", "max_daily_mg_per_kg")]
+        assert any(limits) and row["severity"], f"{name}: a limit tier needs a limit and a severity"
+        if row["max_single_mg"] and row["max_daily_mg"]:
+            assert float(row["max_single_mg"]) <= float(row["max_daily_mg"]), f"{name}: single above daily"
+        if row["max_single_mg_per_kg"] and row["max_daily_mg_per_kg"]:
+            assert float(row["max_single_mg_per_kg"]) <= float(row["max_daily_mg_per_kg"]), name
+        if row["age_to_months"]:
+            assert int(row["age_from_months"]) <= int(row["age_to_months"]), name
+        if row["caution_single_mg"]:
+            assert row["max_single_mg"] and float(row["caution_single_mg"]) < float(row["max_single_mg"]), name
+            assert row["caution_note"], f"{name}: a caution band needs its note"
+        has_caution = row["caution_single_mg"] or row["caution_single_mg_per_kg"] or row["caution_daily_mg_per_kg"]
+        if row["caution_single_mg_per_kg"] and row["max_single_mg_per_kg"]:
+            assert float(row["caution_single_mg_per_kg"]) < float(row["max_single_mg_per_kg"]), name
+        if row["caution_daily_mg_per_kg"] and row["max_daily_mg_per_kg"]:
+            assert float(row["caution_daily_mg_per_kg"]) < float(row["max_daily_mg_per_kg"]), name
+        if row["caution_single_mg_per_kg"] or row["caution_daily_mg_per_kg"]:
+            assert row["caution_note"], f"{name}: a caution band needs its note"
+        if not has_caution:
+            assert not row["caution_note"], name
+
+
+def test_per_kg_tiers_of_one_medicine_do_not_overlap_and_leave_no_gap_above_the_minimum_age():
+    frame = raw("dose_limits_per_kg")
+    for generic, group in frame.groupby("generic"):
+        for months in range(0, 1300):
+            matching = []
+            for row in group.to_dict("records"):
+                high = int(row["age_to_months"]) if row["age_to_months"] else 10_000
+                if int(row["age_from_months"]) <= months <= high:
+                    matching.append(row)
+            assert matching or (generic == "ibuprofen" and months >= 144), f"{generic}: no tier at {months} months"
+            for kg in (3, 10, 30, 44.9, 45.0, 45.05, 45.1, 49.9, 50, 80, 200):
+                hits = [
+                    r["tier"]
+                    for r in matching
+                    if (not r["weight_from_kg"] or kg >= float(r["weight_from_kg"]))
+                    and (not r["weight_to_kg"] or kg < float(r["weight_to_kg"]))
+                ]
+                assert len(hits) <= 1, f"{generic}: tiers {hits} both match {months} months, {kg} kg"
+                if matching and any(r["weight_from_kg"] or r["weight_to_kg"] for r in matching):
+                    assert len(hits) == 1, f"{generic}: no tier for {months} months, {kg} kg"

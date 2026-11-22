@@ -5,7 +5,7 @@ Status: BOOKED, then COMPLETED, NO_SHOW or CANCELLED (final). Only the doctor co
 once it has started. A patient cancels or moves a booking only before it starts.
 """
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import func
@@ -13,7 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from models import Appointment, AppointmentReview, User
-from services import email_outbox, notifications, payments
+from services import clock, email_outbox, notifications, payments
 from services.scheduling import SlotUnavailable, as_utc, find_open_slot
 
 FINAL_STATUSES = {"COMPLETED", "NO_SHOW", "CANCELLED"}
@@ -94,7 +94,7 @@ def _require_booked(appointment: Appointment) -> None:
 
 def reschedule(db: Session, appointment: Appointment, new_start: datetime, patient: User) -> Appointment:
     _require_booked(appointment)
-    if as_utc(appointment.date) <= datetime.now(UTC):
+    if as_utc(appointment.date) <= clock.now():
         raise _conflict("This appointment has already started and can no longer be moved.")
     slot = _open_slot(db, appointment.doctor_id, as_utc(new_start), ignore_id=appointment.id)
     _patient_is_free(db, patient.id, slot.start, slot.minutes, ignore_id=appointment.id)
@@ -109,7 +109,7 @@ def reschedule(db: Session, appointment: Appointment, new_start: datetime, patie
 
 def cancel(db: Session, appointment: Appointment, patient: User, by_doctor: bool) -> Appointment:
     _require_booked(appointment)
-    if not by_doctor and as_utc(appointment.date) <= datetime.now(UTC):
+    if not by_doctor and as_utc(appointment.date) <= clock.now():
         raise _conflict("This appointment has already started and can no longer be cancelled.")
     appointment.status = "CANCELLED"
     notifications.cancelled(db, appointment, patient.full_name, appointment.doctor_name, by_doctor)
@@ -121,7 +121,7 @@ def cancel(db: Session, appointment: Appointment, patient: User, by_doctor: bool
 def finish(db: Session, appointment: Appointment, outcome: str) -> Appointment:
     """The doctor records that the visit happened (COMPLETED) or the patient did not come (NO_SHOW)."""
     _require_booked(appointment)
-    if as_utc(appointment.date) > datetime.now(UTC):
+    if as_utc(appointment.date) > clock.now():
         raise _conflict("This appointment has not started yet.")
     appointment.status = outcome
     notifications.visit_finished(db, appointment, outcome)

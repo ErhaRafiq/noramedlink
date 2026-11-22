@@ -26,6 +26,7 @@ import { MedicineScheduleCard } from "./workspace/MedicineScheduleCard";
 import { RemindersSection } from "./workspace/RemindersSection";
 import { AccessHistoryCard } from "./workspace/AccessHistoryCard";
 import { HealthFlagsCard } from "./workspace/HealthFlagsCard";
+import { BodyMeasurementsCard } from "./workspace/BodyMeasurementsCard";
 import { HealthRecordCard } from "./workspace/HealthRecordCard";
 import { PrescriptionsCard } from "./workspace/PrescriptionsCard";
 import { HealthCategoriesCard, RecentReportsCard } from "./workspace/ReportsSection";
@@ -197,6 +198,8 @@ export function PatientWorkspace({
           <PrescriptionsCard prescriptions={data.prescriptions} onRetry={() => void refresh()} />
 
           <HealthRecordCard />
+
+          <BodyMeasurementsCard />
 
           <AccessHistoryCard />
 

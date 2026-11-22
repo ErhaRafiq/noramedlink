@@ -4,23 +4,25 @@ A doctor publishes weekly windows (for example Monday 09:00 to 13:00, 30-minute 
 one of the slots cut from those windows. A slot is open only if it is in the future (with a short lead
 time), within the booking horizon, and not already taken by a live appointment of that doctor.
 
-Times are stored in UTC. Windows and days are in clinic time: Pakistan is UTC+5 all year (no daylight
-saving), so a fixed offset is exact and needs no time-zone database.
+Times are stored in UTC. Windows and days are in clinic time: the zone is APP_TIMEZONE (default Asia/Karachi),
+read through services/clock.py so tests can move the clock.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, time, timedelta, timezone
+from datetime import UTC, date, datetime, time, timedelta
 from itertools import pairwise
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
+from config import settings
 from models import Appointment, DoctorAvailability
+from services import clock
 
-CLINIC_TZ = timezone(timedelta(hours=5))
-CLINIC_TZ_NAME = "Asia/Karachi"
+CLINIC_TZ = clock.zone()
+CLINIC_TZ_NAME = settings.app_timezone
 LEAD_MINUTES = 30  # a slot sooner than this from now cannot be booked
 HORIZON_DAYS = 30  # how far ahead booking is open
 SLOT_CHOICES = (10, 15, 20, 30, 45, 60)
@@ -43,15 +45,15 @@ class SlotUnavailable(Exception):
 
 
 def now_utc() -> datetime:
-    return datetime.now(UTC)
+    return clock.now()
 
 
 def clinic_date(moment: datetime) -> date:
     return moment.astimezone(CLINIC_TZ).date()
 
 
-def _at(day: date, clock: time) -> datetime:
-    return datetime.combine(day, clock, tzinfo=CLINIC_TZ).astimezone(UTC)
+def _at(day: date, at: time) -> datetime:
+    return datetime.combine(day, at, tzinfo=CLINIC_TZ).astimezone(UTC)
 
 
 def as_utc(value: datetime) -> datetime:

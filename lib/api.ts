@@ -36,6 +36,13 @@ import type {
   HealthEntryChanges,
   HealthEntryInput,
   HealthOptions,
+  BodyMeasurement,
+  BodyMeasurementChanges,
+  BodyMeasurementInput,
+  BodySummary,
+  DoctorBodySummary,
+  PregnancyState,
+  PregnancyStatus,
   SymptomCheck,
   ReportExplanation,
   FileText,
@@ -188,6 +195,44 @@ export const api = {
   },
   healthOptions() {
     return apiRequest<HealthOptions>("/health-record/options");
+  },
+  /** Weight and height history of the signed-in patient (newest first), paged. */
+  bodyHistory(page: PageQuery = {}) {
+    return apiRequest<Page<BodyMeasurement>>(withPage("/patient/body-measurements", page));
+  },
+  bodySummary() {
+    return apiRequest<BodySummary>("/patient/body-measurements/summary");
+  },
+  addBodyMeasurement(input: BodyMeasurementInput) {
+    return apiRequest<BodyMeasurement>("/patient/body-measurements", { method: "POST", body: JSON.stringify(input) });
+  },
+  changeBodyMeasurement(id: number, changes: BodyMeasurementChanges) {
+    return apiRequest<BodyMeasurement>(`/patient/body-measurements/${id}`, { method: "PATCH", body: JSON.stringify(changes) });
+  },
+  removeBodyMeasurement(id: number) {
+    return apiRequest<{ message: string }>(`/patient/body-measurements/${id}`, { method: "DELETE" });
+  },
+  setPregnancyStatus(status: PregnancyStatus) {
+    return apiRequest<PregnancyState>("/patient/pregnancy-status", { method: "PUT", body: JSON.stringify({ status }) });
+  },
+  /** Doctor routes: an active access grant for the patient is required (403 otherwise). */
+  patientBodyHistory(patientId: number, page: PageQuery = {}) {
+    return apiRequest<Page<BodyMeasurement>>(withPage(`/doctor/patients/${patientId}/body-measurements`, page));
+  },
+  patientBodySummary(patientId: number) {
+    return apiRequest<DoctorBodySummary>(`/doctor/patients/${patientId}/body-measurements/summary`);
+  },
+  addPatientBodyMeasurement(patientId: number, input: BodyMeasurementInput) {
+    return apiRequest<BodyMeasurement>(`/doctor/patients/${patientId}/body-measurements`, { method: "POST", body: JSON.stringify(input) });
+  },
+  changePatientBodyMeasurement(patientId: number, id: number, changes: BodyMeasurementChanges) {
+    return apiRequest<BodyMeasurement>(`/doctor/patients/${patientId}/body-measurements/${id}`, { method: "PATCH", body: JSON.stringify(changes) });
+  },
+  removePatientBodyMeasurement(patientId: number, id: number) {
+    return apiRequest<{ message: string }>(`/doctor/patients/${patientId}/body-measurements/${id}`, { method: "DELETE" });
+  },
+  setPatientPregnancyStatus(patientId: number, status: PregnancyStatus) {
+    return apiRequest<PregnancyState>(`/doctor/patients/${patientId}/pregnancy-status`, { method: "PUT", body: JSON.stringify({ status }) });
   },
   healthRecord() {
     return apiRequest<HealthEntry[]>("/patient/health-record");

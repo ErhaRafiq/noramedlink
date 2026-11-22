@@ -1,0 +1,16 @@
+generic,tier,kind,age_from_months,age_to_months,weight_from_kg,weight_to_kg,max_single_mg_per_kg,max_daily_mg_per_kg,max_single_mg,max_daily_mg,caution_single_mg,caution_single_mg_per_kg,caution_daily_mg_per_kg,severity,caution_note,over_note,within_note,source
+paracetamol,P-LT2Y,not_covered,0,23,,,,,,,,,,,,Verify dose: not covered by demo table. The label's dosing starts at 2 years.,,FDA-OFIRMEV
+paracetamol,P-2Y-LT50KG,limit,24,,,50,15,75,750,3750,,,,major,,The daily maximum covers all routes and all paracetamol-containing products.,,FDA-OFIRMEV
+paracetamol,P-2Y-GE50KG,limit,24,,50,,,,1000,4000,,,,major,,The label makes no adjustment between oral and intravenous dosing from 50 kg; the daily maximum covers all routes and all paracetamol-containing products.,,FDA-OFIRMEV
+amoxicillin,A-LT3M,limit,0,2,,,,30,,,,,,major,,The label's upper dose for infants 12 weeks or younger is 30 mg/kg a day.,,FDA-AMOXIL
+amoxicillin,A-3M-LT40KG,limit,3,,,40,,45,,,,,,moderate,,"Above labelled dose; high-dose regimens are used for some ear infections, verify indication.",,FDA-AMOXIL
+amoxicillin,A-3M-GE40KG,limit,3,,40,,,,3000,3000,1000,,,major,"Above the usual single dose; a 3 g single dose appears in some labels for specific indications, verify indication.",Above the highest single dose in the demo table (3000 mg); verify indication.,,FDA-AMOXIL
+azithromycin,Z-LT6M,not_covered,0,5,,,,,,,,,,,,Verify dose: not covered by demo table. The label's dosing starts at 6 months.,,FDA-ZITHROMAX
+azithromycin,Z-CHILD,limit,6,215,,,30,,1500,,,,,major,,"The label's highest single dose for children is 30 mg/kg, never more than 1500 mg.",Dose depends on indication; the prescription form has no indication field.,FDA-ZITHROMAX
+azithromycin,Z-ADULT,limit,216,,,,,,2000,,,,,major,,The label's highest single adult dose is 2000 mg.,Dose depends on indication; the prescription form has no indication field.,FDA-ZITHROMAX
+ibuprofen,I-LT6M,not_covered,0,5,,,,,,,,,,,,Verify dose: not covered by demo table. The label's dosing starts at 6 months.,,FDA-IBUPROFEN
+ibuprofen,I-CHILD,limit,6,143,,,,50,800,3200,,10,40,major,Above the usual dose for this age; verify the dose and the indication.,"Above 50 mg/kg a day, which the label does not recommend; the label also notes that more than 40 mg/kg a day may increase the risk of serious adverse events.",,FDA-IBUPROFEN
+cefixime,C-LT6M,not_covered,0,5,,,,,,,,,,,,Verify dose: not covered by demo table. The label's dosing starts at 6 months.,,FDA-CEFIXIME
+cefixime,C-LE45KG,limit,6,144,,45.1,8,8,400,400,,,,major,,The label's pediatric dose is 8 mg/kg a day.,,FDA-CEFIXIME
+cefixime,C-GT45KG,limit,6,144,45.1,,,,400,400,,,,major,,The label gives children over 45 kg the adult dose of 400 mg a day.,,FDA-CEFIXIME
+cefixime,C-OVER12Y,limit,145,,,,,,400,400,,,,major,,The label gives children older than 12 years the adult dose of 400 mg a day.,,FDA-CEFIXIME

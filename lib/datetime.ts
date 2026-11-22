@@ -12,6 +12,13 @@ export function tomorrowAtTen() {
   return toDateTimeInputValue(date);
 }
 
+/** Today's date in the browser's own time zone as "2026-11-22" (toISOString would give the UTC date). */
+export function localToday() {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+}
+
 export function formatDateTime(value: string | null | undefined) {
   if (!value) return "Not available";
   return new Intl.DateTimeFormat("en", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));

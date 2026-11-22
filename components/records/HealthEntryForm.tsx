@@ -6,6 +6,7 @@ import { Plus } from "lucide-react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { SelectField, TextAreaField, TextField } from "@/components/ui/field";
+import { localToday } from "@/lib/datetime";
 import type { HealthEntryInput, HealthKind, HealthOptions } from "@/lib/types";
 
 export const KIND_LABEL: Record<HealthKind, string> = {
@@ -13,8 +14,6 @@ export const KIND_LABEL: Record<HealthKind, string> = {
   diagnosis: "Diagnosis",
   chronic_condition: "Long-term condition",
 };
-
-const today = () => new Date().toISOString().slice(0, 10);
 
 /** Adds one entry. The name offers the words the medication check understands, but any name can be saved. */
 export function HealthEntryForm({
@@ -94,7 +93,7 @@ export function HealthEntryForm({
             <option value="severe">Severe</option>
           </SelectField>
         ) : null}
-        <TextField label="Since (optional)" type="date" max={today()} value={since} onChange={(event) => setSince(event.target.value)} />
+        <TextField label="Since (optional)" type="date" max={localToday()} value={since} onChange={(event) => setSince(event.target.value)} />
       </div>
       <TextAreaField
         label="Note (optional)"

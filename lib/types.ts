@@ -595,7 +595,7 @@ export type ClinicalSource = {
   title?: string | null;
   date?: string | null;
   date_source?: string | null;
-  kind?: "report" | "vitals" | string;
+  kind?: "report" | "vitals" | "body" | string;
   printed?: string;
   medicine?: string;
   dose?: string | null;
@@ -622,6 +622,104 @@ export type ClinicalCondition = {
   sources: ClinicalSource[];
 };
 
+export type PregnancyStatus = "pregnant" | "not_pregnant" | "not_recorded";
+
+export type PregnancyState = {
+  status: PregnancyStatus;
+  set_on: string | null;
+  set_by_role: string | null;
+  /** An old "pregnant" status counts as not recorded: ask for an update. */
+  expired: boolean;
+  max_months: number;
+};
+
+/** One dated weight and/or height reading (backend/routers/body_measurements.py). Weight is always kg. */
+export type BodyMeasurement = {
+  id: number;
+  weight_kg: number | null;
+  height_cm: number | null;
+  measured_on: string;
+  added_by_role: "patient" | "doctor";
+  added_by_name: string | null;
+  created_at: string;
+};
+
+export type BodyMeasurementInput = { weight?: number; weight_unit?: "kg" | "lb"; height_cm?: number; measured_on?: string };
+/** Only the fields that are sent change; null clears the weight or the height. */
+export type BodyMeasurementChanges = { weight?: number | null; weight_unit?: "kg" | "lb"; height_cm?: number | null; measured_on?: string };
+
+export type BodyLatest = { value: number; measured_on: string; added_by_role: "patient" | "doctor" };
+
+export type BodyWeightChange = {
+  percent: number;
+  from_kg: number;
+  from_date: string;
+  to_kg: number;
+  to_date: string;
+  window_days: number;
+  threshold_percent: number;
+  wording: string;
+  basis: string;
+};
+
+/** What the patient sees: the latest values and the BMI as a number, with neutral wording. */
+export type BodySummary = {
+  weight: BodyLatest | null;
+  height: BodyLatest | null;
+  bmi: number | null;
+  bmi_note: string | null;
+};
+
+/** What a doctor sees: the category (or why there is none), the pregnancy status and the weight-change flags. */
+export type DoctorBodySummary = BodySummary & {
+  bmi_category: string | null;
+  bmi_category_note: string | null;
+  bmi_asian_note: string | null;
+  pregnancy: PregnancyState;
+  weight_current: boolean | null;
+  weight_max_age_days: number;
+  weight_change_flags: BodyWeightChange[];
+  change_since_previous: BodyWeightChange | null;
+  disclaimer: string;
+};
+
+/** One weight or height reading in the summary, with its date and who entered it. */
+export type ClinicalBodyReading = { value: number; date: string; entered_by: string; source: string };
+
+export type ClinicalWeightChange = {
+  percent: number;
+  from_kg: number;
+  from_date: string;
+  to_kg: number;
+  to_date: string;
+  window_days: number;
+  threshold_percent: number;
+  wording: string;
+  basis: string;
+};
+
+/** The body measurements section (backend/services/icse/body.py); null when the summary was built without it. */
+export type ClinicalBody = {
+  source: string;
+  weight: ClinicalBodyReading | null;
+  height: ClinicalBodyReading | null;
+  weight_current: boolean | null;
+  weight_max_age_days: number;
+  app_rule: string;
+  bmi: {
+    value: number;
+    band: string | null;
+    band_note: string | null;
+    asian_note: string | null;
+    weight_date: string;
+    height_date: string;
+  } | null;
+  weight_history: { date: string; value: number; entered_by: string }[];
+  weight_change_flags: ClinicalWeightChange[];
+  change_since_previous: ClinicalWeightChange | null;
+  pregnancy: { status: "pregnant" | "not_pregnant" | "not_recorded"; set_on: string | null; set_by_role: string | null; expired: boolean; max_months: number };
+};
+
 /** The sections of a clinical summary (backend/services/icse/summary.py). */
 export type ClinicalSummaryContent = {
   section_limit?: number;
@@ -635,6 +733,7 @@ export type ClinicalSummaryContent = {
     stopped_in_reports: string[];
   };
   allergies: { status: "listed" | "none_recorded" | "not_recorded"; items: { name: string; sources: ClinicalSource[] }[]; no_known_allergies_in: ClinicalSource[] };
+  body?: ClinicalBody | null;
   flags: ClinicalFlag[];
   check_original: ClinicalFlag[];
   missing_data: string[];
@@ -713,6 +812,17 @@ export type MedicationCheck = {
     allergy_status: "listed" | "none_recorded" | "not_recorded";
     labs: { test: string; value: number; unit: string; date: string | null; source: string }[];
     previous: { generic: string; problem: boolean; note: string }[];
+    pregnancy: PregnancyStatus;
+    age: number | null;
+    /** The weight the dose check used (null when none is recorded); `current` is false past the app rule (demo) window. */
+    weight: { value: number; date: string; entered_by: string; current: boolean; max_age_days: number } | null;
+    /** Cockcroft-Gault, information only: it never changes an alert. `missing` names the inputs that are absent. */
+    creatinine_clearance: {
+      value: number | null;
+      missing: string[];
+      inputs: { age: number | null; sex: string | null; weight_kg: number | null; weight_date: string | null; creatinine_mg_dl: number | null; creatinine_date: string | null };
+      note: string;
+    };
   };
   items: CheckedItem[];
   worst: SafetySeverity | null;
@@ -793,6 +903,12 @@ export type PatientProfile = {
   blood_group: string | null;
   emergency_contact_name: string | null;
   emergency_contact_phone: string | null;
+  /** The newest weight and height on the body-measurement history; null when none is recorded. */
+  latest_weight_kg: number | null;
+  latest_weight_date: string | null;
+  latest_height_cm: number | null;
+  latest_height_date: string | null;
+  pregnancy: PregnancyState | null;
 };
 
 export type DoctorProfile = {
