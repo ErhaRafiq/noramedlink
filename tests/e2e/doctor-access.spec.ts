@@ -62,7 +62,7 @@ test.describe("clinical summary for the doctor", () => {
     const { users } = fixtures();
     await signInAs(page, users.doctorWithAccess);
     await page.goto("/dashboard/doctor");
-    await page.getByRole("button", { name: new RegExp(users.patient.fullName) }).click();
+    await page.getByRole("button", { name: new RegExp(`${users.patient.fullName} \\d+ reports?`) }).click();
 
     const card = page.locator("#clinical-summary");
     await expect(card.getByText("Up to date")).toBeVisible({ timeout: 30_000 });
@@ -86,7 +86,7 @@ test.describe("clinical summary for the doctor", () => {
     const { users } = fixtures();
     await signInAs(page, users.doctorWithAccess);
     await page.goto("/dashboard/doctor");
-    await page.getByRole("button", { name: new RegExp(users.patient.fullName) }).click();
+    await page.getByRole("button", { name: new RegExp(`${users.patient.fullName} \\d+ reports?`) }).click();
     await expect(page.locator("#clinical-summary").getByText("Abnormal results")).toBeVisible({ timeout: 30_000 });
     await expectNoHorizontalScroll(page);
   });
@@ -99,7 +99,7 @@ test.describe("prescribing with the medication-safety check", () => {
     const page = await doctorContext.newPage();
     await signInAs(page, users.doctorWithAccess);
     await page.goto("/dashboard/doctor");
-    await page.getByRole("button", { name: new RegExp(users.patient.fullName) }).click();
+    await page.getByRole("button", { name: new RegExp(`${users.patient.fullName} \\d+ reports?`) }).click();
 
     const card = page.locator("#prescribe");
     await card.getByRole("combobox", { name: "Add a medicine" }).fill("glucophag");
@@ -134,7 +134,7 @@ test.describe("prescribing with the medication-safety check", () => {
     const { users } = fixtures();
     await signInAs(page, users.doctorWithAccess);
     await page.goto("/dashboard/doctor");
-    await page.getByRole("button", { name: new RegExp(users.patient.fullName) }).click();
+    await page.getByRole("button", { name: new RegExp(`${users.patient.fullName} \\d+ reports?`) }).click();
     const card = page.locator("#prescribe");
     await card.getByRole("combobox", { name: "Add a medicine" }).fill("brufen");
     await card.getByRole("option", { name: /Brufen/ }).click();
@@ -158,7 +158,7 @@ test.describe("prescribing with the medication-safety check", () => {
     const { users } = fixtures();
     await signInAs(page, users.doctorWithAccess);
     await page.goto("/dashboard/doctor");
-    await page.getByRole("button", { name: new RegExp(users.patient.fullName) }).click();
+    await page.getByRole("button", { name: new RegExp(`${users.patient.fullName} \\d+ reports?`) }).click();
     const card = page.locator("#prescribe");
     await card.getByRole("combobox", { name: "Add a medicine" }).fill("glucophag");
     await card.getByRole("option", { name: /Glucophage/ }).click();

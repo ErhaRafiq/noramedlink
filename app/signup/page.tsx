@@ -9,7 +9,7 @@ import { SkeletonCard } from "@/components/ui/skeleton";
 
 export const metadata: Metadata = {
   title: "Create account",
-  description: "Create a Nora MedLink patient, doctor or admin account.",
+  description: "Create a Nora MedLink patient or doctor account.",
 };
 
 export default function SignupPage() {

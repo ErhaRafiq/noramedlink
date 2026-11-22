@@ -10,6 +10,7 @@ active grant exists; appointments assigned to the doctor show the patient's name
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
+from sqlalchemy import and_, func
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -138,10 +139,17 @@ def doctor_overview(current_user: User = Depends(require_doctor), db: Session = 
             .limit(30)
             .all()
         )
-        for patient_id in access_ids:
-            vital = db.query(Vitals).filter(Vitals.user_id == patient_id).order_by(Vitals.created_at.desc()).first()
-            if vital:
-                latest_vitals[patient_id] = vital
+        # The newest reading of every patient in one query (not one query per patient).
+        newest = (
+            db.query(Vitals.user_id, func.max(Vitals.created_at).label("at"))
+            .filter(Vitals.user_id.in_(access_ids))
+            .group_by(Vitals.user_id)
+            .subquery()
+        )
+        for vital in db.query(Vitals).join(
+            newest, and_(Vitals.user_id == newest.c.user_id, Vitals.created_at == newest.c.at)
+        ):
+            latest_vitals.setdefault(vital.user_id, vital)
 
     record_counts: dict[int, int] = {}
     for record in records:

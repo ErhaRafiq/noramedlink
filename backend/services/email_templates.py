@@ -79,7 +79,7 @@ def _p(text: str, *, muted: bool = False) -> str:
 
 
 def _layout(*, title: str, preheader: str, body: str, footer_note: str) -> str:
-    logo = app_url("/icons/icon-192.png")
+    logo = "cid:nora-logo"  # attached inline by services/email_client.py
     return f"""<!doctype html>
 <html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -99,7 +99,7 @@ def _layout(*, title: str, preheader: str, body: str, footer_note: str) -> str:
 <table role="presentation" width="600" cellpadding="0" cellspacing="0" class="container" style="width:600px;max-width:600px;">
 <tr><td style="padding:0 4px 16px;">
   <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-    <td style="padding-right:10px;"><img src="{escape(logo, quote=True)}" width="36" height="36" alt="" style="display:block;border:0;border-radius:10px;"></td>
+    <td style="padding-right:10px;"><img src="{escape(logo, quote=True)}" width="36" height="36" alt="Nora MedLink" style="display:block;border:0;border-radius:10px;"></td>
     <td style="font:700 18px/1 {FONT};color:{NAVY};" class="txt">Nora MedLink</td>
   </tr></table>
 </td></tr>

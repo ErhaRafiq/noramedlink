@@ -44,7 +44,7 @@ export function SummaryResult({ result, loading }: { result: SummaryResponse | n
       <EmptyState
         icon={Sparkles}
         title="Your summary appears here"
-        description="Paste report text or use your saved reports. Numbers are kept as written and nothing is diagnosed."
+        description="Upload a photo or file, paste report text, or use your saved reports. Numbers are kept as written and nothing is diagnosed."
       />
     );
   }

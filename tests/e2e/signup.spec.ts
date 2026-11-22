@@ -20,8 +20,11 @@ test.describe("sign up", () => {
     await expect(page.getByLabel("CNIC number")).toHaveCount(0);
     await expect(page.getByText("An administrator checks your registration")).toBeVisible();
 
-    await page.getByText("Admin", { exact: true }).click();
-    await expect(page.getByLabel("Admin invite code")).toBeVisible();
+    // Admin accounts are not offered on the public form, not even through ?role=admin.
+    await expect(page.getByText("Admin", { exact: true })).toHaveCount(0);
+    await page.goto("/signup?role=admin");
+    await expect(page.getByLabel("Admin invite code")).toHaveCount(0);
+    await expect(page.getByLabel("CNIC number")).toBeVisible();
   });
 
   test("a new patient account opens the patient dashboard", async ({ page }) => {

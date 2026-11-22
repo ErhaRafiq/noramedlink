@@ -70,6 +70,23 @@ def test_the_request_is_what_resend_expects(provider_on):
     assert seen["follow_redirects"] is False
 
 
+def test_the_logo_travels_inside_the_email_not_as_a_link_to_our_site(provider_on):
+    """A link to localhost or a private site shows as a broken image in the reader's mail app."""
+    from services import email_templates
+
+    seen = {}
+
+    def post(url, **kwargs):
+        seen.update(kwargs)
+        return httpx.Response(200, json={"id": "x"})
+
+    send(post)
+    [logo] = seen["json"]["attachments"]
+    assert logo["content_id"] == "nora-logo" and logo["content_type"] == "image/png" and logo["content"]
+    html = email_templates.render("password_changed", {"name": "A"}).html
+    assert 'src="cid:nora-logo"' in html and "/icons/" not in html
+
+
 def test_a_reply_to_address_is_added_when_configured(provider_on, monkeypatch):
     monkeypatch.setattr(email_client, "settings", replace(ON, email_reply_to="help@example.test"))
     seen = {}

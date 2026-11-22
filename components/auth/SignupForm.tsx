@@ -106,10 +106,6 @@ export function SignupForm() {
             <TextField label="Hospital or clinic" wrapperClassName="sm:col-span-2" {...field("hospital_name")} />
           </>
         ) : null}
-
-        {values.role === "admin" ? (
-          <TextField label="Admin invite code" type="password" autoComplete="off" wrapperClassName="sm:col-span-2" {...field("admin_invite_code")} />
-        ) : null}
       </div>
 
       {values.role === "doctor" ? (

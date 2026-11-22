@@ -121,6 +121,7 @@ FASTAPI_ANY_USER_ROUTES = [
     ("PUT", "/api/backend/appointments/1"),
     ("GET", "/api/backend/payments"),
     ("POST", "/api/backend/nlp/summarize"),
+    ("POST", "/api/backend/nlp/read-file"),
 ]
 ALL_ROUTES = (ADMIN_ROUTES + DOCTOR_ROUTES + PATIENT_ROUTES + ANY_USER_ROUTES
               + FASTAPI_PATIENT_ROUTES + FASTAPI_ANY_USER_ROUTES + FASTAPI_ADMIN_ROUTES)
@@ -595,6 +596,22 @@ def run_tests() -> None:
     check("the booked doctor sees it", booked.get("id") in [a["id"] for a in call("GET", "/api/backend/appointments", tok_doctor).json()["items"]])
     check("another doctor does not", call("GET", "/api/backend/appointments", tok_doctor_2).json()["items"] == [])
 
+    # Race: six requests for the same slot at the same moment (two patients, three tries each). The database's
+    # unique slot index must let exactly one through; the rest are refused as taken, never a 500.
+    from concurrent.futures import ThreadPoolExecutor
+
+    raced_slot = next_slot(doctor)
+    raced = {"doctor_id": doctor, "date": raced_slot, "reason": "Race test"}
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        answers = list(pool.map(lambda tok: call("POST", "/api/backend/appointments", tok, raced), [tok_a, tok_b] * 3))
+    codes = sorted(r.status_code for r in answers)
+    check("six simultaneous bookings of one slot -> exactly one 201, the rest refused", codes.count(201) == 1 and all(c in (201, 409) for c in codes),
+          f"got {codes}")
+    for r in answers:
+        if r.status_code == 201:
+            winner_token = tok_a if r.json()["appointment"]["user_id"] == patient_a else tok_b
+            call("PUT", f"/api/backend/appointments/{r.json()['appointment']['id']}", winner_token, {"status": "CANCELLED"})
+
     appt = f"/api/backend/appointments/{booked.get('id')}"
     response = call("PUT", appt, tok_a, {"payment_status": "SUCCESS"})
     check("patient marking own appointment paid -> 403", response.status_code == 403, f"got {response.status_code}")
@@ -826,6 +843,22 @@ def run_tests() -> None:
             cell_.text = value
         word_file = io.BytesIO()
         document.save(word_file)
+        response = client.post(
+            "/api/backend/nlp/read-file",
+            headers={"Authorization": f"Bearer {tok_a}"},
+            files={"file": ("phase0.docx", word_file.getvalue(),
+                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+        )
+        read = response.json() if response.status_code == 200 else {}
+        check("a Word file is read for the Summarize page and nothing is stored -> 200 with its text",
+              response.status_code == 200 and "Glucose 250 mg/dL" in read.get("text", "") and read.get("source") == "text_layer",
+              f"got {response.status_code}")
+        response = client.post("/api/backend/nlp/read-file", headers={"Authorization": f"Bearer {tok_a}"},
+                               files={"file": ("notes.txt", b"hello", "text/plain")})
+        check("a text file on the Summarize page -> 400", response.status_code == 400, f"got {response.status_code}")
+        response = client.post("/api/backend/nlp/read-file", headers={"Authorization": f"Bearer {tok_a}"},
+                               files={"file": ("x.png", b"not an image", "image/png")})
+        check("a broken image on the Summarize page -> 400", response.status_code == 400, f"got {response.status_code}")
         response = client.post(
             "/api/backend/patient/reports/upload",
             headers={"Authorization": f"Bearer {tok_a}"},
