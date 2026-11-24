@@ -54,6 +54,12 @@ import type {
   AdminDoctor,
   AdminUser,
   Page,
+  PatientHomeVisit,
+  HomeVisitChecklist,
+  HomeVisitCheck,
+  HomeVisitCreate,
+  HomeVisitOutcome,
+  LegacyHomeVisitRequest,
   PatientProfileInput,
   Availability,
   AvailabilityWindow,
@@ -398,22 +404,24 @@ export const api = {
       body: JSON.stringify({ patientId }),
     });
   },
-  createEmergencyRequest(
-    payload: { patientName: string; phone: string; address: string; symptoms: string; latitude?: string; longitude?: string },
-  ) {
-    const coordinate = (value?: string) => (value && Number.isFinite(Number(value)) ? Number(value) : null);
-    return apiRequest<{
-      message: string;
-      emergencyNotice: string;
-      booking: { id: number; doctorName: string | null; status: string; estimatedMinutes: number | null };
-    }>("/emergency/requests", {
-      method: "POST",
-      body: JSON.stringify({
-        ...payload,
-        latitude: coordinate(payload.latitude),
-        longitude: coordinate(payload.longitude),
-      }),
-    });
+  /** Home visits (Module 6): the emergency gate runs on the server before anything is saved. */
+  homeVisitChecklist() {
+    return apiRequest<HomeVisitChecklist>("/home-visits/checklist");
+  },
+  searchHomeVisitDoctors(check: HomeVisitCheck) {
+    return apiRequest<HomeVisitOutcome>("/home-visits/doctors/search", { method: "POST", body: JSON.stringify(check) });
+  },
+  requestHomeVisit(payload: HomeVisitCreate) {
+    return apiRequest<HomeVisitOutcome>("/home-visits/requests", { method: "POST", body: JSON.stringify(payload) });
+  },
+  myHomeVisits(page: PageQuery = {}) {
+    return apiRequest<Page<PatientHomeVisit>>(withPage("/home-visits", page));
+  },
+  cancelHomeVisit(id: number) {
+    return apiRequest<PatientHomeVisit>(`/home-visits/${id}/cancel`, { method: "POST", body: "{}" });
+  },
+  legacyHomeVisits() {
+    return apiRequest<LegacyHomeVisitRequest[]>("/home-visits/legacy");
   },
   summarizeText(text: string) {
     return apiRequest<SummaryResponse>("/nlp/summarize", {

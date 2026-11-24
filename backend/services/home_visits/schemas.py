@@ -140,6 +140,16 @@ class VisitRef(BaseModel):
     message: str = ""
 
 
+class LegacyRequest(BaseModel):
+    """A request recorded before the home-visit service (old emergency_bookings): read-only, shown as it was."""
+
+    id: int
+    created_at: datetime
+    symptoms: str
+    address: str
+    note: str = "Recorded before the home-visit service. No doctor was assigned."
+
+
 class AdminVisit(PatientVisit):
     """An administrator's view (audited): includes the phone and the coordinates."""
 

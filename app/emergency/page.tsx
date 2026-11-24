@@ -1,17 +1,17 @@
 import type { Metadata } from "next";
 
-import { EmergencyView } from "@/components/emergency/EmergencyView";
+import { HomeVisitView } from "@/components/home-visits/HomeVisitView";
 import { SitePage } from "@/components/layout/SitePage";
 
 export const metadata: Metadata = {
-  title: "Home visit request",
-  description: "Request a home visit. Not an emergency service: in an emergency call 1122.",
+  title: "Home visit",
+  description: "Ask for a doctor at home for a problem that is not an emergency. Not an emergency service: in an emergency call 1122.",
 };
 
 export default function EmergencyPage() {
   return (
     <SitePage>
-      <EmergencyView />
+      <HomeVisitView />
     </SitePage>
   );
 }

@@ -959,7 +959,7 @@ export type Availability = { timezone: string; slot_choices: number[]; windows: 
 
 export type Review = { rating: number; comment: string | null; created_at: string };
 
-export type NotificationCategory = "appointments" | "payments" | "records" | "account" | "admin";
+export type NotificationCategory = "appointments" | "home_visits" | "payments" | "records" | "account" | "admin";
 
 export type AppNotification = {
   id: number;
@@ -1041,3 +1041,98 @@ export type AskAnswer = {
   followups: string[];
   disclaimer: string;
 };
+
+// --- Home visits (Module 6) ---
+
+export type HomeVisitStatus =
+  | "offered"
+  | "accepted"
+  | "en_route"
+  | "arrived"
+  | "completed"
+  | "closed"
+  | "cancelled"
+  | "declined"
+  | "no_doctor_found"
+  | "expired"
+  | "referred_emergency";
+
+/** Where the patient is: from the browser (with its accuracy in metres) or typed by hand. Never geocoded. */
+export type HomeVisitPlace = {
+  latitude: number;
+  longitude: number;
+  accuracy_m: number | null;
+  source: "device" | "manual";
+};
+
+export type HomeVisitChecklist = {
+  notice: string;
+  questions: Array<{ id: string; question: string }>;
+};
+
+/** What the emergency gate and the doctor search read. */
+export type HomeVisitCheck = {
+  reason: string;
+  /** Every checklist question id with true (yes) or false (no). */
+  checklist: Record<string, boolean>;
+  location: HomeVisitPlace;
+};
+
+export type HomeVisitCreate = HomeVisitCheck & {
+  mode: "auto" | "choose";
+  doctor_id?: number;
+  phone: string;
+  address_text: string;
+};
+
+export type HomeVisitDoctor = { id: number; name: string; specialty: string; hospital: string | null };
+
+export type HomeVisitChoice = {
+  doctor_id: number;
+  name: string;
+  specialty: string;
+  hospital: string | null;
+  /** "straight-line distance, about 3 km" */
+  distance: string;
+  availability: "now" | "soon";
+};
+
+export type HomeVisitSummary = { findings: string; advice: string; follow_up: string };
+
+/** The patient's view of their own request: no coordinates; the doctor appears once chosen or matched. */
+export type PatientHomeVisit = {
+  id: number;
+  status: HomeVisitStatus;
+  status_label: string;
+  mode: "auto" | "choose";
+  reason: string;
+  specialty: string;
+  address_text: string;
+  location: string;
+  doctor: HomeVisitDoctor | null;
+  offered_to_count: number;
+  offer_expires_at: string | null;
+  /** Only what the doctor typed when they set out. */
+  eta: { minutes: number; label: string } | null;
+  summary: HomeVisitSummary | null;
+  emergency_notice: string | null;
+  created_at: string;
+  accepted_at: string | null;
+  en_route_at: string | null;
+  arrived_at: string | null;
+  completed_at: string | null;
+  closed_at: string | null;
+  ended_at: string | null;
+};
+
+export type HomeVisitOutcome = {
+  outcome: "emergency" | "not_suitable" | "created" | "doctors";
+  message: string;
+  red_flags: string[];
+  visit: PatientHomeVisit | null;
+  doctors: HomeVisitChoice[];
+  specialty: string | null;
+};
+
+/** A request from before the home-visit service (read-only). */
+export type LegacyHomeVisitRequest = { id: number; created_at: string; symptoms: string; address: string; note: string };

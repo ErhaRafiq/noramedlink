@@ -19,8 +19,8 @@ import { NotificationItem } from "./NotificationItem";
 type Role = "patient" | "doctor" | "admin";
 
 const CATEGORIES_FOR: Record<Role, NotificationCategory[]> = {
-  patient: ["appointments", "payments", "records", "account"],
-  doctor: ["appointments", "payments", "account"],
+  patient: ["appointments", "home_visits", "payments", "records", "account"],
+  doctor: ["appointments", "home_visits", "payments", "account"],
   admin: ["admin", "account"],
 };
 

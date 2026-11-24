@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from dependencies import require_admin, require_doctor, require_patient
-from models import DoctorProfile, HomeVisitRequest, User
+from models import DoctorProfile, EmergencyBooking, HomeVisitRequest, User
 from pagination import Page, PageParams, page_params, paginate
 from rate_limit import HOME_VISIT_LIMIT, limiter
 from services import audit, clock
@@ -27,6 +27,7 @@ from services.home_visits.schemas import (
     DoctorVisit,
     EnRouteIn,
     HomeVisitCreate,
+    LegacyRequest,
     Outcome,
     PatientVisit,
     RequestCheck,
@@ -174,6 +175,19 @@ def my_visits(
     query = db.query(HomeVisitRequest).filter(HomeVisitRequest.patient_id == current_user.id)
     page = paginate(query.order_by(HomeVisitRequest.created_at.desc(), HomeVisitRequest.id.desc()), params, lambda r: r)
     return {**page, "items": views.patient_views(db, page["items"])}
+
+
+@router.get("/legacy", response_model=list[LegacyRequest])
+def legacy_requests(current_user: User = Depends(require_patient), db: Session = Depends(get_db)):
+    """The patient's own requests from before the home-visit service. Read-only; nothing was copied from them."""
+    rows = (
+        db.query(EmergencyBooking)
+        .filter(EmergencyBooking.user_id == current_user.id)
+        .order_by(EmergencyBooking.created_at.desc(), EmergencyBooking.id.desc())
+        .limit(50)
+        .all()
+    )
+    return [LegacyRequest(id=r.id, created_at=r.created_at, symptoms=r.symptoms, address=r.address) for r in rows]
 
 
 # --- doctor settings and lists (declared before /{visit_id} so the words are not read as ids) -----------

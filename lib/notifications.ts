@@ -22,6 +22,7 @@ import type { NotificationCategory } from "@/lib/types";
 
 export const CATEGORY_LABEL: Record<NotificationCategory, string> = {
   appointments: "Appointments",
+  home_visits: "Home visits",
   payments: "Payments",
   records: "Health records",
   account: "Account",
