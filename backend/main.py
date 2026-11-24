@@ -27,6 +27,7 @@ from routers import (
     emergency,
     files,
     health_record,
+    home_visits,
     medications,
     medicine_reminders,
     mscie,
@@ -42,6 +43,7 @@ from routers import (
     vitals,
 )
 from services import email_outbox
+from services.home_visits import worker as home_visit_worker
 
 configure_logging()
 log = logging.getLogger("nora.startup")
@@ -74,12 +76,14 @@ async def lifespan(app: FastAPI):
     run_migrations()
     stop = asyncio.Event()
     worker = asyncio.create_task(email_outbox.run_worker(stop))  # sends the queued appointment emails and reminders
+    visits = asyncio.create_task(home_visit_worker.run(stop))  # ends home visit offers nobody answered in time
     warm = asyncio.create_task(asyncio.to_thread(_warm_up_models))  # local models: not a paid or outside service
     try:
         yield
     finally:
         stop.set()
         worker.cancel()
+        visits.cancel()
         if warm:
             warm.cancel()
 
@@ -138,6 +142,7 @@ app.include_router(medications.router)
 app.include_router(medicine_reminders.router)
 app.include_router(dashboard_access.router)
 app.include_router(emergency.router)
+app.include_router(home_visits.router)
 app.include_router(files.router)
 
 

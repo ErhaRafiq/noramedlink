@@ -29,6 +29,19 @@ ACTIONS = {
     "prescription.confirm": "confirmed a prescription",
     "prescription.cancel": "cancelled a prescription",
     "safety.override": "overrode a medication safety alert",
+    "home_visit.request": "asked for a home visit",
+    "home_visit.offer": "was offered a home visit request",
+    "home_visit.accept": "accepted a home visit",
+    "home_visit.decline": "declined a home visit request",
+    "home_visit.en_route": "set out for a home visit",
+    "home_visit.arrive": "arrived for a home visit",
+    "home_visit.complete": "finished a home visit",
+    "home_visit.close": "closed a home visit with a summary",
+    "home_visit.cancel": "cancelled a home visit",
+    "home_visit.escalate": "referred a home visit patient to emergency care",
+    "home_visit.expire": "a home visit request went unanswered",
+    "home_visit.no_doctor": "no doctor was found for a home visit",
+    "home_visit.admin_view": "viewed a home visit with its location",
     "admin.doctor_approve": "approved a doctor",
     "admin.doctor_reject": "rejected a doctor",
     "admin.pmdc_check": "checked a doctor on the PMDC register",
@@ -84,6 +97,34 @@ def record(
         target_id=target_id,
         patient_id=patient_id,
         detail=detail,
+    )
+    db.add(row)
+    if commit:
+        db.commit()
+    return row
+
+
+def record_system(
+    db: Session,
+    action: str,
+    *,
+    patient_id: int | None = None,
+    target_type: str | None = None,
+    target_id: int | None = None,
+    detail: str = "",
+    commit: bool = True,
+) -> AuditLog:
+    """An audit row for something the server did on its own (an offer that timed out), with no signed-in actor."""
+    if action not in ACTIONS:
+        raise ValueError(f"Unknown audit action: {action}")
+    row = AuditLog(
+        actor_id=None,
+        actor_role="system",
+        action=action,
+        target_type=target_type,
+        target_id=target_id,
+        patient_id=patient_id,
+        detail=detail[:300],
     )
     db.add(row)
     if commit:

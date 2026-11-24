@@ -43,6 +43,7 @@ PAYMENT_LIMIT = settings.rate_limit_payment  # per user: starting a Stripe Check
 SYMPTOM_LIMIT = settings.rate_limit_symptoms  # per IP: the public symptom checker
 PMDC_LIMIT = settings.rate_limit_pmdc  # per admin: lookups on the PMDC public register
 EMAIL_LIMIT = settings.rate_limit_email  # per IP: endpoints that cause an email
+HOME_VISIT_LIMIT = settings.rate_limit_home_visit  # per user: sending or searching for a home visit
 
 RATE_LIMIT_ENABLED = settings.rate_limit_enabled
 STORAGE_URI = settings.rate_limit_storage_uri

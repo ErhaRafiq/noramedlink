@@ -84,6 +84,7 @@ class Settings:
     rate_limit_symptoms: str = "20/minute"  # per IP: the public symptom checker
     rate_limit_pmdc: str = "20/minute"  # per admin: lookups on the PMDC public register
     rate_limit_email: str = "5/minute"  # per IP: endpoints that cause an email (forgot password, resend)
+    rate_limit_home_visit: str = "10/minute"  # per user: sending or searching for a home visit
     trusted_proxy_ips: list[str] = field(default_factory=lambda: ["127.0.0.1", "::1"])
 
     # Payments (Stripe Checkout, the hosted payment page). Test keys (sk_test_...) take no real money.

@@ -40,6 +40,7 @@ DOCTOR_APPOINTMENTS = "/dashboard/doctor#appointments"
 
 CATEGORIES = {
     "appointments": "Appointments",
+    "home_visits": "Home visits",
     "payments": "Payments",
     "records": "Health records",
     "account": "Account",
@@ -48,6 +49,7 @@ CATEGORIES = {
 _PREFIXES = (
     ("appointment_", "appointments"),
     ("review_", "appointments"),
+    ("home_visit_", "home_visits"),
     ("payment_", "payments"),
     ("prescription_", "records"),
     ("record_", "records"),

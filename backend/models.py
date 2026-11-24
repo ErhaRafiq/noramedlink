@@ -276,8 +276,8 @@ class HomeVisitRequest(Base):
     """One on-demand home visit (Module 6). Replaces the old emergency_bookings, which stay read-only.
 
     `status` moves only through services/home_visits/states.py; each step stamps its own column. The reason
-    and the written address are shown to the matched doctor only after they accept; the coordinates stay on
-    the server. Never used for emergencies: those are refused before a row is written.
+    is shown to the doctor offered the request; the patient's name, phone, written address and place only to
+    the matched doctor after they accept. Never used for emergencies: those are refused before a row is written.
     """
 
     __tablename__ = "home_visit_requests"

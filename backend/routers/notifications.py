@@ -47,7 +47,7 @@ def _own(db: Session, user: User, notification_id: int) -> Notification:
 @router.get("", response_model=NotificationPage)
 def list_notifications(
     unread_only: bool = False,
-    category: Literal["appointments", "payments", "records", "account", "admin"] | None = None,
+    category: Literal["appointments", "home_visits", "payments", "records", "account", "admin"] | None = None,
     params: PageParams = Depends(page_params),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),

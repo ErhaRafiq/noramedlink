@@ -376,3 +376,39 @@ def test_no_more_than_five_doctors_are_offered_a_request():
 
 def test_nobody_eligible_means_no_doctor_found():
     assert offers.next_candidate([], set()) is None
+
+
+# ---- availability from the weekly hours -------------------------------------------------------------------------
+
+from datetime import time  # noqa: E402
+
+from services.home_visits.availability import availability_state  # noqa: E402
+
+MONDAY_HOURS = [(0, time(9, 0), time(17, 0))]
+
+
+def karachi(hour, minute=0, day=7):
+    """A moment on Monday 7 Jan 2030 at this Pakistan clock time (UTC+5)."""
+    return datetime(2030, 1, day, hour - 5, minute, tzinfo=UTC)
+
+
+def test_inside_the_hours_is_available_now_and_the_end_is_exclusive():
+    assert availability_state(MONDAY_HOURS, karachi(9, 0)) == "now"
+    assert availability_state(MONDAY_HOURS, karachi(16, 59)) == "now"
+    assert availability_state(MONDAY_HOURS, karachi(17, 0)) == "none"
+
+
+def test_a_window_starting_within_two_hours_is_soon():
+    assert availability_state(MONDAY_HOURS, karachi(7, 0)) == "soon"
+    assert availability_state(MONDAY_HOURS, karachi(6, 59)) == "none"
+    assert availability_state(MONDAY_HOURS, karachi(8, 30)) == "soon"
+
+
+def test_another_weekday_or_no_hours_is_unavailable():
+    assert availability_state(MONDAY_HOURS, karachi(12, 0, day=8)) == "none"
+    assert availability_state([], karachi(12, 0)) == "none"
+
+
+def test_the_clinic_clock_decides_the_day_not_utc():
+    # Monday 00:30 in Pakistan is still Sunday in UTC
+    assert availability_state([(0, time(0, 0), time(2, 0))], datetime(2030, 1, 6, 19, 30, tzinfo=UTC)) == "now"
