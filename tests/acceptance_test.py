@@ -158,6 +158,9 @@ USER_OWNED_ROWS = [
     ("appointments", "user_id"),
     ("appointments", "doctor_id"),
     ("doctor_availability", "doctor_id"),
+    ("home_visit_offers", "doctor_id"),
+    ("home_visit_requests", "patient_id"),
+    ("home_visit_requests", "doctor_id"),
     ("emergency_bookings", "user_id"),
     ("emergency_bookings", "doctor_id"),
     ("patient_dashboard_access", "patient_id"),
@@ -2343,6 +2346,264 @@ def run_tests() -> None:
     call("POST", "/api/backend/notifications/read-all", tok_s1)
     check("read-all clears the unread count", call("GET", "/api/backend/notifications", tok_s1).json()["unread"] == 0)
     check("notifications need a token", call("GET", "/api/backend/notifications").status_code == 401)
+
+    home_visit_checks()
+
+
+
+# --------------------------------------------------------------------------- home visits (Module 6)
+
+HV = "/api/backend/home-visits"
+F10 = (33.6938, 73.0129)
+BLUE_AREA = (33.7100, 73.0551)
+LAHORE = (31.5204, 74.3587)
+HV_REASON = "mild fever and a cold for two days"
+HV_ANSWERS = {f"HC-{n:02d}": False for n in range(1, 12)}
+
+
+def hv_setup_doctor(user_id: int, place: tuple[float, float] | None, *, enabled: bool = True, radius: float = 10.0) -> None:
+    """Turn home visits on for a test doctor and open every hour of every day (so 'available now' is always true)."""
+    with engine.begin() as conn:
+        conn.execute(
+            text("update doctor_profiles set home_visits_enabled = :e, service_radius_km = :r, base_latitude = :la, base_longitude = :lo where user_id = :u"),
+            {"e": enabled, "r": radius, "la": place[0] if place else None, "lo": place[1] if place else None, "u": user_id},
+        )
+        conn.execute(text("delete from doctor_availability where doctor_id = :u"), {"u": user_id})
+        for weekday in range(7):
+            conn.execute(
+                text("insert into doctor_availability (doctor_id, weekday, start_time, end_time, slot_minutes) values (:u, :d, '00:00', '23:59', 30)"),
+                {"u": user_id, "d": weekday},
+            )
+
+
+def hv_body(place=F10, *, reason=HV_REASON, answers=None, mode="auto", doctor_id=None, address="House 12, Street 4, F-10/2, Islamabad") -> dict:
+    body = {
+        "reason": reason,
+        "checklist": dict(HV_ANSWERS) if answers is None else answers,
+        "location": {"latitude": place[0], "longitude": place[1], "accuracy_m": 120, "source": "device"},
+        "mode": mode,
+        "phone": "0300-1234567",
+        "address_text": address,
+    }
+    if doctor_id:
+        body["doctor_id"] = doctor_id
+    return body
+
+
+def hv_check_body(**kwargs) -> dict:
+    return {k: v for k, v in hv_body(**kwargs).items() if k in ("reason", "checklist", "location")}
+
+
+def hv_expire(visit_id: int) -> None:
+    with engine.begin() as conn:
+        conn.execute(
+            text("update home_visit_offers set expires_at = now() - interval '1 second' where request_id = :r and outcome = 'pending'"),
+            {"r": visit_id},
+        )
+
+
+def hv_count(patient_id: int) -> int:
+    return scalar("select count(*) from home_visit_requests where patient_id = :p", p=patient_id)
+
+
+def hv_offer_ids(token: str) -> list[int]:
+    return [o["id"] for o in call("GET", HV + "/doctor/offers", token).json()]
+
+
+def home_visit_checks() -> None:
+    d1, d2 = create_user("hv-doctor-1", "DOCTOR"), create_user("hv-doctor-2", "DOCTOR")
+    far = create_user("hv-doctor-far", "DOCTOR")
+    pending = create_user("hv-doctor-pending", "DOCTOR", doctor_status="pending")
+    off = create_user("hv-doctor-off", "DOCTOR")
+    hv_setup_doctor(d1, F10)
+    hv_setup_doctor(d2, BLUE_AREA)
+    hv_setup_doctor(far, LAHORE)
+    hv_setup_doctor(pending, F10)
+    hv_setup_doctor(off, F10, enabled=False)
+    patients = {n: create_user(f"hv-patient-{n}", "PATIENT") for n in range(1, 7)}
+    admin = create_user("hv-admin", "ADMIN")
+    tp = {n: token_for(u) for n, u in patients.items()}
+    t1, t2, tadmin, tfar = token_for(d1), token_for(d2), token_for(admin), token_for(far)
+    p1 = patients[1]
+
+    print("\n[hv-1] sign-in and roles")
+    for method, path in [("GET", "/checklist"), ("POST", "/requests"), ("POST", "/doctors/search"), ("GET", ""), ("GET", "/1"),
+                         ("GET", "/doctor/offers"), ("GET", "/doctor/settings"), ("POST", "/1/accept"), ("GET", "/admin/1")]:
+        check(f"{method} home-visits{path} without a token -> 401", call(method, HV + path, None, {}).status_code == 401)
+    check("a doctor cannot send a request -> 403", call("POST", HV + "/requests", t1, hv_body()).status_code == 403)
+    check("a patient cannot use the doctor's offers -> 403", call("GET", HV + "/doctor/offers", tp[1]).status_code == 403)
+    check("a patient cannot accept a request -> 403", call("POST", HV + "/1/accept", tp[1]).status_code == 403)
+    check("a patient cannot read the doctor settings -> 403", call("GET", HV + "/doctor/settings", tp[1]).status_code == 403)
+    check("a doctor cannot use the admin view -> 403", call("GET", HV + "/admin/1", t1).status_code == 403)
+    check("a patient cannot use the admin view -> 403", call("GET", HV + "/admin/1", tp[1]).status_code == 403)
+    questions = call("GET", HV + "/checklist", tp[1]).json()
+    check("the checklist has its questions and the 1122 notice", len(questions["questions"]) == 11 and "1122" in questions["notice"])
+
+    print("\n[hv-2] doctor settings")
+    check("home visits cannot be switched on without a place -> 422", call("PUT", HV + "/doctor/settings", t1, {"enabled": True}).status_code == 422)
+    check("a latitude out of range -> 422", call("PUT", HV + "/doctor/settings", t1, {"enabled": True, "radius_km": 5, "latitude": 91, "longitude": 70}).status_code == 422)
+    check("a longitude out of range -> 422", call("PUT", HV + "/doctor/settings", t1, {"enabled": True, "radius_km": 5, "latitude": 30, "longitude": 181}).status_code == 422)
+    check("a radius over 50 km -> 422", call("PUT", HV + "/doctor/settings", t1, {"enabled": True, "radius_km": 500, "latitude": 30, "longitude": 70}).status_code == 422)
+    saved = call("PUT", HV + "/doctor/settings", t1, {"enabled": True, "radius_km": 10, "latitude": F10[0], "longitude": F10[1]})
+    check("a doctor saves their base and radius", saved.status_code == 200 and saved.json()["enabled"] is True and "HTTPS" in saved.json()["note"])
+
+    print("\n[hv-3] the emergency gate saves nothing")
+    response = call("POST", HV + "/requests", tp[1], hv_body(reason="I have chest pain since morning"))
+    body = response.json()
+    check("a red flag in the reason -> only the 1122 notice", response.status_code == 200 and body["outcome"] == "emergency" and "1122" in body["message"] and body["visit"] is None and body["doctors"] == [])
+    response = call("POST", HV + "/requests", tp[1], hv_body(answers={**HV_ANSWERS, "HC-02": True}))
+    check("a 'yes' on the checklist -> emergency", response.status_code == 200 and response.json()["outcome"] == "emergency")
+    check("the search is blocked the same way", call("POST", HV + "/doctors/search", tp[1], hv_check_body(reason="cannot breathe")).json()["outcome"] == "emergency")
+    check("a missing checklist answer -> 422", call("POST", HV + "/requests", tp[1], hv_body(answers={"HC-01": False})).status_code == 422)
+    check("an impossible latitude -> 422", call("POST", HV + "/requests", tp[1], hv_body(place=(95, 10))).status_code == 422)
+    check("a request without a location -> 422", call("POST", HV + "/requests", tp[1], {k: v for k, v in hv_body().items() if k != "location"}).status_code == 422)
+    response = call("POST", HV + "/requests", tp[1], hv_body(reason="my knee joint pain and swelling after walking"))
+    check("a clinic-only problem points to a clinic visit and saves nothing", response.status_code == 200 and response.json()["outcome"] == "not_suitable" and "appointment" in response.json()["message"])
+    check("nothing was saved for any of those", hv_count(p1) == 0)
+
+    print("\n[hv-4] who is offered a request")
+    search = call("POST", HV + "/doctors/search", tp[1], hv_check_body()).json()
+    ids = [c["doctor_id"] for c in search["doctors"]]
+    check("only enabled, approved doctors inside their radius are listed, nearest first", ids == [d1, d2], f"got {ids}")
+    check("distance is worded as a straight line, rounded", all("straight-line" in c["distance"] for c in search["doctors"]))
+    check("the list shows no phone, address or coordinates", "latitude" not in json.dumps(search) and "0300" not in json.dumps(search))
+
+    print("\n[hv-5] request, decline, accept")
+    created = call("POST", HV + "/requests", tp[1], hv_body())
+    visit = created.json()["visit"] if created.status_code == 201 else {}
+    vid = visit.get("id")
+    check("a request is created and offered", created.status_code == 201 and visit.get("status") == "offered" and visit.get("offered_to_count") == 1)
+    check("the patient's view has no coordinates", "latitude" not in json.dumps(visit) and visit.get("location") == "accurate to about 120 m")
+    check("a second live request -> 409", call("POST", HV + "/requests", tp[1], hv_body()).status_code == 409)
+    offers_d1 = call("GET", HV + "/doctor/offers", t1).json()
+    check("the best doctor sees the request", [o["id"] for o in offers_d1] == [vid])
+    offer_text = json.dumps(offers_d1)
+    check("the offer shows the reason and a rounded distance, not the name, phone or address",
+          HV_REASON in offer_text and "straight-line" in offer_text and "0300" not in offer_text and "House 12" not in offer_text
+          and f"{TEST_PREFIX}hv-patient" not in offer_text and "latitude" not in offer_text)
+    check("another doctor sees no offer", hv_offer_ids(t2) == [])
+    check("a doctor who was not offered cannot accept -> 409", call("POST", HV + f"/{vid}/accept", t2).status_code == 409)
+    check("another patient cannot read it (404)", call("GET", HV + f"/{vid}", tp[2]).status_code == 404)
+    check("another patient cannot cancel it (404)", call("POST", HV + f"/{vid}/cancel", tp[2]).status_code == 404)
+    check("a doctor cannot read a patient's visit -> 403", call("GET", HV + f"/{vid}", t1).status_code == 403)
+    check("declining passes it to the next doctor", call("POST", HV + f"/{vid}/decline", t1).status_code == 200
+          and hv_offer_ids(t2) == [vid] and call("GET", HV + f"/{vid}", tp[1]).json()["offered_to_count"] == 2)
+    check("the first doctor can no longer accept -> 409", call("POST", HV + f"/{vid}/accept", t1).status_code == 409)
+
+    print("\n[hv-6] a doctor holding an offer is not offered another")
+    other = call("POST", HV + "/requests", tp[2], hv_body()).json()["visit"]
+    check("the second patient's request goes to the free doctor", hv_offer_ids(t1) == [other["id"]] and hv_offer_ids(t2) == [vid])
+    check("a patient withdraws a waiting request", call("POST", HV + f"/{other['id']}/cancel", tp[2]).json()["status"] == "cancelled"
+          and hv_offer_ids(t1) == [])
+
+    print("\n[hv-7] accepting shows the patient to the doctor only, and grants no record access")
+    accepted = call("POST", HV + f"/{vid}/accept", t2)
+    contact = accepted.json().get("patient", {}) if accepted.status_code == 200 else {}
+    check("accepting returns the patient's phone, address and place", accepted.status_code == 200 and contact.get("phone") == "0300-1234567" and "House 12" in contact.get("address_text", "") and "latitude" in contact)
+    check("accepting does not open the patient's record (no grant is created)",
+          scalar("select count(*) from patient_dashboard_access where doctor_id = :d and patient_id = :p", d=d2, p=p1) == 0
+          and call("GET", f"/api/backend/doctor/patients/{p1}/body-measurements", t2).status_code in (403, 404))
+    check("the other doctor still cannot see it", call("POST", HV + f"/{vid}/arrived", t1).status_code == 404)
+    mine = call("GET", HV + f"/{vid}", tp[1]).json()
+    check("the patient sees the doctor's name, not their phone", mine["doctor"]["name"] == f"{TEST_PREFIX}hv-doctor-2" and "phone" not in json.dumps(mine["doctor"]))
+    third = call("POST", HV + "/requests", tp[3], hv_body()).json()["visit"]
+    check("a new request now skips the busy doctor", third["offered_to_count"] == 1 and hv_offer_ids(t2) == [] and hv_offer_ids(t1) == [third["id"]])
+    call("POST", HV + f"/{third['id']}/cancel", tp[3])
+
+    print("\n[hv-8] the steps run in order")
+    check("arriving before setting out -> 409", call("POST", HV + f"/{vid}/arrived", t2).status_code == 409)
+    check("closing before completing -> 409", call("POST", HV + f"/{vid}/close", t2, {"findings": "abc", "advice": "abc", "follow_up": "no"}).status_code == 409)
+    check("an ETA must be a sane number -> 422", call("POST", HV + f"/{vid}/en-route", t2, {"eta_minutes": 9999}).status_code == 422)
+    enroute = call("POST", HV + f"/{vid}/en-route", t2, {"eta_minutes": 20})
+    check("setting out records the doctor's own estimate", enroute.status_code == 200 and enroute.json()["eta"] == {"minutes": 20, "label": "doctor's estimate"})
+    check("the patient sees it labelled as the doctor's estimate", call("GET", HV + f"/{vid}", tp[1]).json()["eta"]["label"] == "doctor's estimate")
+    check("arrived", call("POST", HV + f"/{vid}/arrived", t2).json()["status"] == "arrived")
+    check("a patient cannot cancel once the doctor arrived -> 409", call("POST", HV + f"/{vid}/cancel", tp[1]).status_code == 409)
+    check("completed", call("POST", HV + f"/{vid}/complete", t2).json()["status"] == "completed")
+    check("the summary needs every part -> 422", call("POST", HV + f"/{vid}/close", t2, {"findings": "Mild viral fever"}).status_code == 422)
+    closed = call("POST", HV + f"/{vid}/close", t2, {"findings": "Mild viral fever", "advice": "Rest and fluids", "follow_up": "Clinic visit if fever lasts 3 days"})
+    check("closing saves the summary", closed.status_code == 200 and closed.json()["status"] == "closed" and closed.json()["summary"]["advice"] == "Rest and fluids")
+    final = call("GET", HV + f"/{vid}", tp[1]).json()
+    check("the patient sees the summary and every step's time", final["summary"]["follow_up"].startswith("Clinic") and all(final[k] for k in ("accepted_at", "en_route_at", "arrived_at", "completed_at", "closed_at")))
+    check("a closed visit cannot move again -> 409", call("POST", HV + f"/{vid}/doctor-cancel", t2).status_code == 409 and call("POST", HV + f"/{vid}/cancel", tp[1]).status_code == 409)
+    check("the visit is in the patient's list", vid in [v["id"] for v in call("GET", HV + "", tp[1]).json()["items"]])
+    check("the doctor's visit list shows the patient's contact", call("GET", HV + "/doctor/visits", t2).json()["items"][0]["patient"]["phone"] == "0300-1234567")
+    check("the other doctor's list is empty", call("GET", HV + "/doctor/visits", t1).json()["items"] == [])
+
+    print("\n[hv-9] notifications and the audit log")
+    kinds = {n["kind"] for n in call("GET", "/api/backend/notifications", tp[1]).json()["items"]}
+    check("the patient was told of each step", {"home_visit_accepted", "home_visit_en_route", "home_visit_arrived", "home_visit_completed", "home_visit_closed"} <= kinds, f"got {kinds}")
+    check("the doctor was told of the offer", scalar("select count(*) from notifications where user_id = :d and kind = 'home_visit_offered'", d=d2) >= 1)
+    check("no notification holds the reason or the address",
+          scalar("select count(*) from notifications where kind like 'home_visit_%' and user_id = any(:u) and (body ilike '%fever%' or body ilike '%House 12%')", u=[p1, d1, d2]) == 0)
+    with engine.connect() as conn:
+        actions = {r[0] for r in conn.execute(text("select action from audit_logs where target_type = 'home_visit' and target_id = :i"), {"i": vid})}
+    check("every step is in the audit log", {"home_visit.request", "home_visit.offer", "home_visit.decline", "home_visit.accept", "home_visit.en_route", "home_visit.arrive", "home_visit.complete", "home_visit.close"} <= actions, f"got {actions}")
+    seen = call("GET", HV + f"/admin/{vid}", tadmin)
+    check("an administrator sees the phone and coordinates", seen.status_code == 200 and seen.json()["phone"] == "0300-1234567" and "latitude" in seen.json())
+    check("and that view is audited", scalar("select count(*) from audit_logs where action = 'home_visit.admin_view' and target_id = :i", i=vid) == 1)
+
+    print("\n[hv-10] timeouts")
+    timed = call("POST", HV + "/requests", tp[3], hv_body()).json()["visit"]["id"]
+    hv_expire(timed)
+    after = call("GET", HV + f"/{timed}", tp[3]).json()
+    check("an unanswered offer moves to the next doctor", after["status"] == "offered" and after["offered_to_count"] == 2)
+    check("the first doctor's offer is gone", timed not in hv_offer_ids(t1))
+    hv_expire(timed)
+    ended = call("GET", HV + f"/{timed}", tp[3]).json()
+    check("when everyone has been offered it ends as no doctor found", ended["status"] == "no_doctor_found" and ended["status_label"] == "No doctor found")
+    check("the patient was told", scalar("select count(*) from notifications where user_id = :u and kind = 'home_visit_no_doctor'", u=patients[3]) == 1)
+    check("a late accept is refused -> 409", call("POST", HV + f"/{timed}/accept", t1).status_code == 409)
+    check("the ending is audited", scalar("select count(*) from audit_logs where target_id = :i and action = 'home_visit.no_doctor'", i=timed) == 1)
+
+    print("\n[hv-11] choosing a doctor")
+    check("choosing needs a doctor -> 422", call("POST", HV + "/requests", tp[3], hv_body(mode="choose")).status_code == 422)
+    check("choosing a doctor who cannot take it -> 422", call("POST", HV + "/requests", tp[3], hv_body(mode="choose", doctor_id=far)).status_code == 422)
+    check("choosing a doctor who is not approved -> 422", call("POST", HV + "/requests", tp[3], hv_body(mode="choose", doctor_id=pending)).status_code == 422)
+    chosen = call("POST", HV + "/requests", tp[3], hv_body(mode="choose", doctor_id=d1)).json()["visit"]
+    check("the request goes to that doctor only", chosen["doctor"]["name"] == f"{TEST_PREFIX}hv-doctor-1" and hv_offer_ids(t1) == [chosen["id"]] and hv_offer_ids(t2) == [])
+    hv_expire(chosen["id"])
+    check("no answer ends a chosen request as expired", call("GET", HV + f"/{chosen['id']}", tp[3]).json()["status"] == "expired")
+    again = call("POST", HV + "/requests", tp[3], hv_body(mode="choose", doctor_id=d1)).json()["visit"]["id"]
+    call("POST", HV + f"/{again}/decline", t1)
+    check("a chosen doctor's decline ends it as declined", call("GET", HV + f"/{again}", tp[3]).json()["status"] == "declined")
+
+    print("\n[hv-12] emergencies found by the doctor")
+    first = call("POST", HV + "/requests", tp[4], hv_body()).json()["visit"]["id"]
+    esc = call("POST", HV + f"/{first}/escalate", t1)
+    check("a doctor can refer a waiting request to emergency care without seeing the patient", esc.status_code == 200 and esc.json()["status"] == "referred_emergency" and "1122" in esc.json()["message"] and "phone" not in json.dumps(esc.json()))
+    seen = call("GET", HV + f"/{first}", tp[4]).json()
+    check("the patient is told to call 1122 and no doctor is shown", seen["status"] == "referred_emergency" and "1122" in (seen["emergency_notice"] or ""))
+    second = call("POST", HV + "/requests", tp[4], hv_body()).json()["visit"]["id"]
+    call("POST", HV + f"/{second}/accept", t1)
+    call("POST", HV + f"/{second}/en-route", t1, {})
+    check("a stranger cannot escalate someone else's visit -> 404", call("POST", HV + f"/{second}/escalate", t2).status_code == 404)
+    check("a doctor on the way can refer to emergency care", call("POST", HV + f"/{second}/escalate", t1).json()["status"] == "referred_emergency")
+    check("escalation is audited", scalar("select count(*) from audit_logs where action = 'home_visit.escalate' and patient_id = :p", p=patients[4]) == 2)
+
+    print("\n[hv-13] cancelling and racing")
+    one = call("POST", HV + "/requests", tp[5], hv_body()).json()["visit"]["id"]
+    call("POST", HV + f"/{one}/accept", t1)
+    check("the doctor cancels an accepted visit", call("POST", HV + f"/{one}/doctor-cancel", t1).json()["status"] == "cancelled")
+    check("the patient was told", scalar("select count(*) from notifications where user_id = :u and kind = 'home_visit_cancelled'", u=patients[5]) == 1)
+    two = call("POST", HV + "/requests", tp[5], hv_body()).json()["visit"]["id"]
+    call("POST", HV + f"/{two}/accept", t1)
+    check("the patient cancels an accepted visit and the doctor is told", call("POST", HV + f"/{two}/cancel", tp[5]).json()["status"] == "cancelled"
+          and scalar("select count(*) from notifications where user_id = :d and kind = 'home_visit_cancelled'", d=d1) == 1)
+    three = call("POST", HV + "/requests", tp[5], hv_body()).json()["visit"]["id"]
+    from concurrent.futures import ThreadPoolExecutor
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        codes = sorted(f.result().status_code for f in [pool.submit(call, "POST", HV + f"/{three}/accept", t1) for _ in range(2)])
+    check("two accepts at once: exactly one wins", codes == [200, 409], f"got {codes}")
+    check("only one accepted offer exists", scalar("select count(*) from home_visit_offers where request_id = :r and outcome = 'accepted'", r=three) == 1)
+    call("POST", HV + f"/{three}/doctor-cancel", t1)
+
+    print("\n[hv-14] no doctor near the patient")
+    far_request = call("POST", HV + "/requests", tp[6], hv_body(place=(25.3960, 68.3578)))
+    check("a request with nobody in range is recorded as no doctor found", far_request.status_code == 201 and far_request.json()["visit"]["status"] == "no_doctor_found" and far_request.json()["visit"]["offered_to_count"] == 0)
+    check("a doctor can switch home visits off", call("PUT", HV + "/doctor/settings", tfar, {"enabled": False}).json()["enabled"] is False)
+    check("each patient's list holds only their own visits", all(call("GET", HV + "", tp[n]).json()["total"] == hv_count(patients[n]) for n in range(1, 7)))
 
 
 def main() -> int:

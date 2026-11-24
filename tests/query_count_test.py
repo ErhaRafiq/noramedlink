@@ -66,6 +66,24 @@ def seed(patient, doctor, count, tag):
                 {"p": patient, "w": 70 + i * 0.1, "d": i + (0 if tag == "a" else 100), "by": doctor if i % 2 else patient,
                  "role": "doctor" if i % 2 else "patient"},
             )
+    with engine.begin() as conn:  # closed home visits with the doctor's accepted offer: names are looked up once
+        for i in range(count):
+            request_id = conn.execute(
+                text(
+                    "insert into home_visit_requests (patient_id, doctor_id, status, match_mode, reason, specialty, contact_phone, "
+                    "address_text, latitude, longitude, location_source, visit_findings, visit_advice, visit_follow_up, created_at, updated_at) "
+                    "values (:p, :d, 'closed', 'auto', 'mild fever', 'General Physician', '0300-1234567', 'House 1', 33.69, 73.01, 'manual', "
+                    "'f', 'a', 'u', now(), now()) returning id"
+                ),
+                {"p": patient, "d": doctor},
+            ).scalar_one()
+            conn.execute(
+                text(
+                    "insert into home_visit_offers (request_id, doctor_id, position, score, distance_km, outcome, offered_at, expires_at) "
+                    "values (:r, :d, 1, 0.9, 2.2, 'accepted', now(), now())"
+                ),
+                {"r": request_id, "d": doctor},
+            )
     from database import SessionLocal
 
     db = SessionLocal()
@@ -94,9 +112,12 @@ ENDPOINTS = [
     ("patient", "get", "/patient/health-record"),
     ("patient", "get", "/patient/body-measurements"),
     ("patient", "get", "/patient/body-measurements/summary"),
+    ("patient", "get", "/home-visits"),
     ("patient", "get", "/profile"),
     ("doctor", "get", "/doctor/patients/{patient}/body-measurements"),
     ("doctor", "get", "/doctor/patients/{patient}/body-measurements/summary"),
+    ("doctor", "get", "/home-visits/doctor/visits"),
+    ("doctor", "get", "/home-visits/doctor/offers"),
     ("doctor", "get", "/doctor/overview"),
     ("doctor", "get", "/appointments"),
     ("doctor", "get", "/notifications"),
