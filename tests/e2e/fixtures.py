@@ -127,7 +127,14 @@ def setup(out_file: Path) -> None:
             "doctor-unreviewed", "DOCTOR", doctor_status="pending"
         ),
         "admin": make_user("admin", "ADMIN"),
+        # Home visits (Module 6): a General Physician who takes home visits near F-10, and patients whose
+        # visits the tests start and end themselves.
+        "doctorHomeVisit": make_user("doctor-home-visit", "DOCTOR"),
+        "patientHomeA": make_user("patient-home-a", "PATIENT"),
+        "patientHomeB": make_user("patient-home-b", "PATIENT"),
+        "patientHomeC": make_user("patient-home-c", "PATIENT"),
     }
+    base.hv_setup_doctor(users["doctorHomeVisit"]["id"], base.F10)
     report_id = base.create_record(
         users["patient"]["id"], f"{base.TEST_PREFIX}e2e blood panel {RUN}"
     )

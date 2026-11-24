@@ -2603,6 +2603,15 @@ def home_visit_checks() -> None:
     far_request = call("POST", HV + "/requests", tp[6], hv_body(place=(25.3960, 68.3578)))
     check("a request with nobody in range is recorded as no doctor found", far_request.status_code == 201 and far_request.json()["visit"]["status"] == "no_doctor_found" and far_request.json()["visit"]["offered_to_count"] == 0)
     check("a doctor can switch home visits off", call("PUT", HV + "/doctor/settings", tfar, {"enabled": False}).json()["enabled"] is False)
+    with engine.begin() as conn:
+        conn.execute(
+            text("insert into emergency_bookings (user_id, patient_name, phone, address, symptoms, doctor_name, status, estimated_minutes) values (:u, 'x', '0300', 'Old address', 'old symptoms', 'Not assigned', 'REQUESTED', 0)"),
+            {"u": patients[6]},
+        )
+    legacy = call("GET", HV + "/legacy", tp[6])
+    check("requests from before the service are listed read-only, with their note", legacy.status_code == 200 and len(legacy.json()) == 1 and "before the home-visit service" in legacy.json()[0]["note"])
+    check("they are private to their patient", call("GET", HV + "/legacy", tp[5]).json() == [] and call("GET", HV + "/legacy", None).status_code == 401 and call("GET", HV + "/legacy", t1).status_code == 403)
+    check("they are not copied into the new table", hv_count(patients[6]) == 1)
     check("each patient's list holds only their own visits", all(call("GET", HV + "", tp[n]).json()["total"] == hv_count(patients[n]) for n in range(1, 7)))
 
 
