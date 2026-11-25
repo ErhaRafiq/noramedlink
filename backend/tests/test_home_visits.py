@@ -412,3 +412,43 @@ def test_another_weekday_or_no_hours_is_unavailable():
 def test_the_clinic_clock_decides_the_day_not_utc():
     # Monday 00:30 in Pakistan is still Sunday in UTC
     assert availability_state([(0, time(0, 0), time(2, 0))], datetime(2030, 1, 6, 19, 30, tzinfo=UTC)) == "now"
+
+
+# ---- demo doctors -----------------------------------------------------------------------------------------------
+
+from services.home_visits import demo_data  # noqa: E402
+
+
+def test_demo_doctors_are_labelled_valid_and_resolve_to_home_visit_specialties():
+    assert len(demo_data.DOCTORS) == 4 and len({d.key for d in demo_data.DOCTORS}) == 4
+    for doctor in demo_data.DOCTORS:
+        assert (
+            doctor.full_name.startswith("[DEMO] ")
+            and doctor.email.endswith("@example.test")
+            and doctor.pmdc.startswith("DEMO-")
+        )
+        assert geo.validate_coordinates(doctor.latitude, doctor.longitude)
+        assert 1 <= doctor.radius_km <= 50
+        assert suitability.is_suitable(suitability.specialty_of(doctor.specialty))
+    assert {d.area for d in demo_data.DOCTORS} == {"F-10", "G-11", "Blue Area", "Bahria Town"}
+
+
+def test_only_accounts_matching_both_the_email_and_the_name_are_demo_accounts():
+    doctor = demo_data.DOCTORS[0]
+    assert demo_data.is_demo_account(doctor.email, doctor.full_name)
+    assert not demo_data.is_demo_account(doctor.email, "Dr. Real Person")
+    assert not demo_data.is_demo_account("someone@example.com", doctor.full_name)
+    assert not demo_data.is_demo_account("demo-homevisit-x@gmail.com", doctor.full_name)
+
+
+def test_a_patient_at_f10_is_matched_to_the_nearer_general_physicians_first():
+    candidates = [
+        Candidate(i, d.specialty, d.latitude, d.longitude, d.radius_km, AVAILABLE_NOW)
+        for i, d in enumerate(demo_data.DOCTORS, start=1)
+    ]
+    ranked = matching.rank(candidates, 33.6940, 73.0130, "General Physician")
+    assert [r.doctor_id for r in ranked][:2] == [
+        1,
+        2,
+    ]  # F-10 then G-11; the dermatologist and pediatrician are not offered
+    assert {r.doctor_id for r in ranked} == {1, 2}

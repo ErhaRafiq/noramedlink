@@ -60,6 +60,12 @@ import type {
   HomeVisitCreate,
   HomeVisitOutcome,
   LegacyHomeVisitRequest,
+  DoctorHomeVisit,
+  DoctorHomeVisitOffer,
+  HomeVisitRef,
+  HomeVisitSettings,
+  HomeVisitSettingsInput,
+  HomeVisitSummary,
   PatientProfileInput,
   Availability,
   AvailabilityWindow,
@@ -419,6 +425,42 @@ export const api = {
   },
   cancelHomeVisit(id: number) {
     return apiRequest<PatientHomeVisit>(`/home-visits/${id}/cancel`, { method: "POST", body: "{}" });
+  },
+  homeVisitSettings() {
+    return apiRequest<HomeVisitSettings>("/home-visits/doctor/settings");
+  },
+  saveHomeVisitSettings(input: HomeVisitSettingsInput) {
+    return apiRequest<HomeVisitSettings>("/home-visits/doctor/settings", { method: "PUT", body: JSON.stringify(input) });
+  },
+  doctorHomeVisitOffers() {
+    return apiRequest<DoctorHomeVisitOffer[]>("/home-visits/doctor/offers");
+  },
+  doctorHomeVisits(page: PageQuery = {}) {
+    return apiRequest<Page<DoctorHomeVisit>>(withPage("/home-visits/doctor/visits", page));
+  },
+  acceptHomeVisit(id: number) {
+    return apiRequest<DoctorHomeVisit>(`/home-visits/${id}/accept`, { method: "POST", body: "{}" });
+  },
+  declineHomeVisit(id: number) {
+    return apiRequest<HomeVisitRef>(`/home-visits/${id}/decline`, { method: "POST", body: "{}" });
+  },
+  homeVisitEnRoute(id: number, etaMinutes: number | null) {
+    return apiRequest<DoctorHomeVisit>(`/home-visits/${id}/en-route`, { method: "POST", body: JSON.stringify({ eta_minutes: etaMinutes }) });
+  },
+  homeVisitArrived(id: number) {
+    return apiRequest<DoctorHomeVisit>(`/home-visits/${id}/arrived`, { method: "POST", body: "{}" });
+  },
+  homeVisitComplete(id: number) {
+    return apiRequest<DoctorHomeVisit>(`/home-visits/${id}/complete`, { method: "POST", body: "{}" });
+  },
+  closeHomeVisit(id: number, summary: HomeVisitSummary) {
+    return apiRequest<DoctorHomeVisit>(`/home-visits/${id}/close`, { method: "POST", body: JSON.stringify(summary) });
+  },
+  doctorCancelHomeVisit(id: number) {
+    return apiRequest<DoctorHomeVisit>(`/home-visits/${id}/doctor-cancel`, { method: "POST", body: "{}" });
+  },
+  escalateHomeVisit(id: number) {
+    return apiRequest<HomeVisitRef>(`/home-visits/${id}/escalate`, { method: "POST", body: "{}" });
   },
   legacyHomeVisits() {
     return apiRequest<LegacyHomeVisitRequest[]>("/home-visits/legacy");

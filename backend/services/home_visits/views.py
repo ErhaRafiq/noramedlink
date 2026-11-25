@@ -123,6 +123,20 @@ def doctor_offers(db: Session, doctor_id: int) -> list[DoctorOffer]:
     ]
 
 
+def _contact(request: HomeVisitRequest, name: str) -> PatientContact:
+    """Phone, address and place only while the visit is live: an ended visit keeps just the patient's name."""
+    if request.status in states.TERMINAL:
+        return PatientContact(name=name, phone=None, address_text=None, latitude=None, longitude=None, location=None)
+    return PatientContact(
+        name=name,
+        phone=request.contact_phone,
+        address_text=request.address_text,
+        latitude=request.latitude,
+        longitude=request.longitude,
+        location=accuracy_label(request.accuracy_m),
+    )
+
+
 def doctor_visits(db: Session, requests: list[HomeVisitRequest], doctor_id: int) -> list[DoctorVisit]:
     ids = [r.id for r in requests]
     patients = {u.id: u for u in db.query(User).filter(User.id.in_({r.patient_id for r in requests}))} if ids else {}
@@ -142,14 +156,7 @@ def doctor_visits(db: Session, requests: list[HomeVisitRequest], doctor_id: int)
             status_label=states.LABELS[r.status],
             reason=r.reason,
             specialty=r.specialty,
-            patient=PatientContact(
-                name=patients[r.patient_id].full_name,
-                phone=r.contact_phone,
-                address_text=r.address_text,
-                latitude=r.latitude,
-                longitude=r.longitude,
-                location=accuracy_label(r.accuracy_m),
-            ),
+            patient=_contact(r, patients[r.patient_id].full_name),
             distance=distance_label(distances.get(r.id, 0.0)),
             eta=_eta(r),
             summary=_summary(r),

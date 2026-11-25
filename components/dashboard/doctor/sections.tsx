@@ -257,7 +257,7 @@ function VitalTile({ label, value, small = false }: { label: string; value: stri
 export function EmergencyCard({ bookings }: { bookings: DoctorOverview["emergencyBookings"] }) {
   return (
     <Card id="emergency">
-      <SectionHeading eyebrow="Urgent" title="Emergency visits" />
+      <SectionHeading eyebrow="Read only" title="Home requests from before the home-visit service" />
       {bookings.length > 0 ? (
         <div className="grid gap-3 lg:grid-cols-2">
           {bookings.map((booking) => (
@@ -277,7 +277,7 @@ export function EmergencyCard({ bookings }: { bookings: DoctorOverview["emergenc
           ))}
         </div>
       ) : (
-        <EmptyState title="No emergency visits" text="Emergency visit requests assigned to you will appear here." />
+        <EmptyState title="No earlier requests" text="Requests recorded before the home-visit service that were assigned to you appear here, read only." />
       )}
     </Card>
   );

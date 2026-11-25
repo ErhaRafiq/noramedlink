@@ -1136,3 +1136,55 @@ export type HomeVisitOutcome = {
 
 /** A request from before the home-visit service (read-only). */
 export type LegacyHomeVisitRequest = { id: number; created_at: string; symptoms: string; address: string; note: string };
+
+// Home visits, the doctor's side.
+
+export type HomeVisitSettings = {
+  enabled: boolean;
+  radius_km: number | null;
+  latitude: number | null;
+  longitude: number | null;
+  note: string;
+};
+
+export type HomeVisitSettingsInput = Pick<HomeVisitSettings, "enabled" | "radius_km" | "latitude" | "longitude">;
+
+/** A request waiting for this doctor's answer: no name, phone or address yet. */
+export type DoctorHomeVisitOffer = {
+  id: number;
+  reason: string;
+  specialty: string;
+  /** "straight-line distance, about 3 km" */
+  distance: string;
+  expires_at: string;
+  created_at: string;
+};
+
+/** The patient as the matched doctor sees them: contact details only while the visit is live. */
+export type DoctorHomeVisit = {
+  id: number;
+  status: HomeVisitStatus;
+  status_label: string;
+  reason: string;
+  specialty: string;
+  patient: {
+    name: string;
+    phone: string | null;
+    address_text: string | null;
+    latitude: number | null;
+    longitude: number | null;
+    location: string | null;
+  };
+  distance: string;
+  eta: { minutes: number; label: string } | null;
+  summary: HomeVisitSummary | null;
+  created_at: string;
+  accepted_at: string | null;
+  en_route_at: string | null;
+  arrived_at: string | null;
+  completed_at: string | null;
+  closed_at: string | null;
+  ended_at: string | null;
+};
+
+export type HomeVisitRef = { id: number; status: string; message: string };

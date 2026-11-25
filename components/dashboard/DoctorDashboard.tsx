@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { CalendarDays, ClipboardList, FileSearch, HeartPulse, KeyRound, LayoutDashboard, Pill, Siren, Stethoscope, Users } from "lucide-react";
+import { CalendarDays, ClipboardList, FileSearch, HeartPulse, Home, KeyRound, LayoutDashboard, Pill, Siren, Stethoscope, Users } from "lucide-react";
 
 import { EmailVerifyBanner } from "@/components/auth/EmailVerifyBanner";
 import { DashboardShell, type DashboardNavItem } from "@/components/layout/DashboardShell";
@@ -19,6 +19,7 @@ import { BodyMeasurementsCard } from "./doctor/BodyMeasurementsCard";
 import { HealthRecordCard } from "./doctor/HealthRecordCard";
 import { PrescribeCard } from "./doctor/prescribe/PrescribeCard";
 import { DoctorAppointmentsCard } from "./doctor/DoctorAppointmentsCard";
+import { HomeVisitsCard } from "./doctor/home-visits/HomeVisitsCard";
 import { ActivePatientsCard, EmergencyCard, PatientFileCard, UnlockCard } from "./doctor/sections";
 
 const NAV: DashboardNavItem[] = [
@@ -29,7 +30,7 @@ const NAV: DashboardNavItem[] = [
   { id: "clinical-summary", label: "Clinical summary", icon: ClipboardList },
   { id: "health-record", label: "Health record", icon: HeartPulse },
   { id: "prescribe", label: "Prescribe", icon: Pill },
-  { id: "emergency", label: "Emergency visits", icon: Siren },
+  { id: "home-visits", label: "Home visits", icon: Home },
 ];
 
 const VERIFIED_STATUSES = ["approved", "verified"];
@@ -103,9 +104,11 @@ export function DoctorDashboard() {
           <section aria-label="Summary" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard label="Appointments" value={overview.stats.appointments} detail="recent, booked with you" icon={CalendarDays} />
             <StatCard label="Patients with access" value={overview.stats.patients} detail="unlocked by one-time code" icon={Users} tint="bg-teal-50 text-teal-700" />
-            <StatCard label="Emergency visits" value={overview.stats.emergencyBookings} detail="recent, assigned to you" icon={Siren} tint="bg-rose-50 text-rose-600" />
+            <StatCard label="Earlier home requests" value={overview.stats.emergencyBookings} detail="from before the home-visit service" icon={Siren} tint="bg-rose-50 text-rose-600" />
             <StatCard label="Shared reports" value={overview.stats.medicalRecords} detail="from patients with access" icon={FileSearch} tint="bg-violet-50 text-violet-700" />
           </section>
+
+          <HomeVisitsCard />
 
           <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
             <UnlockCard isUnlocking={dashboard.isUnlocking} onUnlock={dashboard.unlock} />
@@ -150,7 +153,7 @@ export function DoctorDashboard() {
             </>
           ) : null}
 
-          <EmergencyCard bookings={overview.emergencyBookings} />
+          {overview.emergencyBookings.length > 0 ? <EmergencyCard bookings={overview.emergencyBookings} /> : null}
 
         </>
       ) : null}

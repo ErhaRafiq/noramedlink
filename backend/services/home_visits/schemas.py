@@ -172,12 +172,15 @@ class DoctorOffer(BaseModel):
 
 
 class PatientContact(BaseModel):
+    """The patient as the matched doctor sees them. Phone, address and place are shown only while the visit is
+    live; once it has ended (closed, cancelled, referred) only the name is left."""
+
     name: str
-    phone: str
-    address_text: str
-    latitude: float
-    longitude: float
-    location: str
+    phone: str | None
+    address_text: str | None
+    latitude: float | None
+    longitude: float | None
+    location: str | None
 
 
 class DoctorVisit(BaseModel):

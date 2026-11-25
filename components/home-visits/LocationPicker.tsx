@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { LocateFixed, MapPinOff, X } from "lucide-react";
 
 import { Alert } from "@/components/ui/alert";
@@ -12,14 +13,28 @@ type Picker = ReturnType<typeof useLocationPicker>;
  * "Use my current location" (browser location only, no map), with the typed-coordinates fallback.
  * The explanation comes before the button, so the browser's permission prompt is expected.
  */
-export function LocationPicker({ picker }: { picker: Picker }) {
+export function LocationPicker({
+  picker,
+  legend = "Where is the visit?",
+  intro,
+  missing = "A location is needed before a request can be sent.",
+}: {
+  picker: Picker;
+  legend?: string;
+  intro?: ReactNode;
+  missing?: string;
+}) {
   return (
     <fieldset className="min-w-0">
-      <legend className="text-sm font-medium text-slate-700">Where is the visit?</legend>
+      <legend className="text-sm font-medium text-slate-700">{legend}</legend>
       <p className="mt-1 text-xs leading-5 text-ink-muted">
-        Tap the button and your browser will ask to share your location. We use it only to find doctors near you. The
-        doctor who accepts sees it; nobody else does. Your device needs a secure connection (HTTPS) or localhost for
-        this to work, and on a computer the place can be approximate.
+        {intro ?? (
+          <>
+            Tap the button and your browser will ask to share your location. We use it only to find doctors near you. The
+            doctor who accepts sees it; nobody else does. Your device needs a secure connection (HTTPS) or localhost for
+            this to work, and on a computer the place can be approximate.
+          </>
+        )}
       </p>
       <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
         <Button
@@ -78,7 +93,7 @@ export function LocationPicker({ picker }: { picker: Picker }) {
           ) : null}
         </div>
       ) : (
-        <p className="mt-3 text-xs text-ink-muted">A location is needed before a request can be sent.</p>
+        <p className="mt-3 text-xs text-ink-muted">{missing}</p>
       )}
     </fieldset>
   );

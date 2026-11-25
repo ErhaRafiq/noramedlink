@@ -14,6 +14,7 @@ import { AccountForm } from "./AccountForm";
 import { Activity } from "./Activity";
 import { AvailabilityEditor } from "./AvailabilityEditor";
 import { DoctorForm } from "./DoctorForm";
+import { HomeVisitSettings } from "./HomeVisitSettings";
 import { PatientForm } from "./PatientForm";
 
 /** "My profile" for every role: the account, plus the patient or doctor part. */
@@ -53,6 +54,7 @@ function ProfileContent({ role }: { role: "patient" | "doctor" | "admin" }) {
           {profile.patient ? <PatientForm patient={profile.patient} saving={saving === "patient"} onSave={savePatient} /> : null}
           {profile.doctor ? <DoctorForm doctor={profile.doctor} saving={saving === "doctor"} onSave={saveDoctor} /> : null}
           {profile.doctor ? <AvailabilityEditor /> : null}
+          {profile.doctor ? <HomeVisitSettings /> : null}
         </div>
       )}
     </PageContainer>
