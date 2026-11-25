@@ -2527,7 +2527,9 @@ def home_visit_checks() -> None:
     check("the patient sees the summary and every step's time", final["summary"]["follow_up"].startswith("Clinic") and all(final[k] for k in ("accepted_at", "en_route_at", "arrived_at", "completed_at", "closed_at")))
     check("a closed visit cannot move again -> 409", call("POST", HV + f"/{vid}/doctor-cancel", t2).status_code == 409 and call("POST", HV + f"/{vid}/cancel", tp[1]).status_code == 409)
     check("the visit is in the patient's list", vid in [v["id"] for v in call("GET", HV + "", tp[1]).json()["items"]])
-    check("the doctor's visit list shows the patient's contact", call("GET", HV + "/doctor/visits", t2).json()["items"][0]["patient"]["phone"] == "0300-1234567")
+    ended = call("GET", HV + "/doctor/visits", t2).json()["items"][0]["patient"]
+    check("once the visit has ended the doctor keeps only the patient's name, not the phone, address or place",
+          ended["name"] and ended["phone"] is None and ended["address_text"] is None and ended["latitude"] is None)
     check("the other doctor's list is empty", call("GET", HV + "/doctor/visits", t1).json()["items"] == [])
 
     print("\n[hv-9] notifications and the audit log")

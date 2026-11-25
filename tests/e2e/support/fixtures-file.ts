@@ -23,7 +23,7 @@ export type Fixtures = {
   /** Stripe Checkout is on: paying would open Stripe's page, so payment tests skip. */
   stripeKeySet: boolean;
   aiKeySet: boolean;
-  users: Record<"patient" | "patientEmpty" | "doctor" | "doctorWithAccess" | "doctorPendingA" | "doctorPendingB" | "doctorUnreviewed" | "admin" | "doctorHomeVisit" | "patientHomeA" | "patientHomeB" | "patientHomeC", TestUser>;
+  users: Record<"patient" | "patientEmpty" | "doctor" | "doctorWithAccess" | "doctorPendingA" | "doctorPendingB" | "doctorUnreviewed" | "admin" | "doctorHomeVisit" | "patientHomeA" | "patientHomeB" | "patientHomeC" | "patientHomeD" | "patientHomeE" | "patientHomeF" | "doctorHomeSetup", TestUser>;
 };
 
 export function runFixtures(args: string[]) {

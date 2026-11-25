@@ -133,6 +133,11 @@ def setup(out_file: Path) -> None:
         "patientHomeA": make_user("patient-home-a", "PATIENT"),
         "patientHomeB": make_user("patient-home-b", "PATIENT"),
         "patientHomeC": make_user("patient-home-c", "PATIENT"),
+        "patientHomeD": make_user("patient-home-d", "PATIENT"),
+        "patientHomeE": make_user("patient-home-e", "PATIENT"),
+        "patientHomeF": make_user("patient-home-f", "PATIENT"),
+        # A doctor who has not set up home visits yet: the settings form and the empty card.
+        "doctorHomeSetup": make_user("doctor-home-setup", "DOCTOR"),
     }
     base.hv_setup_doctor(users["doctorHomeVisit"]["id"], base.F10)
     report_id = base.create_record(
