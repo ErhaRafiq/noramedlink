@@ -23,8 +23,9 @@ You need a patient, a doctor, and the demo doctors if you want matching without 
 2. **Accept**: the phone (a tap-to-call link), the typed address and the coordinates appear, marked "Straight-line only, not a route". Your own record access for this patient is still locked (accepting grants nothing).
 3. Type an estimate (for example 15) and press **I am on my way**; the patient's tracker says "Doctor's estimate: about 15 minutes ... not a tracked arrival time". An estimate of 500 is refused.
 4. **I have arrived**, then **The visit is finished**, then fill **What you found**, **Advice given**, **Follow-up** and **Save summary and close**. The visit moves to **Past home visits** with the summary; the phone and address are gone.
-5. **This is an emergency** (at any live step) asks for a confirmation and tells the patient to call 1122.
-6. With nothing waiting the card says so and links to **Home-visit settings**.
+5. **Cancel this visit**: it asks **Why are you cancelling?** (the button stays off until you choose). Before you have arrived the request goes back to matching: the next ranked doctor is offered it, never you, and the patient is told "Your doctor cancelled, finding another doctor." (if nobody else is eligible it ends as "No doctor found"). After **I have arrived**, cancelling ends the visit as cancelled.
+6. **This is an emergency** (at any live step) asks for a confirmation and tells the patient to call 1122.
+7. With nothing waiting the card says so and links to **Home-visit settings**.
 
 ## Back as the patient
 1. The visit shows each step with its time, then the doctor's findings, advice and follow-up under **Earlier requests**. After an emergency referral the 1122 notice is shown.

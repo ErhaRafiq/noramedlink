@@ -2525,7 +2525,7 @@ def home_visit_checks() -> None:
     check("closing saves the summary", closed.status_code == 200 and closed.json()["status"] == "closed" and closed.json()["summary"]["advice"] == "Rest and fluids")
     final = call("GET", HV + f"/{vid}", tp[1]).json()
     check("the patient sees the summary and every step's time", final["summary"]["follow_up"].startswith("Clinic") and all(final[k] for k in ("accepted_at", "en_route_at", "arrived_at", "completed_at", "closed_at")))
-    check("a closed visit cannot move again -> 409", call("POST", HV + f"/{vid}/doctor-cancel", t2).status_code == 409 and call("POST", HV + f"/{vid}/cancel", tp[1]).status_code == 409)
+    check("a closed visit cannot move again -> 409", call("POST", HV + f"/{vid}/doctor-cancel", t2, {"reason": "other"}).status_code == 409 and call("POST", HV + f"/{vid}/cancel", tp[1]).status_code == 409)
     check("the visit is in the patient's list", vid in [v["id"] for v in call("GET", HV + "", tp[1]).json()["items"]])
     ended = call("GET", HV + "/doctor/visits", t2).json()["items"][0]["patient"]
     check("once the visit has ended the doctor keeps only the patient's name, not the phone, address or place",
@@ -2586,8 +2586,25 @@ def home_visit_checks() -> None:
     print("\n[hv-13] cancelling and racing")
     one = call("POST", HV + "/requests", tp[5], hv_body()).json()["visit"]["id"]
     call("POST", HV + f"/{one}/accept", t1)
-    check("the doctor cancels an accepted visit", call("POST", HV + f"/{one}/doctor-cancel", t1).json()["status"] == "cancelled")
-    check("the patient was told", scalar("select count(*) from notifications where user_id = :u and kind = 'home_visit_cancelled'", u=patients[5]) == 1)
+    check("a doctor's cancel needs a reason from the fixed list -> 422", call("POST", HV + f"/{one}/doctor-cancel", t1, {}).status_code == 422
+          and call("POST", HV + f"/{one}/doctor-cancel", t1, {"reason": "I do not like the patient"}).status_code == 422)
+    check("a doctor who was not matched cannot cancel it -> 404", call("POST", HV + f"/{one}/doctor-cancel", t2, {"reason": "other"}).status_code == 404)
+    cancelled = call("POST", HV + f"/{one}/doctor-cancel", t1, {"reason": "unwell"})
+    check("a doctor who cancels before arriving sends it back to matching, and sees no patient details",
+          cancelled.status_code == 200 and cancelled.json()["status"] == "offered" and "phone" not in json.dumps(cancelled.json()))
+    back = call("GET", HV + f"/{one}", tp[5]).json()
+    check("the request is offered again, now counted as the second offer, with no doctor and no estimate",
+          back["status"] == "offered" and back["offered_to_count"] == 2 and back["doctor"] is None and back["eta"] is None and back["accepted_at"] is None)
+    check("the next ranked doctor is offered it and the one who cancelled is not", hv_offer_ids(t2) == [one] and hv_offer_ids(t1) == [])
+    check("the patient was told, in words", scalar("select count(*) from notifications where user_id = :u and kind = 'home_visit_rematch' and body = 'Your doctor cancelled, finding another doctor.'", u=patients[5]) == 1)
+    with engine.connect() as conn:
+        reason = conn.execute(text("select detail from audit_logs where action = 'home_visit.cancel' and target_id = :i"), {"i": one}).scalar()
+    check("the cancel reason is in the audit log, as a fixed label", reason is not None and "before arrival: doctor unwell" in reason, f"got {reason!r}")
+    check("the cancelling doctor cannot accept it again -> 409", call("POST", HV + f"/{one}/accept", t1).status_code == 409)
+    call("POST", HV + f"/{one}/decline", t2)
+    check("with nobody left (the same limit of offers) it ends as no doctor found", call("GET", HV + f"/{one}", tp[5]).json()["status"] == "no_doctor_found")
+    check("the contact details never reached the second doctor's list",
+          all(v["id"] != one or v["patient"]["phone"] is None for v in call("GET", HV + "/doctor/visits", t2).json()["items"]))
     two = call("POST", HV + "/requests", tp[5], hv_body()).json()["visit"]["id"]
     call("POST", HV + f"/{two}/accept", t1)
     check("the patient cancels an accepted visit and the doctor is told", call("POST", HV + f"/{two}/cancel", tp[5]).json()["status"] == "cancelled"
@@ -2599,7 +2616,17 @@ def home_visit_checks() -> None:
         codes = sorted(f.result().status_code for f in [pool.submit(call, "POST", HV + f"/{three}/accept", t1) for _ in range(2)])
     check("two accepts at once: exactly one wins", codes == [200, 409], f"got {codes}")
     check("only one accepted offer exists", scalar("select count(*) from home_visit_offers where request_id = :r and outcome = 'accepted'", r=three) == 1)
-    call("POST", HV + f"/{three}/doctor-cancel", t1)
+    call("POST", HV + f"/{three}/en-route", t1, {})
+    call("POST", HV + f"/{three}/arrived", t1)
+    after = call("POST", HV + f"/{three}/doctor-cancel", t1, {"reason": "patient_unreachable"})
+    check("a doctor who cancels after arriving ends the visit as cancelled", after.status_code == 200 and after.json()["status"] == "cancelled"
+          and call("GET", HV + f"/{three}", tp[5]).json()["status"] == "cancelled")
+    check("nobody else is offered it", hv_offer_ids(t2) == [] and hv_offer_ids(t1) == [])
+    check("the patient was told it was cancelled", scalar("select count(*) from notifications where user_id = :u and kind = 'home_visit_cancelled'", u=patients[5]) == 1)
+    with engine.connect() as conn:
+        late = conn.execute(text("select detail from audit_logs where action = 'home_visit.cancel' and target_id = :i"), {"i": three}).scalar()
+    check("its reason is in the audit log", late is not None and "after arrival: patient could not be reached" in late, f"got {late!r}")
+    check("a cancel after the visit finished is refused -> 409", call("POST", HV + f"/{vid}/doctor-cancel", t2, {"reason": "other"}).status_code == 409)
 
     print("\n[hv-14] no doctor near the patient")
     far_request = call("POST", HV + "/requests", tp[6], hv_body(place=(25.3960, 68.3578)))

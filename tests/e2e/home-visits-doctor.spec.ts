@@ -171,6 +171,50 @@ test.describe("home visits: the doctor's side", () => {
     expect(patient.emergency_notice).toContain("1122");
   });
 
+  test("a doctor who cancels before arriving needs a reason, and the request goes back to matching", async ({ page }) => {
+    const { users } = fixtures();
+    const id = await patientRequests(users.patientHomeE);
+    await signInAs(page, users.doctorHomeVisit);
+    await page.goto("/dashboard/doctor");
+    const card = page.locator("#home-visits");
+    await card.getByRole("article", { name: "Home visit request waiting for you" }).getByRole("button", { name: "Accept" }).click();
+    const visit = card.getByRole("article", { name: `Home visit with ${users.patientHomeE.fullName}` });
+    await expect(visit).toBeVisible({ timeout: 30_000 });
+    await visit.getByRole("button", { name: "Cancel this visit" }).click();
+    const dialog = page.getByRole("dialog", { name: "Cancel this home visit?" });
+    await expect(dialog.getByText(/sends the request back to matching/)).toBeVisible();
+    await expect(dialog.getByRole("button", { name: "Cancel the visit" })).toBeDisabled();
+    await dialog.getByLabel("Why are you cancelling?").selectOption("unwell");
+    await dialog.getByRole("button", { name: "Cancel the visit" }).click();
+    // Back to matching: this doctor no longer holds it and never sees it again; with nobody else eligible it ends.
+    await expect(visit).toHaveCount(0, { timeout: 30_000 });
+    await expect(card.getByText("No home visit requests right now")).toBeVisible();
+    expect((await patientVisit(users.patientHomeE, id)).status).toBe("no_doctor_found");
+  });
+
+  test("a doctor who cancels after arriving ends the visit", async ({ page }) => {
+    const { users } = fixtures();
+    const id = await patientRequests(users.patientHomeD);
+    await signInAs(page, users.doctorHomeVisit);
+    await page.goto("/dashboard/doctor");
+    const card = page.locator("#home-visits");
+    await card.getByRole("article", { name: "Home visit request waiting for you" }).getByRole("button", { name: "Accept" }).click();
+    const visit = card.getByRole("article", { name: `Home visit with ${users.patientHomeD.fullName}` });
+    await expect(visit).toBeVisible({ timeout: 30_000 });
+    await visit.getByRole("button", { name: "I am on my way" }).click();
+    await expect(visit.getByRole("button", { name: "I have arrived" })).toBeVisible({ timeout: 30_000 });
+    await visit.getByRole("button", { name: "I have arrived" }).click();
+    await expect(visit.getByRole("button", { name: "The visit is finished" })).toBeVisible({ timeout: 30_000 });
+    await visit.getByRole("button", { name: "Cancel this visit" }).click();
+    const dialog = page.getByRole("dialog", { name: "Cancel this home visit?" });
+    await expect(dialog.getByText(/cancelling ends this visit/)).toBeVisible();
+    await dialog.getByLabel("Why are you cancelling?").selectOption("patient_unreachable");
+    await dialog.getByRole("button", { name: "Cancel the visit" }).click();
+    const past = card.getByRole("region", { name: "Past home visits" });
+    await expect(past.getByText("Cancelled", { exact: true })).toBeVisible({ timeout: 30_000 });
+    expect((await patientVisit(users.patientHomeD, id)).status).toBe("cancelled");
+  });
+
   test("the doctor's home-visit settings and card fit a phone screen @mobile", async ({ page }) => {
     await signInAs(page, fixtures().users.doctorHomeSetup);
     await page.goto("/profile");
