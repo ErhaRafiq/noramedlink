@@ -20,6 +20,7 @@ from services.home_visits.geo import InvalidLocation
 from services.home_visits.matching import rank
 from services.home_visits.schemas import (
     AdminVisit,
+    CancelIn,
     Checklist,
     CloseIn,
     DoctorChoice,
@@ -335,9 +336,18 @@ def close(visit_id: int, payload: CloseIn, current_user: User = Depends(require_
     return _doctor_step(db, current_user, visit_id, workflow.close, payload)
 
 
-@router.post("/{visit_id}/doctor-cancel", response_model=DoctorVisit)
-def doctor_cancel(visit_id: int, current_user: User = Depends(require_doctor), db: Session = Depends(get_db)):
-    return _doctor_step(db, current_user, visit_id, workflow.cancel_by_doctor)
+@router.post("/{visit_id}/doctor-cancel", response_model=VisitRef)
+def doctor_cancel(
+    visit_id: int, payload: CancelIn, current_user: User = Depends(require_doctor), db: Session = Depends(get_db)
+):
+    """Before arriving the request goes back to matching (the next ranked doctor); after arriving it ends.
+    Returns no patient details either way."""
+    visit = _visit_or_404(db, visit_id)
+    try:
+        workflow.cancel_by_doctor(db, current_user, visit, payload.reason, clock.now())
+    except workflow.VisitError as exc:
+        raise _refuse(exc) from None
+    return VisitRef(id=visit.id, status=visit.status)
 
 
 @router.post("/{visit_id}/escalate", response_model=VisitRef)

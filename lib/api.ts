@@ -62,6 +62,7 @@ import type {
   LegacyHomeVisitRequest,
   DoctorHomeVisit,
   DoctorHomeVisitOffer,
+  HomeVisitCancelReason,
   HomeVisitRef,
   HomeVisitSettings,
   HomeVisitSettingsInput,
@@ -456,8 +457,9 @@ export const api = {
   closeHomeVisit(id: number, summary: HomeVisitSummary) {
     return apiRequest<DoctorHomeVisit>(`/home-visits/${id}/close`, { method: "POST", body: JSON.stringify(summary) });
   },
-  doctorCancelHomeVisit(id: number) {
-    return apiRequest<DoctorHomeVisit>(`/home-visits/${id}/doctor-cancel`, { method: "POST", body: "{}" });
+  /** Before arriving the request goes back to matching; after arriving it ends. Returns no patient details. */
+  doctorCancelHomeVisit(id: number, reason: HomeVisitCancelReason) {
+    return apiRequest<HomeVisitRef>(`/home-visits/${id}/doctor-cancel`, { method: "POST", body: JSON.stringify({ reason }) });
   },
   escalateHomeVisit(id: number) {
     return apiRequest<HomeVisitRef>(`/home-visits/${id}/escalate`, { method: "POST", body: "{}" });

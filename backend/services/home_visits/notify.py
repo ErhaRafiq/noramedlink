@@ -87,6 +87,19 @@ def cancelled_by_doctor(db: Session, request: HomeVisitRequest, doctor_name: str
                f"{_dr(doctor_name)} cancelled the visit. You can send a new request.")  # fmt: skip
 
 
+def rematching(db: Session, request: HomeVisitRequest, doctor_id: int) -> None:
+    to_patient_keyed(db, request, "rematch", "Your doctor cancelled",
+                     "Your doctor cancelled, finding another doctor.", doctor_id)  # fmt: skip
+
+
+def to_patient_keyed(db: Session, request: HomeVisitRequest, event: str, title: str, body: str, doctor_id: int) -> None:
+    """Like to_patient, but told once per doctor (a request can lose more than one doctor)."""
+    notifications.add(
+        db, request.patient_id, f"home_visit_{event}", title, body,
+        link=PATIENT_LINK, dedupe_key=_key(request, event, doctor_id),
+    )  # fmt: skip
+
+
 def cancelled_by_patient(db: Session, request: HomeVisitRequest) -> None:
     if request.doctor_id:
         notifications.add(

@@ -44,7 +44,12 @@ def _move(db: Session, request: HomeVisitRequest, target: str, actor: str, now: 
         states.transition(request.status, target, actor)
     except states.InvalidTransition as exc:
         raise VisitError(409, str(exc)) from None
-    values = {"status": target, states.TIMESTAMP_FIELD[target]: now, **fields}
+    # Going back to OFFERED (a doctor cancelled before arriving) keeps the request's own created_at.
+    values = (
+        {"status": target, **fields}
+        if target == states.OFFERED
+        else {"status": target, states.TIMESTAMP_FIELD[target]: now, **fields}
+    )
     result = db.execute(
         update(HomeVisitRequest)
         .where(HomeVisitRequest.id == request.id, HomeVisitRequest.status == request.status)
@@ -339,11 +344,34 @@ def close(db: Session, doctor: User, request: HomeVisitRequest, summary: CloseIn
     return request
 
 
-def cancel_by_doctor(db: Session, doctor: User, request: HomeVisitRequest, now: datetime) -> HomeVisitRequest:
+def cancel_by_doctor(
+    db: Session, doctor: User, request: HomeVisitRequest, reason: str, now: datetime
+) -> HomeVisitRequest:
+    """A doctor cancels. Before arriving, the request goes back to matching and is offered to the next ranked
+    doctor (never this one, within the same 5 offers in all), and the patient is told. After arriving, the visit
+    ends as cancelled. The reason (a fixed choice) is written to the audit log."""
     _own_visit(request, doctor)
-    _move(db, request, states.CANCELLED, states.DOCTOR, now, ended_reason="Cancelled by the doctor.")
-    notify.cancelled_by_doctor(db, request, doctor.full_name)
-    _log(db, doctor, "home_visit.cancel", request)
+    if reason not in states.CANCEL_REASONS:
+        raise VisitError(422, "Choose a reason for cancelling.")
+    try:
+        target = states.doctor_cancel_target(request.status)
+    except states.InvalidTransition as exc:
+        raise VisitError(409, str(exc)) from None
+    label = states.CANCEL_REASONS[reason]
+    if target == states.CANCELLED:
+        _move(db, request, states.CANCELLED, states.DOCTOR, now, ended_reason="Cancelled by the doctor.")
+        notify.cancelled_by_doctor(db, request, doctor.full_name)
+        _log(db, doctor, "home_visit.cancel", request, f"after arrival: {label}")
+    else:
+        _log(db, doctor, "home_visit.cancel", request, f"before arrival: {label}; back to matching")
+        _move(
+            db, request, states.OFFERED, states.DOCTOR, now,
+            doctor_id=None, accepted_at=None, en_route_at=None, eta_minutes=None, match_mode=offers.AUTO,
+        )  # fmt: skip
+        notify.rematching(db, request, doctor.id)
+        # The next doctor is chosen like after a timeout; the doctor who cancelled has an offer on record, so
+        # they are never offered this request again, and the count of 5 includes them.
+        _next_or_end(db, request, now, by_doctor_decline=False)
     _commit(db)
     return request
 

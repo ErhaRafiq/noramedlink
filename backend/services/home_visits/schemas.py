@@ -44,6 +44,12 @@ class HomeVisitCreate(RequestCheck):
         return value.strip()
 
 
+class CancelIn(BaseModel):
+    """Why a doctor cancels: a fixed choice (the audit log keeps no free text)."""
+
+    reason: Literal["unwell", "urgent_elsewhere", "too_far", "patient_unreachable", "other"]
+
+
 class EnRouteIn(BaseModel):
     eta_minutes: int | None = Field(default=None, ge=1, le=240)
 

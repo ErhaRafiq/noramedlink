@@ -123,9 +123,10 @@ def doctor_offers(db: Session, doctor_id: int) -> list[DoctorOffer]:
     ]
 
 
-def _contact(request: HomeVisitRequest, name: str) -> PatientContact:
-    """Phone, address and place only while the visit is live: an ended visit keeps just the patient's name."""
-    if request.status in states.TERMINAL:
+def _contact(request: HomeVisitRequest, name: str, doctor_id: int) -> PatientContact:
+    """Phone, address and place only to the matched doctor and only while the visit is live: an ended visit, or one
+    that went back to matching, keeps just the patient's name."""
+    if request.status in states.TERMINAL or request.doctor_id != doctor_id:
         return PatientContact(name=name, phone=None, address_text=None, latitude=None, longitude=None, location=None)
     return PatientContact(
         name=name,
@@ -156,7 +157,7 @@ def doctor_visits(db: Session, requests: list[HomeVisitRequest], doctor_id: int)
             status_label=states.LABELS[r.status],
             reason=r.reason,
             specialty=r.specialty,
-            patient=_contact(r, patients[r.patient_id].full_name),
+            patient=_contact(r, patients[r.patient_id].full_name, doctor_id),
             distance=distance_label(distances.get(r.id, 0.0)),
             eta=_eta(r),
             summary=_summary(r),

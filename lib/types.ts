@@ -1188,3 +1188,13 @@ export type DoctorHomeVisit = {
 };
 
 export type HomeVisitRef = { id: number; status: string; message: string };
+
+/** Why a doctor cancels: fixed choices (the audit log keeps no free text). */
+export const HOME_VISIT_CANCEL_REASONS = {
+  unwell: "I am unwell",
+  urgent_elsewhere: "An urgent case elsewhere",
+  too_far: "Too far to reach",
+  patient_unreachable: "The patient could not be reached",
+  other: "Another reason",
+} as const;
+export type HomeVisitCancelReason = keyof typeof HOME_VISIT_CANCEL_REASONS;

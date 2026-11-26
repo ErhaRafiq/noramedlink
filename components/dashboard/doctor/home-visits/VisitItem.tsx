@@ -7,10 +7,10 @@ import { Alert } from "@/components/ui/alert";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { TextField } from "@/components/ui/field";
+import { SelectField, TextField } from "@/components/ui/field";
 import { formatDateTime } from "@/lib/datetime";
 import { coordinatesLabel } from "@/lib/location";
-import type { DoctorHomeVisit, HomeVisitSummary } from "@/lib/types";
+import { HOME_VISIT_CANCEL_REASONS, type DoctorHomeVisit, type HomeVisitCancelReason, type HomeVisitSummary } from "@/lib/types";
 import { CloseForm } from "./CloseForm";
 import { EmergencyReferral } from "./EmergencyReferral";
 
@@ -30,7 +30,7 @@ export type VisitActions = {
   arrived: () => Promise<string | null>;
   complete: () => Promise<string | null>;
   close: (summary: HomeVisitSummary) => Promise<string | null>;
-  cancel: () => Promise<string | null>;
+  cancel: (reason: HomeVisitCancelReason) => Promise<string | null>;
   escalate: () => Promise<string | null>;
 };
 
@@ -42,6 +42,7 @@ export function VisitItem({ visit, actions }: { visit: DoctorHomeVisit; actions:
   const [eta, setEta] = useState("");
   const [error, setError] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [reason, setReason] = useState<HomeVisitCancelReason | "">("");
   const live = ["accepted", "en_route", "arrived", "completed"].includes(visit.status);
   const { patient } = visit;
 
@@ -141,15 +142,36 @@ export function VisitItem({ visit, actions }: { visit: DoctorHomeVisit; actions:
       <ConfirmDialog
         open={cancelling}
         title="Cancel this home visit?"
-        description="The patient will be told and can send a new request."
+        description={
+          <div className="space-y-3">
+            <p>
+              {visit.status === "arrived"
+                ? "You have arrived, so cancelling ends this visit. The patient is told and can send a new request."
+                : "Cancelling sends the request back to matching: the next ranked doctor is offered it (never you again) and the patient is told you cancelled."}
+            </p>
+            <SelectField label="Why are you cancelling?" value={reason} onChange={(e) => setReason(e.target.value as HomeVisitCancelReason | "")}>
+              <option value="">Choose a reason</option>
+              {Object.entries(HOME_VISIT_CANCEL_REASONS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </SelectField>
+          </div>
+        }
         confirmLabel="Cancel the visit"
         pendingLabel="Cancelling..."
         pending={actions.busy}
+        confirmDisabled={reason === ""}
         onConfirm={() => {
           setCancelling(false);
-          void step(actions.cancel);
+          if (reason !== "") void step(() => actions.cancel(reason));
+          setReason("");
         }}
-        onCancel={() => setCancelling(false)}
+        onCancel={() => {
+          setCancelling(false);
+          setReason("");
+        }}
       />
     </article>
   );

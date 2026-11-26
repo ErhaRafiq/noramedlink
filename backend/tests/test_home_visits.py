@@ -39,8 +39,10 @@ def test_a_step_cannot_be_skipped_or_reversed():
         (states.ACCEPTED, states.ARRIVED),
         (states.EN_ROUTE, states.COMPLETED),
         (states.ARRIVED, states.CLOSED),
-        (states.ACCEPTED, states.OFFERED),
         (states.ARRIVED, states.EN_ROUTE),
+        (states.ARRIVED, states.OFFERED),
+        (states.COMPLETED, states.OFFERED),
+        (states.OFFERED, states.OFFERED),
     ]:
         assert not states.can_transition(current, target, states.DOCTOR)
 
@@ -85,6 +87,60 @@ def test_every_state_has_a_timestamp_column_and_a_label():
 def test_unknown_states_are_refused():
     with pytest.raises(states.InvalidTransition):
         states.transition("offered", "flying", states.DOCTOR)
+
+
+# ---- a doctor cancels ------------------------------------------------------------------------------------------
+
+
+def test_a_doctor_who_cancels_before_arriving_sends_the_request_back_to_matching():
+    for before in (states.ACCEPTED, states.EN_ROUTE):
+        assert states.doctor_cancel_target(before) == states.OFFERED
+        assert states.can_transition(before, states.OFFERED, states.DOCTOR)
+        assert states.transition(before, states.OFFERED, states.DOCTOR) == states.OFFERED
+        # and nobody else can send it back
+        assert not states.can_transition(before, states.OFFERED, states.PATIENT)
+        assert not states.can_transition(before, states.OFFERED, states.SYSTEM)
+        # a doctor's cancel never ends the request by itself before arrival
+        assert not states.can_transition(before, states.CANCELLED, states.DOCTOR)
+
+
+def test_a_doctor_who_cancels_after_arriving_ends_the_visit():
+    assert states.doctor_cancel_target(states.ARRIVED) == states.CANCELLED
+    assert states.transition(states.ARRIVED, states.CANCELLED, states.DOCTOR) == states.CANCELLED
+    assert not states.can_transition(states.ARRIVED, states.OFFERED, states.DOCTOR)
+
+
+def test_a_doctor_cannot_cancel_a_visit_that_is_finished_or_not_theirs_yet():
+    for state in (states.OFFERED, states.COMPLETED, states.CLOSED, states.CANCELLED, states.REFERRED_EMERGENCY):
+        with pytest.raises(states.InvalidTransition):
+            states.doctor_cancel_target(state)
+
+
+def test_the_patient_can_still_cancel_until_the_doctor_arrives():
+    for state in (states.ACCEPTED, states.EN_ROUTE):
+        assert states.can_transition(state, states.CANCELLED, states.PATIENT)
+
+
+def test_the_cancel_reasons_are_fixed_choices_with_words_for_the_audit_log():
+    assert set(states.CANCEL_REASONS) == {"unwell", "urgent_elsewhere", "too_far", "patient_unreachable", "other"}
+    assert all(text == text.strip() and text for text in states.CANCEL_REASONS.values())
+
+
+def test_after_a_doctor_cancels_the_next_ranked_doctor_is_offered_never_the_one_who_cancelled():
+    ranked = ranked_of(4)  # doctors 1 to 4, best first
+    cancelled = {1}  # doctor 1 accepted, then cancelled: their offer is on record
+    following = offers.next_candidate(ranked, cancelled)
+    assert following.doctor_id == 2
+    # even if everyone else is tried and doctor 1 is still the best-ranked, they are not offered again
+    assert offers.next_candidate(ranked, {2, 3, 4, 1}) is None
+    assert offers.next_candidate(ranked[:1], {1}) is None
+
+
+def test_the_five_offers_include_the_doctor_who_cancelled():
+    ranked = ranked_of(8)
+    tried = {1, 2, 3, 4}  # four offered so far, the fourth accepted and then cancelled
+    assert offers.next_candidate(ranked, tried).doctor_id == 5
+    assert offers.next_candidate(ranked, tried | {5}) is None  # five offers in all, then "no doctor found"
 
 
 # ---- distance and coordinates ----------------------------------------------------------------------------------

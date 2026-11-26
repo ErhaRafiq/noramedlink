@@ -30,9 +30,13 @@ TRANSITIONS: dict[tuple[str, str], frozenset[str]] = {
     (OFFERED, NO_DOCTOR_FOUND): frozenset({SYSTEM}),
     (OFFERED, CANCELLED): frozenset({PATIENT}),
     (ACCEPTED, EN_ROUTE): frozenset({DOCTOR}),
-    (ACCEPTED, CANCELLED): frozenset({PATIENT, DOCTOR}),
+    (ACCEPTED, CANCELLED): frozenset({PATIENT}),
     (EN_ROUTE, ARRIVED): frozenset({DOCTOR}),
-    (EN_ROUTE, CANCELLED): frozenset({PATIENT, DOCTOR}),
+    (EN_ROUTE, CANCELLED): frozenset({PATIENT}),
+    # A doctor who cancels before arriving sends the request back to matching (the next ranked doctor);
+    # after arriving, a doctor's cancel ends the visit.
+    (ACCEPTED, OFFERED): frozenset({DOCTOR}),
+    (EN_ROUTE, OFFERED): frozenset({DOCTOR}),
     (ARRIVED, COMPLETED): frozenset({DOCTOR}),
     (ARRIVED, CANCELLED): frozenset({DOCTOR}),
     (COMPLETED, CLOSED): frozenset({DOCTOR}),
@@ -69,8 +73,27 @@ LABELS = {
 }
 
 
+# Why a doctor cancelled: fixed choices, so the audit log never holds free text about a patient.
+CANCEL_REASONS = {
+    "unwell": "doctor unwell",
+    "urgent_elsewhere": "urgent case elsewhere",
+    "too_far": "too far to reach",
+    "patient_unreachable": "patient could not be reached",
+    "other": "other reason",
+}
+
+
 class InvalidTransition(ValueError):
     """The step is not allowed from the current state, or not by this role."""
+
+
+def doctor_cancel_target(current: str) -> str:
+    """Where a doctor's cancel leads: back to matching before arrival (OFFERED), the end after it (CANCELLED)."""
+    if current in (ACCEPTED, EN_ROUTE):
+        return OFFERED
+    if current == ARRIVED:
+        return CANCELLED
+    raise InvalidTransition(f"A doctor cannot cancel a visit that is {current}.")
 
 
 def can_transition(current: str, target: str, actor: str) -> bool:

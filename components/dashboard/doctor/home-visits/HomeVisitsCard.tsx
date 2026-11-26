@@ -58,7 +58,7 @@ export function HomeVisitsCard() {
                 arrived: () => visits.arrived(visit.id),
                 complete: () => visits.complete(visit.id),
                 close: (summary) => visits.close(visit.id, summary),
-                cancel: () => visits.cancel(visit.id),
+                cancel: (reason) => visits.cancel(visit.id, reason),
                 escalate: () => visits.escalate(visit.id),
               }}
             />

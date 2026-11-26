@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api } from "@/lib/api";
-import type { DoctorHomeVisit, DoctorHomeVisitOffer, HomeVisitSummary } from "@/lib/types";
+import type { DoctorHomeVisit, DoctorHomeVisitOffer, HomeVisitCancelReason, HomeVisitSummary } from "@/lib/types";
 
 const POLL_MS = 5_000; // offers are short (2 minutes), so the doctor's list is refreshed often
 const PAGE_SIZE = 20;
@@ -102,7 +102,7 @@ export function useDoctorHomeVisits(enabled: boolean) {
     arrived: (id: number) => run(id, () => api.homeVisitArrived(id), "The step could not be saved."),
     complete: (id: number) => run(id, () => api.homeVisitComplete(id), "The step could not be saved."),
     close: (id: number, summary: HomeVisitSummary) => run(id, () => api.closeHomeVisit(id, summary), "The summary could not be saved."),
-    cancel: (id: number) => run(id, () => api.doctorCancelHomeVisit(id), "The visit could not be cancelled."),
+    cancel: (id: number, reason: HomeVisitCancelReason) => run(id, () => api.doctorCancelHomeVisit(id, reason), "The visit could not be cancelled."),
     escalate: (id: number) => run(id, () => api.escalateHomeVisit(id), "The patient could not be referred."),
   };
 }
