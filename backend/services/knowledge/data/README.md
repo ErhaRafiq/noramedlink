@@ -31,7 +31,7 @@ with pandera.
 | `home_visit_checklist.csv` | 11 | a fixed emergency question the patient answers first | home visits |
 | `ddinter_interactions.csv.gz` | 160,235 | a drug pair and DDInter's level (CC BY-NC-SA 4.0) | MSCIE, behind `interactions.csv` |
 | `ddinter_names.csv` | 57 | a curated medicine → its DDInter name(s) | MSCIE |
-| `sources.csv` | 15 | a source cited by the rows above | all tables |
+| `sources.csv` | 23 | a source cited by the rows above | all tables |
 
 ## medicines.csv
 

@@ -1,6 +1,8 @@
 # Proposal: Module 6, the home-visit engine
 
-Status: **waiting for approval**. Nothing in this document has been built. AGENTS.md section 9 requires
+Status: **superseded**. The approved decisions are recorded in `docs/claude-code-brief.md` ("Home visits (Module 6)") and the module was built on `phase-7-home-visits` as migration 0023 (not 0020). This older proposal is kept for history; where it differs (matching, map provider, ETA, payment), the brief wins. Original text follows.
+
+Original status: waiting for approval. Nothing in this document had been built. AGENTS.md section 9 requires
 a column-by-column mapping and approval before a migration that moves data is written; this proposal
 avoids moving data, and still asks for a yes on the points in section 7.
 

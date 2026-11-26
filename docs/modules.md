@@ -92,7 +92,18 @@ added the structured record and the audit trail.
 
 ## Module 6: On-Demand Doctor Home Visit Engine
 
-Not in this pass. Home-visit requests are recorded honestly (no invented doctor or ETA).
+For non-critical problems only. Rules decide who is offered a request; nothing diagnoses. Knowledge tables are a demo (`home_visit_*.csv`, source `HOME-DEMO`).
+
+| ID | Feature | Status | Where |
+|---|---|---|---|
+| FE-1 | Request a home consultation, ride-hailing style (request, offer, accept) | Done | Page `/emergency`, `routers/home_visits.py`, `services/home_visits/workflow.py`. Auto matching (the best doctor has 2 minutes, then the next, up to 5) or choosing one doctor (10 minutes); first accept wins (conditional UPDATE, partial unique indexes); a worker loop settles timeouts |
+| FE-2 | Available doctors shown by location | Done | Browser Geolocation only ("Use my current location", accuracy shown) or typed latitude and longitude; Haversine straight-line distance, rounded to 0.5 km for doctors; no map, geocoding or routing service. Doctors set a base location and radius in `/profile` |
+| FE-3 | Assignment by proximity, specialty, availability and suitability | Done | `matching.py`, weights 0.4 / 0.25 / 0.2 / 0.15 (`home_visit_weights.csv`), suitability table (`home_visit_suitability.csv`), availability from the doctor's weekly hours |
+| FE-4 | Tracking: request status, arrival, consultation, closure | Done | `states.py` (offered, accepted, en_route, arrived, completed, closed; cancelled, declined, no_doctor_found, expired, referred_emergency), a timestamp, an audit row and notifications at every step; the doctor's summary (findings, advice, follow-up) closes the visit and is kept for the patient. The only time shown is the one the doctor types, labelled "doctor's estimate" |
+| FE-5 | Restrict to non-critical cases and redirect emergencies | Done | `gate.py` runs the red-flag rules and an 11-question checklist before anything is saved or any doctor is shown: only "Call 1122 or go to the nearest emergency department." is returned. Clinic-only specialties get a clinic-booking answer. A doctor can refer to emergency care at any live step |
+| FE-6 | Privacy of location and contact details | Done | The offered doctor sees the reason and a rounded distance only; the matched doctor sees name, phone, address and coordinates while the visit is live; patients never see coordinates; an admin view is audited. Accepting a visit grants no record access |
+| FE-7 | Payment for home visits | Not built | Out of scope for this module (decision) |
+| FE-8 | Earlier requests | Done | Old `emergency_bookings` rows stay read-only and are shown as "recorded before the home-visit service"; nothing was copied |
 
 ## Module 7: Intelligent Symptom Analysis and Doctor Recommendation
 
@@ -111,7 +122,7 @@ Not built: an LLM classifier (not needed; the rules decide), languages other tha
 
 | ID | Feature | Status | Where |
 |---|---|---|---|
-| FE-1 | Secure online payments for consultations, appointments and home visits | Partial | Consultations and appointments: Stripe Checkout at the doctor's fee (`services/payments.py`, `/payments`); the server sets the amount and only Stripe's signed webhook marks a payment paid. Home visits cannot be paid: the home-visit engine (Module 6) is not built |
+| FE-1 | Secure online payments for consultations, appointments and home visits | Partial | Consultations and appointments: Stripe Checkout at the doctor's fee (`services/payments.py`, `/payments`); the server sets the amount and only Stripe's signed webhook marks a payment paid. Home visits cannot be paid: payment is not part of the home-visit module (decision) |
 | FE-2 | Third-party payment gateway | Done (test mode) | Stripe, hosted payment page, signed webhook, each event applied once. No live keys; no other gateway |
 | FE-3 | Invoices, receipts and transaction history | Done | Payment history on `/payments`; printable receipt on `/payments/receipt?id=` (`GET /payments/{id}`, owner only) with invoice number and reference. A prototype receipt, not a tax invoice; no PDF export |
 | FE-4 | Refunds, cancellations and payment status tracking | Done | Cancelling a paid appointment (patient or doctor) asks Stripe for a full refund: `REFUND_PENDING`, then `REFUNDED` only on Stripe's `charge.refunded` webhook. If the refund cannot be requested the cancellation stands and the payment shows `REFUND_FAILED` with the reference to quote to support. No partial refunds and no admin refund screen yet |

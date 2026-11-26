@@ -20,14 +20,14 @@ The project is roughly 30% implemented. Your job is to take it further in **phas
 
 ---
 
-## 2. Current state (after Phase 0, Phase 1, Modules 1 to 5, 7 and 8, and the structured record and audit log; Module 6 is next)
+## 2. Current state (after Phase 0, Phase 1 and Modules 1 to 8, and the structured record and audit log)
 
 ### Real stack
 | Layer | Technology |
 |---|---|
 | Frontend | Next.js 16 (App Router), React 19, Tailwind |
 | Backend | **FastAPI** in `backend/` using **SQLAlchemy**: the only backend. Next.js keeps a same-origin proxy (`app/api/backend/[...path]`), thin auth proxies (`app/api/auth/login`, `signup`) and `app/api/drug-check` (old OpenFDA lookup, used by no page; superseded by `services/mscie/openfda.py`, kept until the team approves deleting it) |
-| Database | PostgreSQL. Schema = SQLAlchemy models + **Alembic** migrations (`backend/migrations/`, head `0022`; see `alembic current`), applied by `alembic upgrade head` at startup. Migrations are additive. **No Prisma** (removed in Phase 1) |
+| Database | PostgreSQL. Schema = SQLAlchemy models + **Alembic** migrations (`backend/migrations/`, head `0023`; see `alembic current`), applied by `alembic upgrade head` at startup. Migrations are additive. **No Prisma** (removed in Phase 1) |
 | OCR | Local OCR in FastAPI by default: PDF text layers, then RapidOCR 3 with PP-OCRv5 (ONNX, CPU, models cached in `backend/models/`) for scans and photos, rebuilt into table rows; numbers scored under 0.90 are listed to check against the original. OCR.space was removed. No Tesseract anywhere |
 | AI | One AI_API_KEY (Gemini, OpenAI or Claude), rule-based fallback when no key, BioBERT NER (`d4data/biomedical-ner-all`). Identifiers removed before prompts leave the server; AI summaries with numbers not in the report are rejected. Patient-facing summaries and alerts use everyday words (`services/plain_language.py`, demo dictionary awaiting clinician review) |
 | Data | Knowledge bases are CSV tables (`backend/services/knowledge/data/`, data card and sources), loaded with pandas, validated with pandera in tests; rapidfuzz medicine search; DDInter 2.0 interaction pairs (160,235, CC BY-NC-SA 4.0) behind the curated rules; evaluation notebooks (`notebooks/`, scikit-learn, matplotlib) on synthetic data |
@@ -45,15 +45,32 @@ There is **no** Flutter app and **no** Node gateway, despite what the design doc
 | 3 | Clinical summary (ICSE) | Done (prototype) | Rule-based entity extraction (medicines, conditions, allergies, labs with negation and family history), flags with sources from shared lab rules (`services/lab_rules.py`), versioned clinical summaries with fingerprints (migration 0009) that regenerate when reports change, AI wording of key findings only behind a number guard. Patients see health flags in everyday words; doctors see the clinical summary with a version picker. Demo knowledge base, not clinically reviewed Body measurements section (latest weight and height with dates and who entered them, BMI, trend, weight-change flags, pregnancy status; "Weight not recorded" under Missing data); weight, height and pregnancy are part of the version fingerprint (`SUMMARY_VERSION` 2). The AI only rewords and never interprets them |
 | 4 | Medication safety (MSCIE) | Done (prototype) | Deterministic engine (`services/mscie/`) over CSV rules: allergy and cross-reactivity, interactions, duplicate classes, contraindications by condition and lab (eGFR, potassium), dose limits, previous reactions. Ranked alternatives (weighted score, each re-checked for the patient), openFDA label text as evidence only. Doctor prescribing panel with a live check; high-risk alerts need a written reason (logged in `safety_overrides`); the patient sees confirmed prescriptions read-only. The patient's own medicine check runs on the same engine; the LLM no longer changes a status. Evaluated in `notebooks/03_mscie_evaluation.ipynb` (synthetic scenarios). Demo knowledge base, not clinically reviewed Weight-based dose checks (`dose_limits_per_kg.csv`, demo knowledge base verified by the team against FDA labels: paracetamol, amoxicillin, azithromycin, ibuprofen, cefixime; tiers by age and weight, yellow cautions and red limits, `weight_doses.py`). With no or stale weight only the per-kg part is skipped ("weight needed for dose check") and the absolute maximums are still checked. Cockcroft-Gault is shown next to eGFR for information only and never changes an alert |
 | 5 | Doctor search & booking | Done | Filters, weekly availability and bookable slots, no double booking (unique index plus checks), reschedule and cancel, ratings, in-app confirmations and 24 h / 1 h reminders. Email and SMS are not configured |
-| 6 | Home visit | Not started | `EmergencyBooking` requests are recorded honestly (status `REQUESTED`, no doctor, no ETA), but nothing assigns a doctor (conflicts with scope limitation LI-5; replaced in 2d) |
+| 6 | Home visit | Done (prototype) | On-demand home visits for non-emergencies (phase 7, migration 0023): emergency gate first, auto or chosen doctor, 2-minute offers, tracked steps, doctor's summary, browser location only. See "Home visits (Module 6)" below. No payment, no map, no computed ETA |
 | 7 | Symptom → specialist | Done (prototype) | `/symptoms`, `POST /symptoms/check` open to visitors: rule-based red-flag detector (emergency notice, no booking), fixed specialty mapping from CSV tables, verified doctors ranked by next opening, rating and fee; sessions saved for admin counts. English only, demo knowledge base, no LLM |
 | 8 | Payments | Done (prototype, Stripe test mode) | Doctors set a consultation fee; patients pay on Stripe Checkout; only Stripe's signed webhook marks a payment PAID or REFUNDED. Cancelling a paid appointment requests a full refund (REFUND_PENDING, REFUND_FAILED visible); printable receipt; no partial refunds, no admin refund screen, home visits cannot be paid yet |
 | 9 | Admin panel | Done | Overview stats, doctor verification, symptom checker counts and the audit log view (filter by action, role and patient). Payment confirmation was removed on purpose |
 
 ### Dashboards
 - **Patient:** `/dashboard/patient` (`components/patient/PatientWorkspace.tsx`): reports and upload, BP/sugar log, weight, height and pregnancy status, today's detailed vitals, medicines and reminders with browser pop-ups, appointments, health flags in everyday words, prescriptions from doctors (read-only), and the one-time doctor access code. `/dashboard` redirects here.
-- **Doctor:** `/dashboard/doctor` (`components/dashboard/DoctorDashboard.tsx`): code unlock, appointments, patient file (vitals, reports, medicines, clinical summary, weight and height, prescribing with the medication-safety check) while a grant is active, end consultation, emergency visits. `/doctor-dashboard` redirects here.
+- **Doctor:** `/dashboard/doctor` (`components/dashboard/DoctorDashboard.tsx`): code unlock, appointments, **home visits** (waiting requests, visits in progress, past visits), patient file (vitals, reports, medicines, clinical summary, weight and height, prescribing with the medication-safety check) while a grant is active, end consultation, and a read-only list of requests from before the home-visit service. Home-visit settings (switch, radius, base location) are on `/profile`. `/doctor-dashboard` redirects here.
 - Both show only real data, with empty states when there is none.
+
+### Home visits (Module 6): approved decisions and what was built
+
+Built on `phase-7-home-visits` (migration 0023, replacing the older proposal in `docs/proposals/module-6-home-visits.md`).
+
+1. **Matching, both modes.** Auto (default, ride-hailing style): eligible doctors are ranked by proximity 0.4, specialty match 0.25, availability 0.2 and suitability 0.15; the best is offered the request with a 2-minute window, then the next on a decline or timeout, up to 5 doctors, then "no doctor found". First accept wins, enforced by a conditional UPDATE and partial unique indexes (one pending offer per request, one active visit per doctor). Choose a doctor: the patient sends the request to one doctor from the list (10-minute window, an app rule (demo)). Weights and the home-visit suitability table are CSVs with a source note (`HOME-DEMO`), a demo knowledge base.
+2. **Eligibility.** The doctor is approved and active, switched home visits on, has a base location and a service radius (1 to 50 km), the request lies inside it (straight line), the listed specialty is for home visits and matches the reason (or is a General Physician), the doctor is not on another visit or holding another unanswered offer, and the doctor's own weekly hours cover now or the next 2 hours.
+3. **Payment:** not in this module.
+4. **ETA:** only a number the doctor types when marking "on my way", shown as "doctor's estimate". No computed ETA and no moving pin.
+5. **Record access:** only through the one-time code. Accepting a visit grants nothing. The visit summary (findings, advice, follow-up) is saved on the visit and shown to the patient in their home-visit history.
+6. **Location: browser Geolocation only.** No map, tiles, geocoding, routing or key. The patient taps "Use my current location" (accuracy shown, approximate places flagged) or types latitude and longitude; a request cannot be sent without a place. The address is typed in words and never geocoded. Doctors set a base location the same way. Coordinates are validated on the server (latitude -90 to 90, longitude -180 to 180). Distance is Haversine, "straight-line distance", rounded to 0.5 km for a doctor before accepting; never road distance or travel time. Browser location needs HTTPS or localhost, and on a computer it can be approximate.
+7. **Old `emergency_bookings` rows** are untouched and read-only, shown as "recorded before the home-visit service". Nothing was copied.
+8. **Safety.** The red-flag detector and an 11-question checklist run before anything is saved or any doctor is shown: a hit returns only "Call 1122 or go to the nearest emergency department." and saves nothing. A reason that points to a specialty outside the suitability table gets a "book a clinic appointment" answer. A doctor can refer to emergency care at any live step (`referred_emergency`, audited, the patient sees the 1122 notice).
+9. **States:** offered, accepted, en_route, arrived, completed, closed (doctor's summary); cancelled, declined, no_doctor_found, expired, referred_emergency. One function enforces the order (`services/home_visits/states.py`, a unit test for every state and role pair); each step has its own timestamp, an audit row and in-app notifications for the patient or the doctor (none holds the reason or the address). Offers that time out are settled by a worker loop in `main.py` and by any read of the visit.
+10. **Privacy.** The offered doctor sees the reason and a rounded distance, not the name, phone or address. The matched doctor sees name, phone, written address and coordinates only while the visit is live; an ended visit keeps the name and the summary (an app rule: data minimisation). Patients never get coordinates; an administrator sees them through an audited view (`home_visit.admin_view`).
+11. **Demo data.** `scripts/home_visit_demo.py seed | status | remove`: four `[DEMO]` doctors (F-10, G-11, Blue Area, Bahria Town, approximate hand-picked coordinates), local database only; `remove` deletes only accounts matching both the email pattern and the name prefix and keeps patients' visits.
+12. **Known limits.** Availability comes from the doctor's weekly hours; an appointment already booked in those hours is not looked at. A doctor who cancels after accepting ends the request (no automatic re-offer). One live request per patient. The ranking uses straight-line distance, so a doctor across a barrier may be farther by road. English only. Browser location can be wrong on a computer; the patient can type coordinates.
 
 ### Known problems
 
@@ -68,10 +85,10 @@ There is **no** Flutter app and **no** Node gateway, despite what the design doc
 1. **Two vitals tables.** `vitals` (free-text BP + sugar, written by the patient dashboard's vitals form, read by the doctor's patient file) and `patient_vitals` (detailed readings, shown as "Today's Vitals"; no form writes it). Merge them in a later phase.
 2. **`medical_documents` is a dead, read-only table.** Its rows were copied into `patient_reports`; SQLAlchemy rejects any write to it. It is kept, not dropped, and `medical_ai_analyses.medical_record_id` still references it.
 3. **`reminders` table has no UI.** The free-text reminder form was dropped in Phase 1; the rows and the FastAPI `/reminders` endpoints remain.
-4. **Emergency requests are never assigned to a doctor**, so the doctor dashboard's emergency list stays empty for new requests. Addressed by the home-visit flow (2d).
+4. ~~Emergency requests are never assigned to a doctor~~ *(replaced)*: the home-visit service (phase 7) matches doctors for non-emergencies. `POST /emergency/requests` and the old `emergency_bookings` rows remain, read-only, and are used by no page.
 5. **Patient sub-routes are not separate views.** `/dashboard/patient/records`, `/upload`, `/summary`, `/profile` and `/ocr-results` all render the full workspace (`initialView` is ignored), though the landing page links to them.
-6. **Doctor overview lists are capped** (30 appointments, 12 emergency visits, 40 reports), and the stat cards count those lists.
-7. **Leftover client code:** `app/emergency`, `app/payments` and `app/summarize` still gate on `localStorage.userId` (not sent to the server); a few `lib/api.ts` methods (`patientOverview`, `addReminder`) have no caller; `npm run lint` shows 9 unused-variable warnings.
+6. **Doctor overview lists are capped** (30 appointments, 12 earlier home requests, 40 reports), and the stat cards count those lists.
+7. **Leftover client code:** `app/payments` and `app/summarize` still gate on `localStorage.userId` (not sent to the server); a few `lib/api.ts` methods (`patientOverview`, `addReminder`) have no caller; `npm run lint` shows 9 unused-variable warnings.
 8. ~~JWT in `localStorage`~~ *(fixed)*: tokens live in HttpOnly cookies, the access token lasts 15 minutes and a rotating refresh token renews it (reuse revokes the session).
 
 ---
@@ -163,10 +180,10 @@ These are project requirements (scope limitations LI-1 and LI-5), not suggestion
 - In-app notifications on booking, reschedule, and cancel (the `Notification` model exists).
 
 **2d. Home visit engine (Module 6)**
-- Replace `EmergencyBooking` with a `HomeVisitRequest` flow. Keep old emergency data readable; propose the migration first.
+- **Done in phase 7** (see "Home visits (Module 6)" in section 2 for the approved decisions; the map-provider note below was replaced by browser location only). Replace `EmergencyBooking` with a `HomeVisitRequest` flow. Keep old emergency data readable; propose the migration first.
 - States: `requested → accepted → en_route → arrived → completed`, plus `cancelled` / `declined`. Enforce valid transitions server-side.
 - Doctors opt in to home visits and set a service radius. Match by distance (Haversine on stored coordinates), specialty, and availability.
-- Location uses the existing `NEXT_PUBLIC_MAP_PROVIDER=mock` path by default; Google Maps only when a key is configured.
+- ~~Location uses the existing `NEXT_PUBLIC_MAP_PROVIDER=mock` path by default; Google Maps only when a key is configured.~~ *(replaced: browser Geolocation only, no map provider)*
 - Run the red-flag detector on the patient's reason at request time; red flags block the request and show the emergency redirect.
 
 ### Phase 3: Clinical safety modules *(Erha's modules)*
